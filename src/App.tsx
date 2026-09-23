@@ -4,6 +4,7 @@ import { GameScreen } from '@/components/GameScreen'
 import { HistorySheet } from '@/components/HistorySheet'
 import { SetupScreen } from '@/components/SetupScreen'
 import type { HistoryStorage } from '@/lib/history'
+import { createBrowserFeedback } from '@/platform/browserFeedback'
 import type { Settings } from '@/lib/types'
 
 const noopStorage: HistoryStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
@@ -19,6 +20,7 @@ function browserStorage(): HistoryStorage {
 }
 
 const storage = browserStorage()
+const feedback = createBrowserFeedback()
 
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -27,7 +29,7 @@ export default function App() {
   return (
     <AppShell>
       {settings ? (
-        <GameScreen settings={settings} storage={storage} onBack={() => setSettings(null)} />
+        <GameScreen settings={settings} storage={storage} feedback={feedback} onBack={() => setSettings(null)} />
       ) : (
         <SetupScreen onStart={setSettings} onOpenHistory={() => setHistoryOpen(true)} />
       )}

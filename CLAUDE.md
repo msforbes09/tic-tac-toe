@@ -12,6 +12,8 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
 - `src/lib/bot.ts` — bot strategies. Depends only on game.ts. Fully tested.
 - `src/lib/history.ts` — history persistence over a Storage-like interface. Fully tested.
+- `src/lib/feedback.ts` — which sound/haptic a board change gets. Fully tested.
+- `src/platform/browserFeedback.ts` — Web Audio tones + Vibration API behind the `Feedback` interface. The only browser-API code outside components.
 - `src/lib/types.ts` — shared domain types (Mode, Difficulty, Settings, Outcome).
 - `src/state/reducer.ts` — game state reducer. Fully tested.
 - `src/components/` — React UI. `ui/` is shadcn-generated; don't hand-edit.

@@ -3,6 +3,7 @@ import { Board } from './Board'
 import { StatusBar } from './StatusBar'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
+import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryStorage } from '@/lib/history'
 import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
@@ -13,14 +14,16 @@ export const BOT_DELAY_MS = 400
 export type GameScreenProps = {
   settings: Settings
   storage: HistoryStorage
+  feedback: Feedback
   onBack: () => void
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
 
-export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
+export function GameScreen({ settings, storage, feedback, onBack }: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
+  const previousBoard = useRef(state.board)
 
   const isBotTurn =
     settings.mode === 'bot' && state.status === 'playing' && nextPlayer(state.board) === 'O'
@@ -33,6 +36,13 @@ export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
     }, BOT_DELAY_MS)
     return () => clearTimeout(id)
   }, [isBotTurn, state.board, settings.difficulty])
+
+  // Sound and haptics for every new mark, the player's and the bot's alike.
+  useEffect(() => {
+    const event = feedbackForChange(previousBoard.current, state.board)
+    previousBoard.current = state.board
+    if (event) feedback.play(event)
+  }, [state.board, feedback])
 
   // Record each finished game exactly once. The ref guards StrictMode's double effect run.
   useEffect(() => {

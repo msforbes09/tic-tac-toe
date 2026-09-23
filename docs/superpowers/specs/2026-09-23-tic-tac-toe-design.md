@@ -250,3 +250,20 @@ with `BASE_PATH=/<repo-name>/` so Vite emits asset URLs under the Pages
 subpath, then uploads `dist/` with `actions/upload-pages-artifact` and
 deploys with `actions/deploy-pages`. Locally the base path stays `/`.
 No secrets are required beyond the workflow's built-in `GITHUB_TOKEN`.
+
+## Sound and haptics (added 2026-09-23)
+
+Every new mark, the player's or the bot's, plays feedback. A move plays a
+short tick (X and O at different pitches) and a short vibration. The mark that
+wins the game plays a rising four-note chime and a longer vibration pattern
+instead. A draw plays one low tone and a double buzz. Starting a new game plays nothing.
+
+- `lib/feedback.ts` is pure. `feedbackForChange(prev, next)` maps a board
+  change to `move | win | draw | null`.
+- `platform/browserFeedback.ts` is the only code that touches the browser for
+  this. Tones are generated with Web Audio (no audio files), and haptics use
+  `navigator.vibrate`. Either API can be missing; iPhone Safari has no
+  vibration. `play()` degrades quietly and never throws.
+- `GameScreen` takes a `feedback` prop, injected the same way as `storage`.
+- Sound is always on. There is deliberately no mute control; players use the
+  device volume or silent switch.

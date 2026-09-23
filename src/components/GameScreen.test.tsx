@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BOT_DELAY_MS, GameScreen } from './GameScreen'
+import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 
 function fakeStorage() {
@@ -18,11 +19,53 @@ function fakeStorage() {
   return storage
 }
 
+/** A Feedback player that just remembers what it was asked to play. */
+function recorder() {
+  const played: FeedbackEvent[] = []
+  const feedback: Feedback & { played: FeedbackEvent[] } = {
+    play: (event) => {
+      played.push(event)
+    },
+    played,
+  }
+  return feedback
+}
+
 const cell = (n: number) => screen.getByRole('button', { name: new RegExp(`^Cell ${n},`) })
+
+describe('GameScreen feedback', () => {
+  const pvp = { mode: 'pvp', difficulty: 'easy' } as const
+
+  it('plays a move for each mark and a win for the winning mark', () => {
+    const feedback = recorder()
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
+    expect(feedback.played).toEqual([
+      { kind: 'move', player: 'X' },
+      { kind: 'move', player: 'O' },
+      { kind: 'move', player: 'X' },
+      { kind: 'move', player: 'O' },
+      { kind: 'win', player: 'X' },
+    ])
+  })
+
+  it('plays nothing when starting a new game', () => {
+    const feedback = recorder()
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)
+    fireEvent.click(cell(1))
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }))
+    expect(feedback.played).toHaveLength(1)
+  })
+
+  it('always plays sound: there is no mute control', () => {
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.queryByRole('button', { name: /mute/i })).not.toBeInTheDocument()
+  })
+})
 
 describe('GameScreen two-player', () => {
   it('alternates X and O and shows whose turn it is', () => {
-    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
     expect(screen.getByText("X's turn")).toBeInTheDocument()
     fireEvent.click(cell(1))
     expect(cell(1)).toHaveAccessibleName('Cell 1, X')
@@ -33,7 +76,7 @@ describe('GameScreen two-player', () => {
 
   it('announces the winner and records exactly one history entry', () => {
     const storage = fakeStorage()
-    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={storage} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={storage} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
     expect(screen.getByText('X wins!')).toBeInTheDocument()
     expect(cell(1)).toHaveAttribute('data-highlighted', 'true')
@@ -45,14 +88,14 @@ describe('GameScreen two-player', () => {
 
   it('records a draw', () => {
     const storage = fakeStorage()
-    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={storage} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={storage} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 2, 3, 5, 4, 6, 8, 7, 9]) fireEvent.click(cell(n))
     expect(screen.getByText("It's a draw")).toBeInTheDocument()
     expect(storage.entries()[0]).toMatchObject({ outcome: 'draw' })
   })
 
   it('New game clears the board and keeps playing', () => {
-    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
     fireEvent.click(screen.getByRole('button', { name: /new game/i }))
     expect(screen.getByText("X's turn")).toBeInTheDocument()
@@ -61,7 +104,7 @@ describe('GameScreen two-player', () => {
 
   it('Back calls onBack', () => {
     const onBack = vi.fn()
-    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} onBack={onBack} />)
+    render(<GameScreen settings={{ mode: 'pvp', difficulty: 'easy' }} storage={fakeStorage()} feedback={recorder()} onBack={onBack} />)
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(onBack).toHaveBeenCalledTimes(1)
   })
@@ -76,7 +119,7 @@ describe('GameScreen versus bot', () => {
   })
 
   it('lets the bot reply after the delay and disables the board while thinking', () => {
-    render(<GameScreen settings={{ mode: 'bot', difficulty: 'hard' }} storage={fakeStorage()} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'bot', difficulty: 'hard' }} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
     expect(screen.getByText('Your turn')).toBeInTheDocument()
     fireEvent.click(cell(1))
     expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
@@ -89,9 +132,22 @@ describe('GameScreen versus bot', () => {
     expect(screen.getByText('Your turn')).toBeInTheDocument()
   })
 
+  it("plays feedback for the bot's move too", () => {
+    const feedback = recorder()
+    render(<GameScreen settings={{ mode: 'bot', difficulty: 'hard' }} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)
+    fireEvent.click(cell(1))
+    act(() => {
+      vi.advanceTimersByTime(BOT_DELAY_MS)
+    })
+    expect(feedback.played).toEqual([
+      { kind: 'move', player: 'X' },
+      { kind: 'move', player: 'O' },
+    ])
+  })
+
   it('records a bot game with its difficulty', () => {
     const storage = fakeStorage()
-    render(<GameScreen settings={{ mode: 'bot', difficulty: 'hard' }} storage={storage} onBack={() => {}} />)
+    render(<GameScreen settings={{ mode: 'bot', difficulty: 'hard' }} storage={storage} feedback={recorder()} onBack={() => {}} />)
     // Play until the game ends; hard bot forces a draw or win for O at worst.
     for (let turn = 0; turn < 5; turn++) {
       const empty = screen.queryAllByRole('button', { name: /, empty$/ }).filter((el) => !el.hasAttribute('disabled'))
