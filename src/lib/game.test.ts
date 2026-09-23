@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { availableMoves, createBoard, nextPlayer, getWinner, isDraw, isGameOver } from './game'
+import { availableMoves, createBoard, nextPlayer, getWinner, isDraw, isGameOver, makeMove } from './game'
 import type { Board } from './types'
 
 const b = (s: string): Board =>
@@ -95,5 +95,36 @@ describe('isGameOver', () => {
 
   it('is true on a draw', () => {
     expect(isGameOver(b('XOXXOOOXX'))).toBe(true)
+  })
+})
+
+describe('makeMove', () => {
+  it('places the player at the index on a new board', () => {
+    const board = createBoard()
+    const next = makeMove(board, 4, 'X')
+    expect(next[4]).toBe('X')
+    expect(next.filter((c) => c === null)).toHaveLength(8)
+  })
+
+  it('does not mutate the input board', () => {
+    const board = createBoard()
+    makeMove(board, 0, 'X')
+    expect(board).toEqual(createBoard())
+  })
+
+  it('throws RangeError for an index below 0', () => {
+    expect(() => makeMove(createBoard(), -1, 'X')).toThrow(RangeError)
+  })
+
+  it('throws RangeError for an index above 8', () => {
+    expect(() => makeMove(createBoard(), 9, 'X')).toThrow(RangeError)
+  })
+
+  it('throws when the cell is occupied', () => {
+    expect(() => makeMove(b('X........'), 0, 'O')).toThrow(/taken/)
+  })
+
+  it('throws when the game is already over', () => {
+    expect(() => makeMove(b('XXX.OO...'), 3, 'O')).toThrow(/over/)
   })
 })

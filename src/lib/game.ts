@@ -43,3 +43,18 @@ export function isDraw(board: Board): boolean {
 export function isGameOver(board: Board): boolean {
   return getWinner(board) !== null || isDraw(board)
 }
+
+export function makeMove(board: Board, index: number, player: Player): Board {
+  if (!Number.isInteger(index) || index < 0 || index > 8) {
+    throw new RangeError(`Cell index out of range: ${index}`)
+  }
+  if (isGameOver(board)) {
+    throw new Error('Game is already over')
+  }
+  if (board[index] !== null) {
+    throw new Error(`Cell ${index} is already taken`)
+  }
+  const next = board.slice()
+  next[index] = player
+  return next
+}
