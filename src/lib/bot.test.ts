@@ -48,3 +48,42 @@ describe('chooseMove medium', () => {
     expect(chooseMove(b('X...O....'), 'medium', () => 0)).toBe(1)
   })
 })
+
+describe('chooseMove hard', () => {
+  it('takes an immediate win over a block', () => {
+    // X X . / O O . / . . X -> O to move; winning at 5 beats blocking at 2
+    expect(chooseMove(b('XX.OO...X'), 'hard')).toBe(5)
+  })
+
+  it('blocks a fork setup: X corners -> O must not take another corner', () => {
+    // X . . / . O . / . . X  -> the only non-losing replies are edges (1,3,5,7)
+    expect([1, 3, 5, 7]).toContain(chooseMove(b('X...O...X'), 'hard'))
+  })
+
+  it('is deterministic', () => {
+    const board = b('X...O....')
+    expect(chooseMove(board, 'hard')).toBe(chooseMove(board, 'hard'))
+  })
+
+  it('never loses against every possible human line of play', () => {
+    let games = 0
+    const explore = (board: Board) => {
+      for (const h of availableMoves(board)) {
+        let next = makeMove(board, h, 'X')
+        if (isGameOver(next)) {
+          games++
+          expect(getWinner(next)?.player).not.toBe('X')
+          continue
+        }
+        next = makeMove(next, chooseMove(next, 'hard'), 'O')
+        if (isGameOver(next)) {
+          games++
+          continue
+        }
+        explore(next)
+      }
+    }
+    explore(createBoard())
+    expect(games).toBeGreaterThan(100)
+  })
+})
