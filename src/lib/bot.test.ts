@@ -87,3 +87,42 @@ describe('chooseMove hard', () => {
     expect(games).toBeGreaterThan(100)
   })
 })
+
+describe('the bot plays whichever side is to move', () => {
+  it('medium takes an immediate win as X', () => {
+    // X X . / O O . / . . .  -> X to move, wins at 2
+    expect(chooseMove(b('XX.OO....'), 'medium', () => 0)).toBe(2)
+  })
+
+  it('medium blocks O when playing X', () => {
+    // X . . / O O . / X . .  -> X to move, must block at 5
+    expect(chooseMove(b('X..OO.X..'), 'medium', () => 0)).toBe(5)
+  })
+
+  it('hard takes an immediate win as X', () => {
+    expect(chooseMove(b('XX.OO....'), 'hard')).toBe(2)
+  })
+
+  it('hard never loses when it opens as X', () => {
+    let games = 0
+    const explore = (board: Board) => {
+      // Bot (X) moves, then every possible human (O) reply.
+      const afterBot = makeMove(board, chooseMove(board, 'hard'), 'X')
+      if (isGameOver(afterBot)) {
+        games++
+        return
+      }
+      for (const h of availableMoves(afterBot)) {
+        const next = makeMove(afterBot, h, 'O')
+        if (isGameOver(next)) {
+          games++
+          expect(getWinner(next)?.player).not.toBe('O')
+          continue
+        }
+        explore(next)
+      }
+    }
+    explore(createBoard())
+    expect(games).toBeGreaterThan(10)
+  })
+})
