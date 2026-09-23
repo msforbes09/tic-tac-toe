@@ -1,4 +1,4 @@
-import type { Difficulty, Mode, Outcome } from './types'
+import type { Difficulty, Mode, Outcome, Player } from './types'
 
 export type HistoryEntry = {
   id: string
@@ -6,6 +6,8 @@ export type HistoryEntry = {
   mode: Mode
   difficulty: Difficulty | null
   outcome: Outcome
+  /** The symbol player one (you, against the bot) played. Older entries lack it and were X. */
+  p1Symbol?: Player
 }
 
 export type HistoryStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>

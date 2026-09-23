@@ -21,6 +21,14 @@ describe('feedbackForChange', () => {
     expect(feedbackForChange(b('XOXXOOOX.'), b('XOXXOOOXX'))).toEqual({ kind: 'draw' })
   })
 
+  it('reports a loss instead of a win when the bot completes a line', () => {
+    expect(feedbackForChange(b('XX.OO....'), b('XXXOO....'), 'X')).toEqual({ kind: 'lose' })
+  })
+
+  it('still reports a win when you beat the bot', () => {
+    expect(feedbackForChange(b('XX.OO....'), b('XXXOO....'), 'O')).toEqual({ kind: 'win', player: 'X' })
+  })
+
   it('reports nothing when the board is unchanged', () => {
     const board = b('X........')
     expect(feedbackForChange(board, board)).toBeNull()

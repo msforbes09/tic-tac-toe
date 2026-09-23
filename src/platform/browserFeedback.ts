@@ -21,6 +21,8 @@ function notesFor(event: FeedbackEvent): Note[] {
       return [523, 659, 784, 1047].map((hz, i) => ({ hz, at: i * 0.09, length: 0.16 }))
     case 'draw':
       return [{ hz: 330, at: 0, length: 0.25 }]
+    case 'lose':
+      return [392, 330, 262].map((hz, i) => ({ hz, at: i * 0.14, length: 0.22 }))
   }
 }
 
@@ -33,6 +35,8 @@ function vibrationFor(event: FeedbackEvent): number | number[] {
       return [30, 60, 30, 60, 80]
     case 'draw':
       return [40, 80, 40]
+    case 'lose':
+      return [120]
   }
 }
 

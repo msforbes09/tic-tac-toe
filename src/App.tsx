@@ -4,6 +4,7 @@ import { GameScreen } from '@/components/GameScreen'
 import { HistorySheet } from '@/components/HistorySheet'
 import { SetupScreen } from '@/components/SetupScreen'
 import type { HistoryStorage } from '@/lib/history'
+import { loadSetup, saveSetup } from '@/lib/setup'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
 import type { Settings } from '@/lib/types'
 
@@ -31,7 +32,14 @@ export default function App() {
       {settings ? (
         <GameScreen settings={settings} storage={storage} feedback={feedback} onBack={() => setSettings(null)} />
       ) : (
-        <SetupScreen onStart={setSettings} onOpenHistory={() => setHistoryOpen(true)} />
+        <SetupScreen
+          initial={loadSetup(storage)}
+          onStart={(next) => {
+            saveSetup(storage, next)
+            setSettings(next)
+          }}
+          onOpenHistory={() => setHistoryOpen(true)}
+        />
       )}
       <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
     </AppShell>

@@ -55,6 +55,13 @@ describe('createBrowserFeedback', () => {
     expect([...audio.tones].sort((a, b) => a - b)).toEqual(audio.tones)
   })
 
+  it('plays a falling run of notes when you lose', () => {
+    const audio = fakeAudio()
+    createBrowserFeedback({ createAudio: () => audio }).play({ kind: 'lose' })
+    expect(audio.tones.length).toBeGreaterThanOrEqual(3)
+    expect([...audio.tones].sort((a, b) => b - a)).toEqual(audio.tones)
+  })
+
   it('creates the audio context once and reuses it', () => {
     const createAudio = vi.fn(() => fakeAudio())
     const feedback = createBrowserFeedback({ createAudio })
