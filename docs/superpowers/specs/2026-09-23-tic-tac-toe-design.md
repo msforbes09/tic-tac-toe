@@ -207,10 +207,33 @@ These are verified in the browser.
 
 ## Visual design
 
-After all tests pass, run the Impeccable skill for the polish pass: typography,
-spacing, board proportions, cell hover/press feedback, winning-line highlight,
-dark mode via Tailwind `dark:` classes and shadcn's theme tokens. No behaviour
-changes in that pass.
+**Mobile-first, phone layout everywhere.** The game is designed for a phone
+screen and keeps that layout on desktop browsers too: a single centred column
+capped at roughly 420 px wide, full viewport height, no side-by-side desktop
+layout. On wide screens the column sits centred on a subtle backdrop so it
+reads as an app, not a stretched web page.
+
+Rules:
+
+- `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`
+- Layout uses `100dvh` and respects safe-area insets (`env(safe-area-inset-*)`)
+  so nothing hides behind notches or the home indicator.
+- The board is a square that fills the column width minus padding; cells are
+  therefore large touch targets (well above 44 px). All buttons meet a 44 px
+  minimum height.
+- Feedback works on touch: use `active:` / pressed states and the winning
+  highlight; never rely on `hover:` alone.
+- `touch-action: manipulation` on the board to remove tap delay; disable text
+  selection on cells.
+- Setup, Game, and History all fit without horizontal scrolling at 360 px
+  wide. History content scrolls inside the Sheet, not the page.
+- Test in the browser at 360, 390, and 1280 px widths before calling the UI
+  done.
+
+After all tests pass, run the Impeccable skill for the polish pass within
+these constraints: typography, spacing, board proportions, cell press
+feedback, winning-line highlight, dark mode via Tailwind `dark:` classes and
+shadcn's theme tokens. No behaviour changes in that pass.
 
 ## Commands
 
