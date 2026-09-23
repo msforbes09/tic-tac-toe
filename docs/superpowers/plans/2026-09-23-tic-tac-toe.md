@@ -2460,3 +2460,106 @@ Expected: `gh repo view --web`-able URL printed; `git remote -v` shows `origin` 
 - [ ] **Step 5: Report**
 
 Tell the user the repo URL, that `npm install && npm run dev` runs it, and how many tests pass.
+
+---
+
+### Task 11: GitHub Pages deployment
+
+**Files:**
+- Modify: `vite.config.ts` (add `base`)
+- Create: `.github/workflows/deploy.yml`
+- Modify: `README.md` (add a "Live" line)
+
+**Interfaces:**
+- Consumes: the repo created in Task 10 (`origin` remote). `npm test` and `npm run build` must be green.
+- Produces: a Pages site at `https://<owner>.github.io/<repo>/` after the branch is merged to `main`.
+
+- [ ] **Step 1: Make the Vite base path configurable**
+
+In `vite.config.ts`, add a `base` entry to the config object:
+
+```ts
+export default defineConfig({
+  base: process.env.BASE_PATH ?? '/',
+  plugins: [react(), tailwindcss()],
+  // ...rest unchanged
+})
+```
+
+Verify locally: `npm run build` still emits `dist/index.html` with `/assets/...` URLs (base `/`), and `BASE_PATH=/tic-tac-toe/ npm run build` emits `/tic-tac-toe/assets/...`. Run `npm test` — still green.
+
+- [ ] **Step 2: Add the workflow**
+
+`.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+- [ ] **Step 3: Add the live link to README.md**
+
+Under the title paragraph add:
+
+```markdown
+**Live:** https://<owner>.github.io/<repo>/ (deployed from `main` by GitHub Actions)
+```
+
+Replace `<owner>` and `<repo>` with the real values from `git remote get-url origin`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add vite.config.ts .github/workflows/deploy.yml README.md
+git commit -m "ci: deploy to GitHub Pages on push to main"
+```
+
+- [ ] **Step 5: Enable Pages for the repo (workflow source)**
+
+```bash
+gh api -X POST "repos/{owner}/{repo}/pages" -f build_type=workflow 2>/dev/null \
+  || gh api -X PUT "repos/{owner}/{repo}/pages" -f build_type=workflow
+```
+
+Expected: JSON with `"build_type": "workflow"`. The first deploy runs when the branch is merged/pushed to `main`; `gh run watch` shows progress and `gh api repos/{owner}/{repo}/pages --jq .html_url` prints the site URL.

@@ -241,3 +241,12 @@ shadcn's theme tokens. No behaviour changes in that pass.
 - `npm test` — Vitest once
 - `npm run test:watch` — Vitest watch
 - `npm run build` — production build
+
+## Deployment (added 2026-09-23)
+
+The app is published to GitHub Pages from a GitHub Actions workflow on every
+push to `main`. The workflow runs `npm ci`, `npm test`, and `npm run build`
+with `BASE_PATH=/<repo-name>/` so Vite emits asset URLs under the Pages
+subpath, then uploads `dist/` with `actions/upload-pages-artifact` and
+deploys with `actions/deploy-pages`. Locally the base path stays `/`.
+No secrets are required beyond the workflow's built-in `GITHUB_TOKEN`.
