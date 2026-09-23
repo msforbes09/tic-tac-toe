@@ -14,3 +14,6 @@ export type Settings = {
 }
 
 export type Outcome = 'X' | 'O' | 'draw'
+
+/** p1 is you against the bot, or Player 1 in two-player mode. p2 is the bot or Player 2. */
+export type Seat = 'p1' | 'p2'

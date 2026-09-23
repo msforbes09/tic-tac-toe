@@ -13,8 +13,16 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { clearHistory, loadHistory, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  botStats,
+  clearHistory,
+  loadHistory,
+  winnerSeat,
+  type HistoryEntry,
+  type HistoryStorage,
+} from '@/lib/history'
+import type { Difficulty } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export type HistorySheetProps = {
@@ -26,10 +34,46 @@ export type HistorySheetProps = {
 const dayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
 
+/** Games shown per page; View more reveals another page. */
+export const PAGE_SIZE = 10
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
+
 function outcomeLabel(e: HistoryEntry): string {
-  if (e.outcome === 'draw') return 'Draw'
-  if (e.mode === 'pvp') return `${e.outcome} wins`
-  return e.outcome === 'X' ? 'You win' : 'Bot wins'
+  const seat = winnerSeat(e)
+  if (seat === null) return 'Draw'
+  if (e.mode === 'pvp') return seat === 'p1' ? 'Player 1 wins' : 'Player 2 wins'
+  return seat === 'p1' ? 'You win' : 'Bot wins'
+}
+
+function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
+  const stats = botStats(entries)
+  return (
+    <table aria-label="Record against the bot" className="w-full text-sm tabular-nums">
+      <thead>
+        <tr className="text-xs text-muted-foreground">
+          <th scope="col" className="py-1 text-left font-medium">
+            <span className="sr-only">Difficulty</span>
+          </th>
+          <th scope="col" className="py-1 text-right font-medium">Won</th>
+          <th scope="col" className="py-1 text-right font-medium">Lost</th>
+          <th scope="col" className="py-1 text-right font-medium">Drawn</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(Object.keys(stats) as Difficulty[]).map((d) => (
+          <tr key={d}>
+            <th scope="row" className="py-0.5 text-left font-medium">
+              {DIFFICULTY_LABEL[d]}
+            </th>
+            <td className="py-0.5 text-right">{stats[d].wins}</td>
+            <td className="py-0.5 text-right">{stats[d].losses}</td>
+            <td className="py-0.5 text-right">{stats[d].draws}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
 }
 
 function modeLabel(e: HistoryEntry): string {
@@ -73,10 +117,15 @@ function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
 export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [visible, setVisible] = useState(PAGE_SIZE)
 
   useEffect(() => {
-    if (open) setEntries(safeLoad(storage))
+    if (!open) return
+    setEntries(safeLoad(storage))
+    setVisible(PAGE_SIZE)
   }, [open, storage])
+
+  const hasBotGames = entries.some((e) => e.mode === 'bot')
 
   const handleClear = () => {
     try {
@@ -92,8 +141,10 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="mx-auto flex h-[85dvh] w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
-        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
+        // Inline height: the sheet's own `data-[side=bottom]:h-auto` would beat a class, and without a
+        // definite height the list's scroll area grows with its content instead of scrolling.
+        style={{ height: '85dvh', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="text-2xl font-bold tracking-tight">History</SheetTitle>
@@ -103,6 +154,12 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
               : `Your last ${entries.length === 1 ? 'game' : `${entries.length} games`}`}
           </SheetDescription>
         </SheetHeader>
+
+        {hasBotGames && (
+          <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+            <BotRecordTable entries={entries} />
+          </div>
+        )}
 
         {entries.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
@@ -114,9 +171,10 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
             <p className="text-muted-foreground">No games yet</p>
           </div>
         ) : (
-          <ScrollArea className="-mx-5 flex-1 px-5">
+          // min-h-0 lets the scroll area shrink inside the flex column instead of growing with its content.
+          <ScrollArea className="-mx-5 min-h-0 flex-1 px-5">
             <ul className="divide-y divide-border/70">
-              {entries.map((e) => (
+              {entries.slice(0, visible).map((e) => (
                 <li key={e.id} className="flex min-h-16 items-center gap-3.5 py-3">
                   <OutcomeBadge outcome={e.outcome} />
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -133,30 +191,44 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
                 </li>
               ))}
             </ul>
+            {entries.length > visible && (
+              <Button
+                variant="ghost"
+                className="mb-1 mt-1 min-h-11 w-full rounded-[14px] text-[15px] font-medium"
+                onClick={() => setVisible((n) => n + PAGE_SIZE)}
+              >
+                View more
+              </Button>
+            )}
           </ScrollArea>
         )}
 
-        {entries.length > 0 && (
-          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-            <AlertDialogTrigger
-              render={<Button variant="outline" className="mt-2 min-h-12 w-full rounded-[16px] text-base" />}
-            >
-              Clear history
-            </AlertDialogTrigger>
-            <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear all games?</AlertDialogTitle>
-                <AlertDialogDescription>This removes every entry from your history. It can't be undone.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
-                <AlertDialogAction className="min-h-11" onClick={handleClear}>
-                  Clear
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <div className={cn('mt-2 grid gap-2', entries.length > 0 && 'grid-cols-2')}>
+          {entries.length > 0 && (
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <AlertDialogTrigger
+                render={<Button variant="outline" className="min-h-12 w-full rounded-[16px] text-base" />}
+              >
+                Clear history
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all games?</AlertDialogTitle>
+                  <AlertDialogDescription>This removes every entry from your history. It can't be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="min-h-11" onClick={handleClear}>
+                    Clear
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <SheetClose render={<Button className="min-h-12 w-full rounded-[16px] text-base font-semibold" />}>
+            Back
+          </SheetClose>
+        </div>
       </SheetContent>
     </Sheet>
   )

@@ -1,4 +1,4 @@
-import type { Difficulty, Mode, Outcome, Player } from './types'
+import type { Difficulty, Mode, Outcome, Player, Seat } from './types'
 
 export type HistoryEntry = {
   id: string
@@ -18,6 +18,7 @@ export const MAX_ENTRIES = 100
 const MODES: Mode[] = ['pvp', 'bot']
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 const OUTCOMES: Outcome[] = ['X', 'O', 'draw']
+const SYMBOLS: Player[] = ['X', 'O']
 
 function isEntry(value: unknown): value is HistoryEntry {
   if (typeof value !== 'object' || value === null) return false
@@ -27,7 +28,8 @@ function isEntry(value: unknown): value is HistoryEntry {
     typeof v.timestamp === 'number' &&
     MODES.includes(v.mode as Mode) &&
     (v.difficulty === null || DIFFICULTIES.includes(v.difficulty as Difficulty)) &&
-    OUTCOMES.includes(v.outcome as Outcome)
+    OUTCOMES.includes(v.outcome as Outcome) &&
+    (v.p1Symbol === undefined || SYMBOLS.includes(v.p1Symbol as Player))
   )
 }
 
@@ -58,4 +60,28 @@ export function newEntryId(): string {
   const c = globalThis.crypto
   if (c && typeof c.randomUUID === 'function') return c.randomUUID()
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/** Which seat won, reading entries saved before symbol choice as player one playing X. */
+export function winnerSeat(entry: HistoryEntry): Seat | null {
+  if (entry.outcome === 'draw') return null
+  return entry.outcome === (entry.p1Symbol ?? 'X') ? 'p1' : 'p2'
+}
+
+export type BotRecord = { wins: number; losses: number; draws: number }
+
+/** Your record against the bot at each difficulty. Two-player games are ignored. */
+export function botStats(entries: HistoryEntry[]): Record<Difficulty, BotRecord> {
+  const stats = Object.fromEntries(
+    DIFFICULTIES.map((d) => [d, { wins: 0, losses: 0, draws: 0 }]),
+  ) as Record<Difficulty, BotRecord>
+  for (const e of entries) {
+    if (e.mode !== 'bot' || e.difficulty === null) continue
+    const seat = winnerSeat(e)
+    const record = stats[e.difficulty]
+    if (seat === null) record.draws++
+    else if (seat === 'p1') record.wins++
+    else record.losses++
+  }
+  return stats
 }

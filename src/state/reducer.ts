@@ -1,10 +1,10 @@
 import { createBoard, getWinner, isDraw, makeMove, nextPlayer } from '@/lib/game'
-import type { Board, Player, Settings, WinLine } from '@/lib/types'
+import type { Board, Player, Seat, Settings, WinLine } from '@/lib/types'
+
+export type { Seat }
 
 export type GameStatus = 'playing' | 'won' | 'draw'
 
-/** p1 is you against the bot, or Player 1 in two-player mode. p2 is the bot or Player 2. */
-export type Seat = 'p1' | 'p2'
 
 export type Score = { p1: number; p2: number; draws: number }
 
