@@ -10,21 +10,27 @@ export type BoardProps = {
 
 export function Board({ board, winningLine, disabled, onSelect }: BoardProps) {
   return (
-    <div
-      role="group"
-      aria-label="Game board"
-      className="grid w-full touch-manipulation grid-cols-3 gap-2"
-    >
-      {board.map((value, index) => (
-        <Cell
-          key={index}
-          index={index}
-          value={value}
-          highlighted={winningLine?.includes(index) ?? false}
-          disabled={disabled}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className="board-tray rounded-[28px] bg-muted/70 p-[3.2cqw] dark:bg-muted/50">
+      <div
+        role="group"
+        aria-label="Game board"
+        className="board-grid grid w-full touch-manipulation grid-cols-3"
+      >
+        {board.map((value, index) => {
+          const winOrder = winningLine ? winningLine.indexOf(index) : -1
+          return (
+            <Cell
+              key={index}
+              index={index}
+              value={value}
+              highlighted={winOrder >= 0}
+              winOrder={Math.max(winOrder, 0)}
+              disabled={disabled}
+              onSelect={onSelect}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }

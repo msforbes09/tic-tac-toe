@@ -16,6 +16,8 @@ export type GameScreenProps = {
   onBack: () => void
 }
 
+const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
+
 export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
@@ -52,27 +54,35 @@ export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
     dispatch({ type: 'RECORDED' })
   }, [state.status, state.recorded, state.board, state.winner, settings, storage])
 
+  const finished = state.status !== 'playing'
+
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-7">
       <header className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onBack} className="min-h-11">
+        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
           ← Back
         </Button>
-        <span className="text-sm text-muted-foreground">
-          {settings.mode === 'bot' ? `Bot · ${settings.difficulty}` : 'Two player'}
+        <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">
+          {settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[settings.difficulty]}` : 'Two player'}
         </span>
       </header>
 
-      <StatusBar state={state} />
+      <div className="my-auto flex flex-col gap-5 pb-6">
+        <StatusBar state={state} />
+        <Board
+          board={state.board}
+          winningLine={state.winningLine}
+          disabled={finished || isBotTurn}
+          onSelect={(index) => dispatch({ type: 'MOVE', index })}
+        />
+      </div>
 
-      <Board
-        board={state.board}
-        winningLine={state.winningLine}
-        disabled={state.status !== 'playing' || isBotTurn}
-        onSelect={(index) => dispatch({ type: 'MOVE', index })}
-      />
-
-      <Button size="lg" className="mt-auto min-h-12 w-full" onClick={() => dispatch({ type: 'NEW_GAME' })}>
+      <Button
+        size="lg"
+        variant={finished ? 'default' : 'outline'}
+        className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+        onClick={() => dispatch({ type: 'NEW_GAME' })}
+      >
         New game
       </Button>
     </section>
