@@ -34,8 +34,8 @@ In scope:
 
 Out of scope (do not add without updating this spec):
 
-- Score tallies / win streaks
-- Choosing your symbol (human is always X in bot mode)
+- Win streaks (a session score and symbol choice were added later; see
+  `2026-09-23-gameplay-enhancements-design.md`)
 - Move-by-move replay of past games
 - Online / multiplayer over network
 - Undo
