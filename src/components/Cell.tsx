@@ -27,7 +27,7 @@ export function Cell({ index, value, highlighted, disabled, onSelect, winOrder =
       onClick={() => onSelect(index)}
       style={{ '--win-delay': `${winOrder * 90}ms` } as CSSProperties}
       className={cn(
-        'tile relative flex aspect-square min-h-11 w-full select-none items-center justify-center overflow-hidden rounded-[22%] border border-[var(--tile-edge)] bg-card text-card-foreground',
+        'relative flex aspect-square min-h-11 w-full select-none items-center justify-center overflow-hidden rounded-[22%] border border-[var(--tile-edge)] bg-card text-card-foreground',
         'shadow-[0_1px_0_0_var(--tile-edge),0_6px_18px_-12px_var(--tile-shadow)]',
         'transition-[transform,background-color,box-shadow] duration-150 ease-out',
         'active:scale-[0.96] active:shadow-[0_0_0_0_var(--tile-edge),0_2px_8px_-8px_var(--tile-shadow)]',
