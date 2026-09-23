@@ -26,3 +26,25 @@ describe('chooseMove easy', () => {
     expect(() => chooseMove(b('XOXXOOOXX'), 'easy')).toThrow(/No moves/)
   })
 })
+
+describe('chooseMove medium', () => {
+  it('takes an immediate win', () => {
+    // O O . / X X . / X . .  -> O to move, wins at 2 (must not merely block at 5)
+    expect(chooseMove(b('OO.XX.X..'), 'medium', () => 0)).toBe(2)
+  })
+
+  it('blocks the human when it cannot win', () => {
+    // X X . / . O . / . . .  -> O must block at 2
+    expect(chooseMove(b('XX..O....'), 'medium', () => 0)).toBe(2)
+  })
+
+  it('prefers winning over blocking', () => {
+    // X X . / O O . / . . X  -> O could block at 2 but wins at 5
+    expect(chooseMove(b('XX.OO...X'), 'medium', () => 0)).toBe(5)
+  })
+
+  it('falls back to random when nothing is forced', () => {
+    // X . . / . O . / . . .  -> nothing to win or block; rng 0 -> first empty = 1
+    expect(chooseMove(b('X...O....'), 'medium', () => 0)).toBe(1)
+  })
+})
