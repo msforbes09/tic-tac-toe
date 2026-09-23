@@ -24,3 +24,22 @@ export function nextPlayer(board: Board): Player {
 export function availableMoves(board: Board): number[] {
   return board.flatMap((cell, i) => (cell === null ? [i] : []))
 }
+
+export function getWinner(board: Board): Winner | null {
+  for (const line of WIN_LINES) {
+    const [a, b, c] = line
+    const v = board[a]
+    if (v !== null && v === board[b] && v === board[c]) {
+      return { player: v, line }
+    }
+  }
+  return null
+}
+
+export function isDraw(board: Board): boolean {
+  return availableMoves(board).length === 0 && getWinner(board) === null
+}
+
+export function isGameOver(board: Board): boolean {
+  return getWinner(board) !== null || isDraw(board)
+}
