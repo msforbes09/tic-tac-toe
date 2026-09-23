@@ -1,3 +1,37 @@
+import { useState } from 'react'
+import { AppShell } from '@/components/AppShell'
+import { GameScreen } from '@/components/GameScreen'
+import { HistorySheet } from '@/components/HistorySheet'
+import { SetupScreen } from '@/components/SetupScreen'
+import type { HistoryStorage } from '@/lib/history'
+import type { Settings } from '@/lib/types'
+
+const noopStorage: HistoryStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+
+function browserStorage(): HistoryStorage {
+  try {
+    const s = window.localStorage
+    s.getItem('tic-tac-toe:probe')
+    return s
+  } catch {
+    return noopStorage
+  }
+}
+
+const storage = browserStorage()
+
 export default function App() {
-  return <h1>Tic-Tac-Toe</h1>
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+
+  return (
+    <AppShell>
+      {settings ? (
+        <GameScreen settings={settings} storage={storage} onBack={() => setSettings(null)} />
+      ) : (
+        <SetupScreen onStart={setSettings} onOpenHistory={() => setHistoryOpen(true)} />
+      )}
+      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
+    </AppShell>
+  )
 }

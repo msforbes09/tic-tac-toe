@@ -128,3 +128,12 @@
     @apply font-sans;
     }
 }
+
+html, body, #root {
+  min-height: 100dvh;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
