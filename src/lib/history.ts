@@ -41,3 +41,19 @@ export function loadHistory(storage: HistoryStorage): HistoryEntry[] {
   if (!Array.isArray(parsed)) return []
   return parsed.filter(isEntry)
 }
+
+export function saveGame(storage: HistoryStorage, entry: HistoryEntry): HistoryEntry[] {
+  const list = [entry, ...loadHistory(storage)].slice(0, MAX_ENTRIES)
+  storage.setItem(STORAGE_KEY, JSON.stringify(list))
+  return list
+}
+
+export function clearHistory(storage: HistoryStorage): void {
+  storage.removeItem(STORAGE_KEY)
+}
+
+export function newEntryId(): string {
+  const c = globalThis.crypto
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
