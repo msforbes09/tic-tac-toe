@@ -57,10 +57,39 @@ type Pending = { gameId: string; player: SeriesPlayer }
 
 const STATUS_LABEL: Record<MemberStatus, string> = { idle: 'Idle', playing: 'Playing', watching: 'Watching' }
 
-export function resultLine(r: SeriesResult): string {
-  if (r.reason === 'resigned') return `${r.loser.nickname} resigned to ${r.winner.nickname} at ${r.loserScore}–${r.winnerScore}`
-  if (r.reason === 'left') return `${r.loser.nickname} left; ${r.winner.nickname} wins ${r.winnerScore}–${r.loserScore}`
-  return `${r.winner.nickname} beat ${r.loser.nickname} ${r.winnerScore}–${r.loserScore}`
+/** The result seen left to right: challenger, score, challenged, plus how it ended if not by play. */
+export function resultSides(r: SeriesResult) {
+  const challengerWon = r.winner.deviceId === r.challengerId
+  const left = challengerWon ? r.winner : r.loser
+  const right = challengerWon ? r.loser : r.winner
+  const leftScore = challengerWon ? r.winnerScore : r.loserScore
+  const rightScore = challengerWon ? r.loserScore : r.winnerScore
+  const tag = r.reason === 'resigned' ? `${r.loser.nickname} resigned` : r.reason === 'left' ? `${r.loser.nickname} left` : null
+  return { left, right, leftScore, rightScore, leftWon: challengerWon, tag }
+}
+
+export function ResultRow({ result }: { result: SeriesResult }) {
+  const { left, right, leftScore, rightScore, leftWon, tag } = resultSides(result)
+  const name = (player: SeriesPlayer, won: boolean) => (
+    <span
+      data-winner={won ? 'true' : 'false'}
+      className={cn('min-w-0 flex-1 truncate text-[15px]', won ? 'font-semibold text-player-x' : 'text-muted-foreground')}
+    >
+      {player.nickname}
+    </span>
+  )
+  return (
+    <li data-testid="result-row" className="flex min-h-12 items-center gap-3 py-2">
+      {name(left, leftWon)}
+      <span className="flex shrink-0 flex-col items-center leading-tight">
+        <span className="text-lg font-semibold tabular-nums">
+          {leftScore} – {rightScore}
+        </span>
+        {tag && <span className="text-[11px] text-muted-foreground">{tag}</span>}
+      </span>
+      <span className="flex min-w-0 flex-1 justify-end">{name(right, !leftWon)}</span>
+    </li>
+  )
 }
 
 /**
@@ -395,9 +424,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
 
       <Block title="Results" empty={results.length === 0 ? 'No series finished yet' : undefined}>
         {results.map((r) => (
-          <li key={r.gameId} className="min-h-10 py-1.5 text-[15px]">
-            {resultLine(r)}
-          </li>
+          <ResultRow key={r.gameId} result={r} />
         ))}
       </Block>
 

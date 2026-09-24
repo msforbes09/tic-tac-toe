@@ -118,11 +118,11 @@ describe('SeriesScreen basics', () => {
     expect(a.cell(5)).not.toBeDisabled()
   })
 
-  it('records each finished game once per player with their own symbol; the watcher records nothing', async () => {
+  it('saves nothing to local history: online series live in the database', async () => {
     const { a, b, c } = await trio()
     await bobWinsGame1(a, b)
-    expect(a.storage.entries()).toEqual([expect.objectContaining({ mode: 'online', outcome: 'X', p1Symbol: 'O' })])
-    expect(b.storage.entries()).toEqual([expect.objectContaining({ mode: 'online', outcome: 'X', p1Symbol: 'X' })])
+    expect(a.storage.entries()).toEqual([])
+    expect(b.storage.entries()).toEqual([])
     expect(c.storage.entries()).toEqual([])
     expect(b.feedback.played.filter((e) => e.kind === 'win')).toHaveLength(1)
     expect(a.feedback.played.filter((e) => e.kind === 'lose')).toHaveLength(1)

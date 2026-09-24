@@ -21,6 +21,7 @@ import {
   loadDeviceId,
   loadNickname,
   loadOwnedRooms,
+  loadPlayerToken,
   newToken,
   removeOwnedRoom,
   saveNickname,
@@ -104,7 +105,14 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   void (deps.share ?? shareLink)
 
   const [deviceId] = useState(() => loadDeviceId(storage))
+  const [playerToken] = useState(() => loadPlayerToken(storage))
   const [nickname, setNickname] = useState<string | null>(() => loadNickname(storage))
+
+  // Keep our player row current: created on the first nickname, touched on every visit after.
+  useEffect(() => {
+    if (!services || !nickname) return
+    services.directory.savePlayer({ id: deviceId, nickname }, playerToken).catch(() => {})
+  }, [services, nickname, deviceId, playerToken])
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -288,7 +296,12 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           install={installOffer}
         />
       )}
-      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
+      <HistorySheet
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        storage={storage}
+        online={services && nickname ? { deviceId, directory: services.directory } : undefined}
+      />
 
       <AlertDialog open={replacePrompt !== null} onOpenChange={(o) => !o && setReplacePrompt(null)}>
         <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">

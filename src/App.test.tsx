@@ -42,7 +42,7 @@ describe('App', () => {
   it('opens the history sheet', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /history/i }))
-    expect(screen.getByText(/no games yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no bot games yet/i)).toBeInTheDocument()
   })
 })
 
@@ -144,6 +144,39 @@ describe('App online rooms', () => {
     render(<App deps={deps} />)
     pickOnline()
     expect(screen.queryByRole('textbox', { name: /nickname/i })).not.toBeInTheDocument()
+  })
+
+  it('saves the player to the directory when the nickname is saved and again on later visits', async () => {
+    const { deps, dir } = online()
+    const first = render(<App deps={deps} />)
+    pickOnline()
+    fireEvent.change(screen.getByRole('textbox', { name: /nickname/i }), { target: { value: 'Alice' } })
+    saveNickname()
+    await flush()
+    expect(dir.players()).toEqual([{ id: expect.any(String), nickname: 'Alice' }])
+    first.unmount()
+    render(<App deps={deps} />)
+    await flush()
+    expect(dir.players()).toHaveLength(1)
+  })
+
+  it('shows my online series in History', async () => {
+    const { deps, dir } = online()
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={deps} />)
+    await flush()
+    const me = dir.players()[0]?.id ?? JSON.parse('null')
+    await dir.createRoom({ id: 'ABCD23', name: 'Quiet Edge', creatorId: 'z', ownerHash: await hash('t') })
+    await act(async () => {
+      await dir.addResult({
+        gameId: 'G1', roomId: 'ABCD23', challengerId: 'z', challengedId: me,
+        winner: { deviceId: 'z', nickname: 'Zed' }, loser: { deviceId: me, nickname: 'Alice' },
+        winnerScore: 6, loserScore: 2, games: 8, reason: 'decided', endedAt: 5,
+      })
+    })
+    fireEvent.click(screen.getByRole('button', { name: /history/i }))
+    await flush()
+    expect(screen.getByText('You lost to Zed')).toBeInTheDocument()
   })
 
   it('creates a room, enters it as owner, and remembers the owner token', async () => {

@@ -146,8 +146,11 @@ describe('RoomScreen challenges', () => {
     fireEvent.click(a.button(/back to room/i)!)
     fireEvent.click(b.button(/back to room/i)!)
     await flush()
-    expect(a.el()).toHaveTextContent('Bob resigned to Alice at 0–0')
-    expect(b.el()).toHaveTextContent('Bob resigned to Alice at 0–0')
+    const row = a.el().querySelector('[data-testid="result-row"]')!
+    expect(row).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
+    expect(row).toHaveTextContent('Bob resigned')
+    expect(row.querySelector('[data-winner="true"]')).toHaveTextContent('Alice')
+    expect(b.el().querySelector('[data-testid="result-row"]')).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
     expect(a.el()).toHaveTextContent('Idle')
     expect(a.button(/^challenge$/i)).not.toBeDisabled()
   })
