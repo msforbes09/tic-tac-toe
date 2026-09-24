@@ -54,7 +54,7 @@ describe('OnlineGame', () => {
     expect(room.members()).toHaveLength(2)
   })
 
-  it('a third player finds the room full and is disconnected', async () => {
+  it('a third player finds the room full and leaves on Back', async () => {
     const room = createFakeRoom()
     renderSide(room, 'host')
     renderSide(room, 'guest')
@@ -62,9 +62,22 @@ describe('OnlineGame', () => {
     const third = renderSide(room, 'guest')
     await flush()
     expect(third.el()).toHaveTextContent('Room is full')
-    expect(room.members()).toHaveLength(2)
     fireEvent.click(third.button('Back'))
     expect(third.onBack).toHaveBeenCalled()
+    third.view.unmount()
+    expect(room.members()).toHaveLength(2)
+  })
+
+  it('a guest that first looked full plays once the earlier phantom guest leaves (StrictMode / quick rejoin)', async () => {
+    const room = createFakeRoom()
+    renderSide(room, 'host')
+    const phantom = room.join('guest', 'phantom')
+    const guest = renderSide(room, 'guest')
+    await flush()
+    expect(guest.el()).toHaveTextContent('Room is full')
+    phantom.leave()
+    await flush()
+    expect(guest.el()).toHaveTextContent("Friend's turn")
   })
 
   it('a guest with no host waits and can cancel', async () => {

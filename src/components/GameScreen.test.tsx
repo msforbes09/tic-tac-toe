@@ -372,6 +372,61 @@ describe('GameScreen online', () => {
     expect(storage.guest.entries()).toHaveLength(1)
   })
 
+  it('a guest who joins a finished game does not record it', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const hostStorage = fakeStorage()
+    const view = render(
+      <div data-testid="host">
+        <GameScreen
+          settings={onlineSettings}
+          storage={hostStorage}
+          feedback={recorder()}
+          onBack={() => {}}
+          online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }}
+        />
+      </div>,
+    )
+    const hostCell = (n: number) =>
+      Array.from(screen.getByTestId('host').querySelectorAll('button')).find((b) =>
+        b.getAttribute('aria-label')?.startsWith(`Cell ${n},`),
+      )!
+    const early = room.join('guest', 'early')
+    // The early guest plays O for the host to win against, then leaves.
+    for (const [who, n] of [['h', 1], ['g', 4], ['h', 2], ['g', 5], ['h', 3]] as const) {
+      if (who === 'h') fireEvent.click(hostCell(n))
+      else act(() => early.send({ type: 'move', index: n - 1 }))
+    }
+    expect(hostStorage.entries()).toHaveLength(1)
+    early.leave()
+    const lateConn = room.join('guest', 'late')
+    const lateStorage = fakeStorage()
+    view.rerender(
+      <>
+        <div data-testid="host">
+          <GameScreen
+            settings={onlineSettings}
+            storage={hostStorage}
+            feedback={recorder()}
+            onBack={() => {}}
+            online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }}
+          />
+        </div>
+        <div data-testid="guest">
+          <GameScreen
+            settings={onlineSettings}
+            storage={lateStorage}
+            feedback={recorder()}
+            onBack={() => {}}
+            online={{ role: 'guest', code: 'AB2C', connection: lateConn, friendPresent: true }}
+          />
+        </div>
+      </>,
+    )
+    expect(screen.getByTestId('guest')).toHaveTextContent('Friend wins!')
+    expect(lateStorage.entries()).toHaveLength(0)
+  })
+
   it('the host sees Wait and Back when the guest leaves, and play resumes on return', () => {
     const room = createFakeRoom()
     const hostConn = room.join('host', 'h')

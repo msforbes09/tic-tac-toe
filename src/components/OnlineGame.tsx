@@ -57,19 +57,14 @@ export function OnlineGame({ code, role, openRoom, storage, feedback, share, bas
   }, [openRoom, code, role])
 
   const lobby = connection ? lobbyState(members, connection.selfId) : 'waiting'
+  // Stay connected while "full": the earlier guest may be a phantom from a cancelled open (StrictMode,
+  // a quick rejoin) that leaves a moment later, at which point this member plays. A real third
+  // person sees Room is full and leaves on Back.
   const full = !started && lobby === 'full'
 
   useEffect(() => {
     if (lobby === 'playing') setStarted(true)
   }, [lobby])
-
-  // A latecomer is told the room is full and disconnected straight away.
-  useEffect(() => {
-    if (full) {
-      live.current?.leave()
-      live.current = null
-    }
-  }, [full])
 
   if (started && connection) {
     return (

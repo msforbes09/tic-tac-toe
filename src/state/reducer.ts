@@ -117,9 +117,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RECORDED':
       return { ...state, recorded: true }
     case 'SYNC': {
-      // A repeated snapshot (e.g. after a rejoin) must not record the same game twice.
-      const same = sameSnapshot(snapshotOf(state), action.snapshot)
-      return { ...state, ...action.snapshot, recorded: same ? state.recorded : false }
+      // Only the shared fields come across; anything else on the wire is ignored.
+      const { board, p1Symbol, score, status, winner, winningLine } = action.snapshot
+      const snapshot: Snapshot = { board, p1Symbol, score, status, winner, winningLine }
+      // A repeated snapshot (e.g. after a rejoin) must not record the same game twice, and a
+      // finished game landing on a board this device never saw played was not its game to record.
+      const same = sameSnapshot(snapshotOf(state), snapshot)
+      const unseen = state.status === 'playing' && state.board.every((c) => c === null)
+      const recorded = same ? state.recorded : unseen && status !== 'playing'
+      return { ...state, ...snapshot, recorded }
     }
   }
 }

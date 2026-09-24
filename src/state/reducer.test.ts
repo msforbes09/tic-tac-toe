@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { canSeatMove, createGameState, gameReducer, snapshotOf, type GameState } from './reducer'
 import type { Settings } from '@/lib/types'
+import type { Snapshot } from '@/lib/room'
 
 const settings: Settings = { mode: 'pvp', difficulty: 'medium', p1Symbol: 'X' }
 
@@ -166,7 +167,9 @@ describe('online sync', () => {
     let host = createGameState(online)
     for (const i of [0, 3, 1, 4, 2]) host = gameReducer(host, { type: 'MOVE', index: i })
     expect(host.status).toBe('won')
-    let guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(host) })
+    const midGame = gameReducer(createGameState(online), { type: 'MOVE', index: 0 })
+    let guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(midGame) })
+    guest = gameReducer(guest, { type: 'SYNC', snapshot: snapshotOf(host) })
     expect(guest.recorded).toBe(false)
     guest = gameReducer(guest, { type: 'RECORDED' })
     guest = gameReducer(guest, { type: 'SYNC', snapshot: snapshotOf(host) })
@@ -187,5 +190,24 @@ describe('online sync', () => {
     for (const i of [3, 1, 4, 2]) state = gameReducer(state, { type: 'MOVE', index: i })
     expect(canSeatMove(state, 'p1')).toBe(false)
     expect(canSeatMove(state, 'p2')).toBe(false)
+  })
+
+  it('SYNC takes only the shared fields, whatever else came over the wire', () => {
+    const host = gameReducer(createGameState(online), { type: 'MOVE', index: 0 })
+    const wire = { ...snapshotOf(host), settings: { mode: 'bot', difficulty: 'zzz' }, recorded: true } as unknown as Snapshot
+    const guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: wire })
+    expect(guest.settings).toEqual(online)
+    expect(guest.recorded).toBe(false)
+    expect(Object.keys(guest).sort()).toEqual(Object.keys(createGameState(online)).sort())
+  })
+
+  it('a finished game synced onto an untouched board was not watched, so it counts as recorded', () => {
+    let host = createGameState(online)
+    for (const i of [0, 3, 1, 4, 2]) host = gameReducer(host, { type: 'MOVE', index: i })
+    const late = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(host) })
+    expect(late.status).toBe('won')
+    expect(late.recorded).toBe(true)
+    const next = gameReducer(late, { type: 'SYNC', snapshot: snapshotOf(gameReducer(host, { type: 'NEW_GAME' })) })
+    expect(next.recorded).toBe(false)
   })
 })
