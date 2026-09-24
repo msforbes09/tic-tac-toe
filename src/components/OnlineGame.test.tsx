@@ -49,7 +49,7 @@ describe('OnlineGame', () => {
     expect(host.el()).toHaveTextContent('AB2C')
     const guest = renderSide(room, 'guest')
     await flush()
-    expect(host.el()).toHaveTextContent('Your turn')
+    expect(host.el()).toHaveTextContent('Your move')
     expect(guest.el()).toHaveTextContent("Friend's turn")
     expect(room.members()).toHaveLength(2)
   })

@@ -156,7 +156,7 @@ describe('GameScreen versus bot', () => {
 
   it('lets the bot reply after the delay and disables the board while thinking', () => {
     render(<GameScreen settings={hardBot} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
     fireEvent.click(cell(1))
     expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
     expect(cell(2)).toBeDisabled()
@@ -165,7 +165,7 @@ describe('GameScreen versus bot', () => {
     })
     const os = screen.getAllByRole('button', { name: /, O$/ })
     expect(os).toHaveLength(1)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
   })
 
   it("plays feedback for the bot's move too", () => {
@@ -207,7 +207,7 @@ describe('GameScreen versus bot', () => {
       vi.advanceTimersByTime(BOT_DELAY_MS)
     })
     expect(screen.getAllByRole('button', { name: /, X$/ })).toHaveLength(1)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
   })
 
   describe('against an easy bot that always takes the first free cell', () => {
@@ -318,7 +318,7 @@ describe('GameScreen online', () => {
   it('labels the header and the seats from each side', () => {
     const { within } = renderPair()
     expect(within('host')).toHaveTextContent('Online · AB2C')
-    expect(within('host')).toHaveTextContent('Your turn')
+    expect(within('host')).toHaveTextContent('Your move')
     expect(within('guest')).toHaveTextContent("Friend's turn")
   })
 
@@ -328,7 +328,7 @@ describe('GameScreen online', () => {
     fireEvent.click(cellIn('host', 1))
     expect(cellIn('host', 1)).toHaveAccessibleName('Cell 1, X')
     expect(cellIn('guest', 1)).toHaveAccessibleName('Cell 1, X')
-    expect(within('guest')).toHaveTextContent('Your turn')
+    expect(within('guest')).toHaveTextContent('Your move')
     expect(cellIn('host', 2)).toBeDisabled()
     fireEvent.click(cellIn('guest', 5))
     expect(cellIn('host', 5)).toHaveAccessibleName('Cell 5, O')

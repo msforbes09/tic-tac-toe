@@ -14,14 +14,14 @@ export function statusText(state: GameState, youSeat?: Seat): string {
   if (mode === 'online') {
     const you = seat === (youSeat ?? 'p1')
     if (state.status === 'won') return you ? 'You win!' : 'You lost'
-    return you ? 'Your turn' : "Friend's turn"
+    return you ? 'Your move' : "Friend's turn"
   }
   if (state.status === 'won') {
     if (mode !== 'bot') return `${SEAT_NAME[seat]} wins!`
     return seat === 'p1' ? 'You win!' : 'You lost'
   }
   if (mode !== 'bot') return `${SEAT_NAME[seat]}'s turn`
-  return seat === 'p1' ? 'Your turn' : 'Bot is thinking…'
+  return seat === 'p1' ? 'Your move' : 'Bot is thinking…'
 }
 
 /** Which player the status line is about, for the accent mark. Null for a draw. */

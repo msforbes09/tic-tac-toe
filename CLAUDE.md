@@ -16,6 +16,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/lib/feedback.ts` — which sound/haptic a board change gets. Fully tested.
 - `src/platform/browserFeedback.ts` — Web Audio tones + Vibration API behind the `Feedback` interface. The only browser-API code outside components.
 - `src/lib/setup.ts` — remembers the last setup in localStorage. Fully tested.
+- `src/lib/logo.ts` — the logo's geometry (overlapping X and O). `public/icon.svg` copies it by hand; `logo.test.ts` keeps them in step. `components/Logo.tsx` draws it.
 - `src/lib/types.ts` — shared domain types (Mode, Difficulty, Settings, Outcome, Seat).
 - `src/lib/room.ts` — room codes, links, message validation, lobby presence rules, Supabase config. Fully tested.
 - `src/lib/roomConnection.ts` — the `RoomConnection` interface plus an in-memory fake for tests.

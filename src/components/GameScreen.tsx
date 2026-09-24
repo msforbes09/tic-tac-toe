@@ -172,7 +172,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
                   Wait
                 </Button>
               )}
-              <Button className="min-h-12 flex-1 rounded-[16px] text-base font-semibold" onClick={onBack}>
+              <Button className="min-h-12 flex-1 rounded-[16px] text-base font-medium" onClick={onBack}>
                 Back
               </Button>
             </div>
@@ -197,7 +197,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
       <Button
         size="lg"
         variant={finished ? 'default' : 'outline'}
-        className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+        className="min-h-14 w-full rounded-[18px] text-base font-medium"
         onClick={newGame}
       >
         New game

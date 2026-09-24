@@ -9,11 +9,11 @@ const settings: Settings = { mode: 'online', difficulty: 'medium', p1Symbol: 'X'
 describe('statusText online', () => {
   it('names the turn from each side', () => {
     const start = createGameState(settings)
-    expect(statusText(start, 'p1')).toBe('Your turn')
+    expect(statusText(start, 'p1')).toBe('Your move')
     expect(statusText(start, 'p2')).toBe("Friend's turn")
     const after = gameReducer(start, { type: 'MOVE', index: 0 })
     expect(statusText(after, 'p1')).toBe("Friend's turn")
-    expect(statusText(after, 'p2')).toBe('Your turn')
+    expect(statusText(after, 'p2')).toBe('Your move')
   })
 
   it('names the winner from each side', () => {
@@ -36,6 +36,6 @@ describe('StatusBar message override', () => {
   it('shows the message instead of the turn', () => {
     render(<StatusBar state={createGameState(settings)} youSeat="p1" message="Waiting for your friend…" />)
     expect(screen.getByText('Waiting for your friend…')).toBeInTheDocument()
-    expect(screen.queryByText('Your turn')).not.toBeInTheDocument()
+    expect(screen.queryByText('Your move')).not.toBeInTheDocument()
   })
 })
