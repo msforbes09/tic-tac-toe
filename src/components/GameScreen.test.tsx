@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BOT_DELAY_MS, GameScreen } from './GameScreen'
@@ -637,6 +638,16 @@ describe('GameScreen ladder', () => {
     expect(screen.getByText("It's a draw")).toBeInTheDocument()
     expect(screen.queryByText('That was the unbeatable bot.')).not.toBeInTheDocument()
     view.unmount()
+  })
+
+  it('nudges once, even under StrictMode which runs initialisers and effects twice', () => {
+    const storage = seeded(30)
+    render(
+      <StrictMode>
+        <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} />
+      </StrictMode>,
+    )
+    expect(ladderIn(storage).rung).toBe(22)
   })
 
   it('starts a first-ever bot game at the bottom of the picked band', () => {
