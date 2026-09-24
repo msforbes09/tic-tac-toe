@@ -92,3 +92,5 @@ export function isRoomMessage(value: unknown): value is RoomMessage {
       return false
   }
 }
+
+export type Role = 'host' | 'guest'
