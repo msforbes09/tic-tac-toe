@@ -20,7 +20,15 @@ describe('statusText online', () => {
     let s = createGameState(settings)
     for (const i of [0, 3, 1, 4, 2]) s = gameReducer(s, { type: 'MOVE', index: i })
     expect(statusText(s, 'p1')).toBe('You win!')
-    expect(statusText(s, 'p2')).toBe('Friend wins!')
+    expect(statusText(s, 'p2')).toBe('You lost')
+  })
+})
+
+describe('statusText bot', () => {
+  it('says You lost when the bot wins', () => {
+    let s = createGameState({ mode: 'bot', difficulty: 'easy', p1Symbol: 'O' })
+    for (const i of [0, 3, 1, 4, 2]) s = gameReducer(s, { type: 'MOVE', index: i })
+    expect(statusText(s)).toBe('You lost')
   })
 })
 

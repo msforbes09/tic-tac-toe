@@ -92,4 +92,12 @@ describe('createBrowserFeedback', () => {
     const feedback = createBrowserFeedback({ vibrate: undefined, createAudio: () => null })
     expect(() => feedback.play({ kind: 'win', player: 'X' })).not.toThrow()
   })
+
+  it('plays a short two-note cue and a light buzz when a game starts', () => {
+    const audio = fakeAudio()
+    const vibrate = vi.fn(() => true)
+    createBrowserFeedback({ vibrate, createAudio: () => audio }).play({ kind: 'start' })
+    expect(audio.tones).toHaveLength(2)
+    expect(vibrate).toHaveBeenCalledTimes(1)
+  })
 })

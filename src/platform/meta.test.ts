@@ -48,3 +48,12 @@ describe('page metadata', () => {
     expect(data.url).toBe(LIVE)
   })
 })
+
+describe('theme', () => {
+  it('is dark only: the document starts dark and nothing follows the system setting', () => {
+    expect(html).toMatch(/<html lang="en" class="dark">/)
+    expect(html).toContain('<meta name="color-scheme" content="dark" />')
+    const main = readFileSync(join(root, 'src', 'main.tsx'), 'utf8')
+    expect(main).not.toContain('prefers-color-scheme')
+  })
+})
