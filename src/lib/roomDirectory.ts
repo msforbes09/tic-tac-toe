@@ -31,6 +31,12 @@ export type RoomDirectory = {
   loadLadder(playerId: string): Promise<CloudLadder | null>
   /** Insert or update the player's ladder; the token must match the one it was created with. */
   saveLadder(playerId: string, token: string, ladder: Ladder): Promise<void>
+  /**
+   * Developer reset: deletes the player's games and ladder when the token matches the ladder's
+   * (or the player row's). Series results and rooms are shared with other players and stay.
+   * True when the token matched and rows were removed.
+   */
+  resetPlayerData(playerId: string, token: string): Promise<boolean>
 }
 
 type StoredRoom = RoomRecord & { ownerHash: string }
@@ -104,6 +110,15 @@ export function createFakeDirectory(
       const existing = ladders.get(playerId)
       if (existing && existing.tokenHash !== tokenHash) throw new Error('ladder token does not match')
       ladders.set(playerId, { ladder: { ...ladder }, tokenHash })
+    },
+    async resetPlayerData(playerId, token) {
+      const tokenHash = await hash(token)
+      const owner = ladders.get(playerId)?.tokenHash ?? players.find((p) => p.id === playerId)?.tokenHash
+      if (owner === undefined || owner !== tokenHash) return false
+      const before = games.length
+      for (let i = games.length - 1; i >= 0; i--) if (games[i].playerId === playerId) games.splice(i, 1)
+      const hadLadder = ladders.delete(playerId)
+      return hadLadder || games.length < before
     },
     onMyResultsChange(playerId, handler) {
       const set = myHandlers.get(playerId) ?? new Set()

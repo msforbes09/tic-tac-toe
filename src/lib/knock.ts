@@ -1,8 +1,7 @@
-import type { HistoryStorage } from './history'
-
 /**
  * The secret knock that opens developer mode: a sequence of taps across setup, the History
  * sheet, and the board. Screens report their taps as events; App keeps the progress.
+ * Developer mode itself lives in memory only: it ends when the app is closed.
  */
 export type KnockEvent =
   | 'mode:pvp'
@@ -33,23 +32,4 @@ export const KNOCK_DELAY_MS = 2000
 export function knockStep(progress: number, event: KnockEvent): number {
   if (progress < KNOCK.length && KNOCK[progress] === event) return progress + 1
   return KNOCK[0] === event ? 1 : 0
-}
-
-export const DEV_MODE_KEY = 'tic-tac-toe:dev'
-
-export function loadDevMode(storage: HistoryStorage): boolean {
-  try {
-    return storage.getItem(DEV_MODE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-export function saveDevMode(storage: HistoryStorage, on: boolean): void {
-  try {
-    if (on) storage.setItem(DEV_MODE_KEY, '1')
-    else storage.removeItem(DEV_MODE_KEY)
-  } catch {
-    // Best-effort, like history.
-  }
 }

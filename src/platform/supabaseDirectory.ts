@@ -30,6 +30,7 @@ export type DirectoryClientLike = {
     fn: 'save_ladder',
     args: { p_id: string; p_token: string; p_rung: number | null; p_streak: number; p_top_held_at: string | null; p_top_held_count: number; p_updated_at: string },
   ): Promise<Response<unknown>>
+  rpc(fn: 'reset_player_data', args: { p_id: string; p_token: string }): Promise<Response<unknown>>
   channel(name: string): ChangesChannelLike
   removeChannel(channel: ChangesChannelLike): Promise<unknown>
 }
@@ -196,6 +197,11 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
         client.from('games').select('*').eq('player_id', playerId).eq('mode', mode).order('played_at', { ascending: false }).limit(limit),
       )
       return rows.map(gameFromRow)
+    },
+    async resetPlayerData(playerId, token) {
+      const { data, error } = await client.rpc('reset_player_data', { p_id: playerId, p_token: token })
+      if (error) throw new Error(error.message)
+      return data === true
     },
     async loadLadder(playerId) {
       const row = await unwrap<LadderRow | null>(client.from('ladders').select('*').eq('player_id', playerId).maybeSingle())

@@ -24,3 +24,5 @@ order instead; each is safe to re-run.
   per-game history.
 - `2026-09-25-cloud-history.sql` — two-player rows and the bot rung in `games`,
   plus the `ladders` table and `save_ladder` for the adaptive bot.
+- `2026-09-25-reset-player-data.sql` — `reset_player_data`, the developer
+  reset: a device deletes its own `games` and `ladders` rows behind its token.
