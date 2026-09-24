@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
-import { newEntryId, saveGame, type HistoryStorage } from '@/lib/history'
+import { newEntryId, saveGame, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 import {
   advance,
   bandOf,
@@ -35,6 +35,8 @@ export type GameScreenProps = {
   /** For bragging from the top-of-the-pack card. */
   share?: ShareLink
   siteUrl?: string
+  /** Every finished two-player or bot game, after it is saved locally; bot games bring the moved ladder. */
+  onRecorded?: (entry: HistoryEntry, ladder: Ladder | null) => void
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
@@ -44,7 +46,7 @@ const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
   top: () => "Top of the pack. Nobody's above you now.",
 }
 
-export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl }: GameScreenProps) {
+export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl, onRecorded }: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
   // Null until the first board is seen, so the opening board plays the start cue.
@@ -90,41 +92,48 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
     if (event) feedback.play(event)
   }, [state.board, botSymbol, feedback])
 
-  // Record each finished bot game exactly once and move the ladder. Two players sharing a phone
-  // leave no history. The ref guards StrictMode's double effect run.
+  // Record each finished game exactly once. Two-player games are logged from Player 1's side and
+  // never touch the ladder; bot games move it. The ref guards StrictMode's double effect run.
   useEffect(() => {
-    if (settings.mode !== 'bot' || !ladder || state.status === 'playing' || state.recorded) return
+    if (settings.mode === 'online' || state.status === 'playing' || state.recorded) return
+    if (settings.mode === 'bot' && !ladder) return
     if (recordedBoard.current === state.board) return
     recordedBoard.current = state.board
     const outcome: Outcome = state.status === 'draw' ? 'draw' : (state.winner as Outcome)
     const now = Date.now()
+    const isBot = settings.mode === 'bot' && ladder !== null
     // The band the game was labelled with: what was picked for the first game, the real band after.
-    const band = gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
+    const band = isBot ? (gamesPlayed > 0 ? bandOf(rung) : settings.difficulty) : null
+    const entry: HistoryEntry = {
+      id: newEntryId(),
+      timestamp: now,
+      mode: settings.mode,
+      difficulty: band,
+      outcome,
+      p1Symbol: state.p1Symbol,
+      ...(isBot ? { rung } : {}),
+    }
     try {
-      saveGame(storage, {
-        id: newEntryId(),
-        timestamp: now,
-        mode: settings.mode,
-        difficulty: band,
-        outcome,
-        p1Symbol: state.p1Symbol,
-        rung,
-      })
+      saveGame(storage, entry)
     } catch {
       // Storage unavailable (private mode, quota). History is best-effort.
     }
-    const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
-    const next = advance(ladder, result, now)
-    const what = momentAfter(ladder, next, result)
-    saveLadder(storage, next)
-    saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
-    setLadder(next)
-    setGamesPlayed((n) => n + 1)
-    setMoment(what)
-    if (what === 'top-held') setCardOpen(true)
-    if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
+    let next: Ladder | null = null
+    if (isBot && ladder) {
+      const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
+      next = advance(ladder, result, now)
+      const what = momentAfter(ladder, next, result)
+      saveLadder(storage, next)
+      saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
+      setLadder(next)
+      setGamesPlayed((n) => n + 1)
+      setMoment(what)
+      if (what === 'top-held') setCardOpen(true)
+      if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
+    }
+    onRecorded?.(entry, next)
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, ladder, rung, gamesPlayed, feedback])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded])
 
   const finished = state.status !== 'playing'
   // The chip says what you picked for the first game, then the band the rung is really in.

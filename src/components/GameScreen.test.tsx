@@ -77,12 +77,16 @@ describe('GameScreen feedback', () => {
 })
 
 describe('GameScreen two-player', () => {
-  it('does not save two-player games to history', () => {
+  it('saves two-player games from Player 1\'s side and reports them with no ladder', () => {
     const storage = fakeStorage()
-    render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    const onRecorded = vi.fn()
+    render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} onRecorded={onRecorded} />)
     for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
     expect(screen.getByText('Player 1 wins!')).toBeInTheDocument()
-    expect(storage.entries()).toEqual([])
+    expect(storage.entries()).toEqual([expect.objectContaining({ mode: 'pvp', difficulty: null, outcome: 'X', p1Symbol: 'X' })])
+    expect(storage.entries()[0].rung).toBeUndefined()
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+    expect(onRecorded).toHaveBeenCalledWith(expect.objectContaining({ mode: 'pvp' }), null)
   })
 
   it('alternates X and O and names whose turn it is', () => {
@@ -107,7 +111,7 @@ describe('GameScreen two-player', () => {
     render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 2, 3, 5, 4, 6, 8, 7, 9]) fireEvent.click(cell(n))
     expect(screen.getByText("It's a draw")).toBeInTheDocument()
-    expect(storage.entries()).toEqual([])
+    expect(storage.entries()).toEqual([expect.objectContaining({ mode: 'pvp', outcome: 'draw' })])
   })
 
   it('New game clears the board and keeps playing', () => {
@@ -203,6 +207,24 @@ describe('GameScreen versus bot', () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ mode: 'bot', difficulty: 'hard', p1Symbol: 'X' })
     expect(['O', 'draw']).toContain(entries[0].outcome)
+  })
+
+  it('reports each recorded bot game with the ladder after it', () => {
+    const onRecorded = vi.fn()
+    render(<GameScreen settings={hardBot} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} onRecorded={onRecorded} />)
+    for (let turn = 0; turn < 5; turn++) {
+      const empty = screen.queryAllByRole('button', { name: /, empty$/ }).filter((el) => !el.hasAttribute('disabled'))
+      if (empty.length === 0) break
+      fireEvent.click(empty[0])
+      act(() => {
+        vi.advanceTimersByTime(BOT_DELAY_MS)
+      })
+    }
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+    const [entry, ladder] = onRecorded.mock.calls[0] as [unknown, { rung: number; updatedAt: number }]
+    expect(entry).toMatchObject({ mode: 'bot', difficulty: 'hard' })
+    expect(ladder.rung).toBeGreaterThanOrEqual(1)
+    expect(ladder.updatedAt).toBeGreaterThan(0)
   })
 
   it('lets the bot open as X when you pick O', () => {
