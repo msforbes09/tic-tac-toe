@@ -4,6 +4,9 @@ import { BOT_DELAY_MS, GameScreen } from './GameScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { Settings } from '@/lib/types'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import { LADDER_KEY } from '@/lib/ladder'
+import { SETUP_KEY } from '@/lib/setup'
+import { chooseMove } from '@/lib/bot'
 import { createFakeRoom } from '@/lib/roomConnection'
 import type { Snapshot } from '@/lib/room'
 
@@ -514,5 +517,142 @@ describe('GameScreen online', () => {
     guestConn.onMessage((m) => seen.push(m))
     view.rerender(<GameScreen {...base} online={online(true)} />)
     expect(seen).toEqual([expect.objectContaining({ type: 'state' })])
+  })
+})
+
+describe('GameScreen ladder', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  const botTurn = () =>
+    act(() => {
+      vi.advanceTimersByTime(BOT_DELAY_MS)
+    })
+  const ladderIn = (storage: HistoryStorage) => JSON.parse(storage.getItem(LADDER_KEY) ?? 'null')
+  const setupIn = (storage: HistoryStorage) => JSON.parse(storage.getItem(SETUP_KEY) ?? 'null')
+  const seeded = (rung: number | null, topHeldAt: number | null = null) => {
+    const storage = fakeStorage()
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung, topHeldAt }))
+    return storage
+  }
+  /** Plays the human's move, then lets the bot answer. */
+  const play = (...cells: number[]) => {
+    for (const n of cells) {
+      fireEvent.click(cell(n))
+      botTurn()
+    }
+  }
+
+  it('labels the first game with the picked band, then with the band the rung is really in', () => {
+    // Rung 3 picking Hard lands on 14, a Medium bot. With rng 0 the bot plays first-best, so X loses fast.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const storage = seeded(3)
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.getByText('Bot · Hard')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(14)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(13)
+    expect(setupIn(storage).difficulty).toBe('medium')
+    expect(storage.entries()[0]).toMatchObject({ mode: 'bot', difficulty: 'hard', rung: 14 })
+  })
+
+  it('announces a promotion when a win crosses into the next band', () => {
+    // Rung 10 always blocks and otherwise takes the first free cell; a fork beats it.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const feedback = recorder()
+    const storage = seeded(10)
+    render(<GameScreen settings={easyBot('X')} storage={storage} feedback={feedback} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(screen.getByText('Promoted to Medium')).toBeInTheDocument()
+    expect(feedback.played.at(-1)).toEqual({ kind: 'start' })
+    expect(ladderIn(storage).rung).toBe(11)
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    expect(screen.queryByText('Promoted to Medium')).not.toBeInTheDocument()
+  })
+
+  it('says nothing special for an ordinary win', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    render(<GameScreen settings={easyBot('X')} storage={seeded(5)} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(screen.queryByText(/Promoted/)).not.toBeInTheDocument()
+  })
+
+  it('announces the top of the pack when a win reaches rung 30', () => {
+    // Rung 29 with rng 0.99: wins and blocks, otherwise the last free cell, and the best-move roll fails.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    const storage = seeded(29)
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    play(1, 3, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(screen.getByText(/Top of the pack\./)).toBeInTheDocument()
+    expect(screen.queryByText(/unbeatable/)).not.toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(30)
+  })
+
+  it('celebrates the first draw at rung 30 with a card that shares, and only the first', () => {
+    const storage = seeded(30)
+    const share = vi.fn().mockResolvedValue('shared')
+    const view = render(
+      <GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} share={share} siteUrl="https://ttt.test/" />,
+    )
+    const drawOut = () => {
+      // The human plays perfectly too, so the game is a draw. Either side may open.
+      for (let turn = 0; turn < 10; turn++) {
+        if (screen.queryByText("It's a draw")) return
+        const empty = screen.queryAllByRole('button', { name: /, empty$/ }).filter((el) => !el.hasAttribute('disabled'))
+        if (empty.length > 0) {
+          const board = screen.getAllByRole('button', { name: /^Cell/ }).map((el) => {
+            const label = el.getAttribute('aria-label') ?? ''
+            return label.endsWith('X') ? 'X' : label.endsWith('O') ? 'O' : null
+          })
+          fireEvent.click(cell(chooseMove(board, 30) + 1))
+        }
+        botTurn()
+      }
+    }
+    drawOut()
+    expect(screen.getByText("It's a draw")).toBeInTheDocument()
+    expect(screen.getByText('That was the unbeatable bot.')).toBeInTheDocument()
+    expect(screen.getByTestId('celebration')).toBeInTheDocument()
+    expect(typeof ladderIn(storage).topHeldAt).toBe('number')
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    expect(share).toHaveBeenCalledWith('https://ttt.test/', 'I held the unbeatable tic-tac-toe bot to a draw. Your move.')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }))
+    expect(screen.queryByText('That was the unbeatable bot.')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    drawOut()
+    expect(screen.getByText("It's a draw")).toBeInTheDocument()
+    expect(screen.queryByText('That was the unbeatable bot.')).not.toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('starts a first-ever bot game at the bottom of the picked band', () => {
+    const storage = fakeStorage()
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    expect(ladderIn(storage).rung).toBe(21)
+  })
+
+  it('offers to take it back after a loss at rung 30', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const storage = seeded(30)
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(29)
+    fireEvent.click(screen.getByRole('button', { name: 'Take it back' }))
+    expect(screen.getByRole('button', { name: 'New game' })).toBeInTheDocument()
   })
 })

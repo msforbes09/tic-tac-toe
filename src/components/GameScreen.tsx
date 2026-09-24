@@ -3,14 +3,28 @@ import { Board } from './Board'
 import { Celebration } from './Celebration'
 import { ScoreBar } from './ScoreBar'
 import { StatusBar } from './StatusBar'
+import { TopCard } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryStorage } from '@/lib/history'
+import {
+  advance,
+  bandOf,
+  loadLadder,
+  momentAfter,
+  rungForSelection,
+  saveLadder,
+  type GameResult,
+  type Ladder,
+  type Moment,
+} from '@/lib/ladder'
 import type { Role } from '@/lib/room'
 import type { RoomConnection } from '@/lib/roomConnection'
+import { saveSetup } from '@/lib/setup'
 import type { Board as BoardModel, Outcome, Seat, Settings } from '@/lib/types'
+import type { ShareLink } from '@/platform/share'
 import { roomReducer } from '@/state/online'
 import { canSeatMove, createGameState, seatOf, snapshotOf, symbolOf } from '@/state/reducer'
 
@@ -30,11 +44,19 @@ export type GameScreenProps = {
   feedback: Feedback
   onBack: () => void
   online?: OnlineSession
+  /** For bragging from the top-of-the-pack card. */
+  share?: ShareLink
+  siteUrl?: string
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
 
-export function GameScreen({ settings, storage, feedback, onBack, online }: GameScreenProps) {
+const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
+  promoted: (band) => `Promoted to ${band}`,
+  top: () => "Top of the pack. Nobody's above you now.",
+}
+
+export function GameScreen({ settings, storage, feedback, onBack, online, share, siteUrl }: GameScreenProps) {
   const role = online?.role ?? null
   const reducer = useMemo(() => roomReducer(role), [role])
   const [state, dispatch] = useReducer(reducer, settings, createGameState)
@@ -42,6 +64,20 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
   // Null until the first board is seen, so the opening board plays the start cue.
   const previousBoard = useRef<BoardModel | null>(null)
   const [waiting, setWaiting] = useState(false)
+
+  // The ladder, for bot games: resolved once from the saved rung and the picked band, then moved
+  // after each finished game. The bot plays the rung the game started on.
+  const [ladder, setLadder] = useState<Ladder | null>(() => {
+    if (settings.mode !== 'bot') return null
+    const saved = loadLadder(storage)
+    const resolved = { ...saved, rung: rungForSelection(saved.rung, settings.difficulty) }
+    saveLadder(storage, resolved)
+    return resolved
+  })
+  const rung = ladder?.rung ?? 1
+  const [gamesPlayed, setGamesPlayed] = useState(0)
+  const [moment, setMoment] = useState<Moment | null>(null)
+  const [cardOpen, setCardOpen] = useState(false)
 
   const seat: Seat = role === 'guest' ? 'p2' : 'p1'
   const friendPresent = online ? online.friendPresent : true
@@ -83,6 +119,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
     else dispatch({ type: 'MOVE', index })
   }
   const newGame = () => {
+    setMoment(null)
     if (role === 'guest') connection?.send({ type: 'new-game' })
     else dispatch({ type: 'NEW_GAME' })
   }
@@ -99,10 +136,10 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
   useEffect(() => {
     if (!isBotTurn) return
     const id = setTimeout(() => {
-      dispatch({ type: 'MOVE', index: chooseMove(state.board, settings.difficulty) })
+      dispatch({ type: 'MOVE', index: chooseMove(state.board, rung) })
     }, BOT_DELAY_MS)
     return () => clearTimeout(id)
-  }, [isBotTurn, state.board, settings.difficulty])
+  }, [isBotTurn, state.board, rung])
 
   // Sound and haptics for the start of each game and every new mark, yours and theirs alike.
   useEffect(() => {
@@ -117,30 +154,48 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
     if (recordedBoard.current === state.board) return
     recordedBoard.current = state.board
     const outcome: Outcome = state.status === 'draw' ? 'draw' : (state.winner as Outcome)
+    const now = Date.now()
+    const band = ladder && gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
     try {
       saveGame(storage, {
         id: newEntryId(),
-        timestamp: Date.now(),
+        timestamp: now,
         mode: settings.mode,
-        difficulty: settings.mode === 'bot' ? settings.difficulty : null,
+        difficulty: settings.mode === 'bot' ? band : null,
         outcome,
         p1Symbol: online ? symbolOf(state, seat) : state.p1Symbol,
+        ...(ladder ? { rung } : {}),
       })
     } catch {
       // Storage unavailable (private mode, quota). History is best-effort.
     }
+    if (ladder) {
+      const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
+      const next = advance(ladder, result, now)
+      const what = momentAfter(ladder, next, result)
+      saveLadder(storage, next)
+      saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
+      setLadder(next)
+      setGamesPlayed((n) => n + 1)
+      setMoment(what)
+      if (what === 'top-held') setCardOpen(true)
+      if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
+    }
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, online, seat])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, online, seat, ladder, rung, gamesPlayed, feedback])
 
   const finished = state.status !== 'playing'
   const myTurn = online ? canSeatMove(state, seat) : true
   const friendLeft = online !== undefined && !friendPresent
+  // The chip says what you picked for the first game, then the band the rung is really in.
+  const shownBand = ladder && gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
   const badge =
     settings.mode === 'bot'
-      ? `Bot · ${DIFFICULTY_LABEL[settings.difficulty]}`
+      ? `Bot · ${DIFFICULTY_LABEL[shownBand]}`
       : settings.mode === 'online'
         ? `Online · ${online?.code ?? ''}`
         : 'Two player'
+  const note = finished && moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
 
   return (
     <section className="flex flex-1 flex-col gap-7">
@@ -182,6 +237,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
           state={state}
           youSeat={online ? seat : undefined}
           message={friendLeft && waiting ? 'Waiting for your friend…' : undefined}
+          note={note}
         />
         <div className="relative">
           <Board
@@ -190,7 +246,8 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
             disabled={finished || isBotTurn || !myTurn || friendLeft}
             onSelect={play}
           />
-          {youWon && <Celebration />}
+          {(youWon || cardOpen) && <Celebration />}
+          {cardOpen && <TopCard share={share} siteUrl={siteUrl} onClose={() => setCardOpen(false)} />}
         </div>
       </div>
 
@@ -200,7 +257,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
         className="min-h-14 w-full rounded-[18px] text-base font-medium"
         onClick={newGame}
       >
-        New game
+        {finished && moment === 'lost-top' ? 'Take it back' : 'New game'}
       </Button>
     </section>
   )
