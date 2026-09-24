@@ -150,6 +150,8 @@ describe('RoomScreen challenges', () => {
     expect(row).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
     expect(row).toHaveTextContent('Bob resigned')
     expect(row.querySelector('[data-winner="true"]')).toHaveTextContent('Alice')
+    expect(row.className).toContain('grid-cols-[1fr_auto_1fr]')
+    expect(row.lastElementChild?.className).toContain('text-right')
     expect(b.el().querySelector('[data-testid="result-row"]')).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
     expect(a.el()).toHaveTextContent('Idle')
     expect(a.button(/^challenge$/i)).not.toBeDisabled()

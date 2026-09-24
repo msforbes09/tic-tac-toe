@@ -70,24 +70,29 @@ export function resultSides(r: SeriesResult) {
 
 export function ResultRow({ result }: { result: SeriesResult }) {
   const { left, right, leftScore, rightScore, leftWon, tag } = resultSides(result)
-  const name = (player: SeriesPlayer, won: boolean) => (
+  const name = (player: SeriesPlayer, won: boolean, side: 'left' | 'right') => (
     <span
       data-winner={won ? 'true' : 'false'}
-      className={cn('min-w-0 flex-1 truncate text-[15px]', won ? 'font-semibold text-player-x' : 'text-muted-foreground')}
+      className={cn(
+        'min-w-0 truncate text-[15px]',
+        side === 'right' && 'text-right',
+        won ? 'font-semibold text-player-x' : 'text-muted-foreground',
+      )}
     >
       {player.nickname}
     </span>
   )
+  // Equal side columns keep the score centred whatever the names and tag measure.
   return (
-    <li data-testid="result-row" className="flex min-h-12 items-center gap-3 py-2">
-      {name(left, leftWon)}
-      <span className="flex shrink-0 flex-col items-center leading-tight">
+    <li data-testid="result-row" className="grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
+      {name(left, leftWon, 'left')}
+      <span className="flex flex-col items-center leading-tight">
         <span className="text-lg font-semibold tabular-nums">
           {leftScore} – {rightScore}
         </span>
         {tag && <span className="text-[11px] text-muted-foreground">{tag}</span>}
       </span>
-      <span className="flex min-w-0 flex-1 justify-end">{name(right, !leftWon)}</span>
+      {name(right, !leftWon, 'right')}
     </li>
   )
 }
