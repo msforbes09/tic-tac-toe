@@ -1,0 +1,75 @@
+import { describe, expect, it, vi } from 'vitest'
+import { createFakeRealtime } from './realtime'
+
+describe('fake realtime', () => {
+  it('delivers messages to the others on the same channel only', async () => {
+    const rt = createFakeRealtime()
+    const a = await rt.open<{ n: number }>('room:1', 'a')
+    const b = await rt.open<{ n: number }>('room:1', 'b')
+    const c = await rt.open<{ n: number }>('room:2', 'c')
+    const seenA = vi.fn()
+    const seenB = vi.fn()
+    const seenC = vi.fn()
+    a.onMessage(seenA)
+    b.onMessage(seenB)
+    c.onMessage(seenC)
+    a.send({ hi: 1 })
+    expect(seenB).toHaveBeenCalledWith({ hi: 1 })
+    expect(seenC).not.toHaveBeenCalled()
+    expect(seenA).not.toHaveBeenCalled()
+  })
+
+  it('tracks presence with metadata and announces changes', async () => {
+    const rt = createFakeRealtime()
+    const a = await rt.open<{ status: string }>('room:1', 'a')
+    const seen = vi.fn()
+    a.onPresence(seen)
+    expect(a.members()).toEqual([])
+    a.track({ status: 'idle' })
+    const b = await rt.open<{ status: string }>('room:1', 'b')
+    b.track({ status: 'playing' })
+    expect(a.members()).toEqual([
+      { id: 'a', meta: { status: 'idle' } },
+      { id: 'b', meta: { status: 'playing' } },
+    ])
+    a.track({ status: 'watching' })
+    expect(a.members()[0].meta).toEqual({ status: 'watching' })
+    b.leave()
+    expect(a.members().map((m) => m.id)).toEqual(['a'])
+    expect(seen).toHaveBeenCalledTimes(4)
+  })
+
+  it('unsubscribes handlers and stops everything after leave', async () => {
+    const rt = createFakeRealtime()
+    const a = await rt.open<object>('room:1', 'a')
+    const b = await rt.open<object>('room:1', 'b')
+    const handler = vi.fn()
+    const off = a.onMessage(handler)
+    off()
+    b.send({ x: 1 })
+    expect(handler).not.toHaveBeenCalled()
+    const late = vi.fn()
+    a.onMessage(late)
+    a.leave()
+    b.send({ x: 2 })
+    expect(late).not.toHaveBeenCalled()
+    expect(rt.membersOf('room:1')).toEqual([])
+  })
+
+  it('drop removes a member without telling it', async () => {
+    const rt = createFakeRealtime()
+    const a = await rt.open<object>('room:1', 'a')
+    a.track({})
+    const b = await rt.open<object>('room:1', 'b')
+    b.track({})
+    const seenB = vi.fn()
+    b.onMessage(seenB)
+    const presenceA = vi.fn()
+    a.onPresence(presenceA)
+    rt.drop('room:1', 'b')
+    expect(rt.membersOf('room:1').map((m) => m.id)).toEqual(['a'])
+    expect(presenceA).toHaveBeenCalledTimes(1)
+    a.send({ x: 1 })
+    expect(seenB).not.toHaveBeenCalled()
+  })
+})
