@@ -170,6 +170,14 @@ describe('createSupabaseDirectory', () => {
     ])
   })
 
+  it('resets a player’s cloud data through reset_player_data and reports whether anything went', async () => {
+    const f = fakeClient([{ data: true, error: null }, { data: false, error: null }])
+    const dir = createSupabaseDirectory(f.client)
+    expect(await dir.resetPlayerData('dev', 'tok')).toBe(true)
+    expect(f.client.rpc).toHaveBeenCalledWith('reset_player_data', { p_id: 'dev', p_token: 'tok' })
+    expect(await dir.resetPlayerData('dev', 'wrong')).toBe(false)
+  })
+
   it('loads a ladder row and saves one through save_ladder', async () => {
     const f = fakeClient([
       { data: { player_id: 'dev', rung: 12, streak: 2, top_held_at: null, top_held_count: 0, updated_at: '2026-09-25T10:00:00.000Z' }, error: null },

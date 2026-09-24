@@ -104,6 +104,25 @@ describe('fake room directory', () => {
     expect(await dir.listGames('other', 'bot')).toEqual([])
   })
 
+  it('resets a player’s games and ladder behind the token, leaving other players and series alone', async () => {
+    const dir = createFakeDirectory(hash)
+    const row = (id: string, playerId: string): GameRow => ({
+      id, playerId, mode: 'bot', difficulty: 'hard', rung: 9, outcome: 'won', symbol: 'X', playedAt: 1,
+    })
+    await dir.addGames([row('g1', 'dev'), row('g2', 'dev'), row('g3', 'other')])
+    await dir.saveLadder('dev', 't', { ...EMPTY_LADDER, rung: 12, updatedAt: 100 })
+    await dir.saveLadder('other', 'o', { ...EMPTY_LADDER, rung: 3, updatedAt: 100 })
+    expect(await dir.resetPlayerData('dev', 'wrong')).toBe(false)
+    expect((await dir.listGames('dev', 'bot')).length).toBe(2)
+    expect(await dir.resetPlayerData('dev', 't')).toBe(true)
+    expect(await dir.listGames('dev', 'bot')).toEqual([])
+    expect(await dir.loadLadder('dev')).toBeNull()
+    expect((await dir.listGames('other', 'bot')).length).toBe(1)
+    expect((await dir.loadLadder('other'))?.rung).toBe(3)
+    // Nothing to protect and nothing to delete: not an error, just false.
+    expect(await dir.resetPlayerData('nobody', 'x')).toBe(false)
+  })
+
   it('saves a ladder per player behind the token and loads it back', async () => {
     const dir = createFakeDirectory(hash)
     expect(await dir.loadLadder('dev')).toBeNull()

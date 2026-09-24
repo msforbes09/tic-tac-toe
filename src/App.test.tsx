@@ -5,7 +5,7 @@ import { SPLASH_FADE_MS, SPLASH_HOLD_MS } from '@/components/Splash'
 import type { InstallPlatform } from '@/platform/install'
 import { createFakeRealtime } from '@/lib/realtime'
 import { createFakeDirectory } from '@/lib/roomDirectory'
-import { NICKNAME_KEY, OWNED_KEY } from '@/lib/identity'
+import { DEVICE_KEY, NICKNAME_KEY, OWNED_KEY, PLAYER_TOKEN_KEY } from '@/lib/identity'
 import { STORAGE_KEY } from '@/lib/history'
 import { LADDER_KEY } from '@/lib/ladder'
 import { KNOCK_DELAY_MS } from '@/lib/knock'
@@ -58,30 +58,39 @@ describe('App developer mode', () => {
   })
 
   const tap = (name: RegExp | string) => fireEvent.click(screen.getByRole('button', { name }))
-  // The History sheet needs real timers to mount; fake timers come in only for the final pause.
 
-  it('opens after the secret knock, and then shows the rung on the bot chip', async () => {
-    render(<App />)
+  /** The whole knock, from setup. Ends with the developer dialog open (or not) after the pause. */
+  const doKnock = () => {
     tap(/two player/i)
     tap(/versus bot/i)
     tap(/two player/i)
     tap(/^history$/i)
-    tap(/back$/i)
+    tap(/^back$/i)
     tap(/start game/i)
     for (const n of [1, 5, 9, 3]) tap(`Cell ${n}, empty`)
     // The last knock is a tap on the occupied centre: it falls through the disabled cell to its wrapper.
     vi.useFakeTimers()
     fireEvent.click(screen.getByRole('button', { name: 'Cell 5, O' }).parentElement!)
-    expect(screen.getByRole('button', { name: 'Cell 5, X' })).toBeInTheDocument()
-    expect(screen.getByText('Game voided')).toBeInTheDocument()
-    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(KNOCK_DELAY_MS)
     })
-    expect(screen.getByText('Developer mode')).toBeInTheDocument()
     vi.useRealTimers()
+  }
+  /** Enter developer mode; every dialog action lands on setup. */
+  const enter = async () => {
     tap(/^enter$/i)
-    fireEvent.click(await screen.findByRole('button', { name: /back$/i }))
+    expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+  }
+
+  it('opens after the secret knock, voiding that game, and then shows the rung on the bot chip', async () => {
+    render(<App />)
+    doKnock()
+    // The dialog is modal, so the voided board behind it is hidden from the accessibility tree.
+    expect(screen.getByRole('button', { name: 'Cell 5, X', hidden: true })).toBeInTheDocument()
+    expect(screen.getByText('Game voided')).toBeInTheDocument()
+    expect(screen.getByText('Developer mode')).toBeInTheDocument()
+    await enter()
+
     tap(/versus bot/i)
     expect(screen.getByText('Difficulty · – → 11')).toBeInTheDocument()
     tap(/start game/i)
@@ -91,49 +100,78 @@ describe('App developer mode', () => {
     tap('Bot · Medium · 11')
     fireEvent.change(screen.getByRole('spinbutton', { name: /rung/i }), { target: { value: '29' } })
     tap(/^set$/i)
-    fireEvent.click(await screen.findByRole('button', { name: /back$/i }))
+    expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
     tap(/versus bot/i)
     expect(screen.getByText('Difficulty · 29 → 22')).toBeInTheDocument()
     expect(JSON.parse(window.localStorage.getItem('tic-tac-toe:ladder')!)).toMatchObject({ rung: 29, streak: 0 })
   })
 
-  it('the developer panel can reset game data and exit developer mode', () => {
-    window.localStorage.setItem('tic-tac-toe:dev', '1')
-    window.localStorage.setItem('tic-tac-toe:ladder', JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0 }))
-    window.localStorage.setItem('tic-tac-toe:setup', JSON.stringify({ mode: 'bot', difficulty: 'medium', p1Symbol: 'X' }))
-    render(<App />)
+  it('the developer panel can reset game data, locally and in the cloud, and exit developer mode', async () => {
+    window.localStorage.setItem('tic-tac-toe:ladder', JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    window.localStorage.setItem(DEVICE_KEY, 'device-0001')
+    window.localStorage.setItem(PLAYER_TOKEN_KEY, 'token-0000000001')
+    const hash = async (t: string) => `h:${t}`
+    const dir = createFakeDirectory(hash)
+    await dir.addGames([{ id: 'g1', playerId: 'device-0001', mode: 'bot', difficulty: 'medium', rung: 17, outcome: 'won', symbol: 'X', playedAt: 1 }])
+    await dir.saveLadder('device-0001', 'token-0000000001', { rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 })
+    render(<App deps={{ open: createFakeRealtime().open, directory: dir, hash }} />)
+    await act(async () => {})
+    doKnock()
+    await enter()
+    tap(/versus bot/i)
     tap(/start game/i)
     tap('Bot · Medium · 17')
     tap(/reset game data/i)
     tap(/tap again to confirm/i)
+    await act(async () => {})
     expect(window.localStorage.getItem('tic-tac-toe:ladder')).toBeNull()
     expect(window.localStorage.getItem('tic-tac-toe:setup')).toBeNull()
     expect(window.localStorage.getItem('tic-tac-toe:history')).toBeNull()
+    expect(await dir.listGames('device-0001', 'bot')).toEqual([])
+    expect(await dir.loadLadder('device-0001')).toBeNull()
+    // The reset landed on setup. The ladder is gone, so Medium starts at 11 again.
+    expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    tap(/versus bot/i)
+    tap(/start game/i)
+    tap('Bot · Medium · 11')
     tap(/^exit$/i)
-    expect(window.localStorage.getItem('tic-tac-toe:dev')).toBeNull()
+    expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    tap(/start game/i)
+    expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
+  })
+
+  it('ignores the knock while developer mode is already on', async () => {
+    render(<App />)
+    doKnock()
+    await enter()
+    doKnock()
+    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cell 5, O' })).toBeInTheDocument()
+    expect(screen.queryByText('Game voided')).not.toBeInTheDocument()
+  })
+
+  it('does not remember developer mode across loads', async () => {
+    const first = render(<App />)
+    doKnock()
+    await enter()
+    first.unmount()
+    render(<App />)
+    tap(/versus bot/i)
+    expect(screen.queryByText(/Difficulty · /)).not.toBeInTheDocument()
+    tap(/start game/i)
+    expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
   })
 
   it('stays off when the knock is wrong', async () => {
     render(<App />)
     tap(/two player/i)
-    tap(/two player/i)
-    tap(/versus bot/i)
-    tap(/two player/i)
-    tap(/^history$/i)
-    tap(/back$/i)
-    tap(/start game/i)
-    for (const n of [1, 5, 9, 3]) tap(`Cell ${n}, empty`)
-    vi.useFakeTimers()
-    fireEvent.click(screen.getByRole('button', { name: 'Cell 5, O' }).parentElement!)
-    act(() => {
-      vi.advanceTimersByTime(KNOCK_DELAY_MS)
-    })
+    doKnock()
     // The double Two player at the start restarts the knock, so this still completes it.
     expect(screen.getByText('Developer mode')).toBeInTheDocument()
-    vi.useRealTimers()
     tap(/cancel/i)
-    fireEvent.click(await screen.findByRole('button', { name: /back$/i }))
+    expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
     tap(/versus bot/i)
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()

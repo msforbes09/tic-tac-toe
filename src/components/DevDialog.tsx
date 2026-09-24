@@ -22,7 +22,10 @@ export type DevDialogProps = {
   onExit: () => void
 }
 
-/** Developer mode: opened by the secret knock, then from the game chip while it is on. */
+/**
+ * Developer mode: opened by the secret knock, then from the game chip while it is on. Every
+ * button closes the dialog through `onClose`, which the app uses to return to the setup screen.
+ */
 export function DevDialog({ mode, rung, onClose, onEnter, onSetRung, onReset, onExit }: DevDialogProps) {
   const [value, setValue] = useState(String(rung ?? 1))
   const [confirmReset, setConfirmReset] = useState(false)
@@ -74,6 +77,7 @@ export function DevDialog({ mode, rung, onClose, onEnter, onSetRung, onReset, on
                 else {
                   onReset()
                   setConfirmReset(false)
+                  onClose()
                 }
               }}
             >
