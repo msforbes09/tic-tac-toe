@@ -4,8 +4,10 @@ import {
   createRoomCode,
   normalizeRoomCode,
   roomCodeFromUrl,
+  isRoomMessage,
   roomLink,
   withoutRoomParam,
+  type Snapshot,
 } from './room'
 
 describe('room codes', () => {
@@ -59,5 +61,53 @@ describe('room links', () => {
   it('removes only the room parameter', () => {
     expect(withoutRoomParam('https://x.test/app/?room=AB2C')).toBe('https://x.test/app/')
     expect(withoutRoomParam('https://x.test/app/?a=1&room=AB2C')).toBe('https://x.test/app/?a=1')
+  })
+})
+
+const snapshot: Snapshot = {
+  board: ['X', null, null, null, 'O', null, null, null, null],
+  p1Symbol: 'X',
+  score: { p1: 1, p2: 0, draws: 2 },
+  status: 'playing',
+  winner: null,
+  winningLine: null,
+}
+
+describe('isRoomMessage', () => {
+  it('accepts the three message shapes', () => {
+    expect(isRoomMessage({ type: 'move', index: 4 })).toBe(true)
+    expect(isRoomMessage({ type: 'new-game' })).toBe(true)
+    expect(isRoomMessage({ type: 'state', state: snapshot })).toBe(true)
+    expect(
+      isRoomMessage({
+        type: 'state',
+        state: { ...snapshot, status: 'won', winner: 'X', winningLine: [0, 1, 2] },
+      }),
+    ).toBe(true)
+  })
+
+  it('rejects anything that is not a message', () => {
+    expect(isRoomMessage(null)).toBe(false)
+    expect(isRoomMessage('move')).toBe(false)
+    expect(isRoomMessage({ type: 'chat', text: 'hi' })).toBe(false)
+    expect(isRoomMessage({ type: 'move' })).toBe(false)
+    expect(isRoomMessage({ type: 'move', index: '4' })).toBe(false)
+    expect(isRoomMessage({ type: 'move', index: 4.5 })).toBe(false)
+    expect(isRoomMessage({ type: 'move', index: 9 })).toBe(false)
+    expect(isRoomMessage({ type: 'move', index: -1 })).toBe(false)
+  })
+
+  it('rejects malformed snapshots', () => {
+    const bad = (patch: Record<string, unknown>) => isRoomMessage({ type: 'state', state: { ...snapshot, ...patch } })
+    expect(isRoomMessage({ type: 'state' })).toBe(false)
+    expect(bad({ board: snapshot.board.slice(0, 8) })).toBe(false)
+    expect(bad({ board: [...snapshot.board.slice(0, 8), 'Z'] })).toBe(false)
+    expect(bad({ p1Symbol: 'Z' })).toBe(false)
+    expect(bad({ status: 'paused' })).toBe(false)
+    expect(bad({ winner: 'draw' })).toBe(false)
+    expect(bad({ winningLine: [0, 1] })).toBe(false)
+    expect(bad({ winningLine: [0, 1, 9] })).toBe(false)
+    expect(bad({ score: { p1: 1, p2: 0 } })).toBe(false)
+    expect(bad({ score: { p1: -1, p2: 0, draws: 0 } })).toBe(false)
   })
 })

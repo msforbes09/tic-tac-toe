@@ -1,3 +1,5 @@
+import type { Board, GameStatus, Player, Score, WinLine } from './types'
+
 export const ROOM_CODE_LENGTH = 4
 /** No 0/O or 1/I/L, so a code read aloud or typed from a photo is unambiguous. */
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -41,4 +43,52 @@ export function withoutRoomParam(url: string): string {
   const u = new URL(url)
   u.searchParams.delete('room')
   return u.toString()
+}
+
+export type Snapshot = {
+  board: Board
+  p1Symbol: Player
+  score: Score
+  status: GameStatus
+  winner: Player | null
+  winningLine: WinLine | null
+}
+
+/** Guest → host: `move`, `new-game` (requests). Host → guest: `state` (the truth). */
+export type RoomMessage =
+  | { type: 'move'; index: number }
+  | { type: 'new-game' }
+  | { type: 'state'; state: Snapshot }
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+const isCellIndex = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 8
+const isPlayer = (v: unknown): v is Player => v === 'X' || v === 'O'
+const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
+
+function isSnapshot(v: unknown): v is Snapshot {
+  if (!isObject(v)) return false
+  const board = v.board
+  if (!Array.isArray(board) || board.length !== 9 || !board.every((c) => c === null || isPlayer(c))) return false
+  if (!isPlayer(v.p1Symbol)) return false
+  if (v.status !== 'playing' && v.status !== 'won' && v.status !== 'draw') return false
+  if (v.winner !== null && !isPlayer(v.winner)) return false
+  const line = v.winningLine
+  if (line !== null && !(Array.isArray(line) && line.length === 3 && line.every(isCellIndex))) return false
+  const score = v.score
+  return isObject(score) && isCount(score.p1) && isCount(score.p2) && isCount(score.draws)
+}
+
+/** Anything off the wire that is not exactly one of our messages is dropped. */
+export function isRoomMessage(value: unknown): value is RoomMessage {
+  if (!isObject(value)) return false
+  switch (value.type) {
+    case 'move':
+      return isCellIndex(value.index)
+    case 'new-game':
+      return true
+    case 'state':
+      return isSnapshot(value.state)
+    default:
+      return false
+  }
 }
