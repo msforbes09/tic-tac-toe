@@ -2,17 +2,17 @@ import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { normalizeRoomCode } from '@/lib/room'
 import { cn } from '@/lib/utils'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
-export type OnlineSetup = { available: boolean; onCreate: () => void; onJoin: (code: string) => void }
+/** Online is available when Supabase is configured; the app supplies the panel shown under the mode toggle. */
+export type OnlineSetup = { available: boolean; panel: ReactNode }
 
 /** The install nudge: a one-tap prompt where the browser offers one, manual steps on iPhone. */
 export type InstallOffer = { kind: 'prompt' | 'ios-steps'; onInstall: () => void; onDismiss: () => void }
 
-const NO_ONLINE: OnlineSetup = { available: false, onCreate() {}, onJoin() {} }
+const NO_ONLINE: OnlineSetup = { available: false, panel: null }
 
 export type SetupScreenProps = {
   /** Preselected choices, e.g. the last setup played. */
@@ -23,6 +23,7 @@ export type SetupScreenProps = {
   online?: OnlineSetup
   /** Shown when the app can be added to the home screen and has not been dismissed lately. */
   install?: InstallOffer
+  onModeChange?: (mode: Mode) => void
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
@@ -65,15 +66,11 @@ export function SetupScreen({
   onOpenHistory,
   online = NO_ONLINE,
   install,
+  onModeChange,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
   const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
-  const [codeInput, setCodeInput] = useState('')
-  const joinCode = normalizeRoomCode(codeInput)
-  const join = () => {
-    if (joinCode) online.onJoin(joinCode)
-  }
 
   return (
     <section className="flex flex-1 flex-col gap-8">
@@ -100,7 +97,10 @@ export function SetupScreen({
             value={[mode]}
             onValueChange={(v: string[]) => {
               const next = v[0]
-              if (next) setMode(next as Mode)
+              if (next) {
+                setMode(next as Mode)
+                onModeChange?.(next as Mode)
+              }
             }}
             spacing={0}
             className="grid w-full grid-cols-3 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
@@ -173,44 +173,7 @@ export function SetupScreen({
             </ToggleGroup>
           </Field>
         )}
-        {mode === 'online' && (
-          <Field label="Room" hint="Play a friend on their phone" className="rise-in">
-            <Button
-              size="lg"
-              className="min-h-14 w-full rounded-[18px] text-base font-semibold"
-              onClick={online.onCreate}
-            >
-              Create room
-            </Button>
-            <div className="flex gap-2">
-              <input
-                aria-label="Room code"
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') join()
-                }}
-                placeholder="Code"
-                autoCapitalize="characters"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={8}
-                inputMode="text"
-                className="min-h-14 min-w-0 flex-1 rounded-[18px] border border-input bg-background px-4 text-center text-xl font-semibold uppercase tracking-[0.3em] outline-none placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Button
-                size="lg"
-                variant="outline"
-                className="min-h-14 rounded-[18px] px-6 text-base font-semibold"
-                disabled={!joinCode}
-                onClick={join}
-              >
-                Join
-              </Button>
-            </div>
-          </Field>
-        )}
+        {mode === 'online' && online.panel}
       </div>
 
       <div className="mt-auto flex flex-col gap-3">
