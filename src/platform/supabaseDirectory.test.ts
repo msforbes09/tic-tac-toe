@@ -10,7 +10,7 @@ function fakeClient(responses: Response[]) {
   const changeHandlers: (() => void)[] = []
   const from = (table: string) => {
     const b: Record<string, unknown> = {}
-    for (const op of ['select', 'order', 'eq', 'insert', 'upsert', 'single']) {
+    for (const op of ['select', 'order', 'eq', 'or', 'insert', 'upsert', 'single']) {
       b[op] = (...args: unknown[]) => {
         calls.push([table, op, ...args])
         return b
@@ -40,6 +40,8 @@ const roomRow = { id: 'ABCD23', name: 'Quiet Edge', creator_id: 'z', owner_hash:
 const resultRow = {
   id: 'G1',
   room_id: 'ABCD23',
+  challenger_id: 'a',
+  challenged_id: 'b',
   winner_id: 'a',
   winner_name: 'Alice',
   loser_id: 'b',
@@ -85,6 +87,8 @@ describe('createSupabaseDirectory', () => {
       {
         gameId: 'G1',
         roomId: 'ABCD23',
+        challengerId: 'a',
+        challengedId: 'b',
         winner: { deviceId: 'a', nickname: 'Alice' },
         loser: { deviceId: 'b', nickname: 'Bob' },
         winnerScore: 6,
@@ -123,5 +127,22 @@ describe('createSupabaseDirectory', () => {
   it('throws a readable error when Supabase reports one', async () => {
     const f = fakeClient([{ data: null, error: { message: 'permission denied' } }])
     await expect(createSupabaseDirectory(f.client).listRooms()).rejects.toThrow('permission denied')
+  })
+
+  it('saves a player through the token-checking function', async () => {
+    const f = fakeClient([{ data: null, error: null }])
+    await createSupabaseDirectory(f.client).savePlayer({ id: 'a', nickname: 'Alice' }, 'tok')
+    expect(f.client.rpc).toHaveBeenCalledWith('upsert_player', { p_id: 'a', p_token: 'tok', p_nickname: 'Alice' })
+  })
+
+  it('lists my results as winner or loser across rooms', async () => {
+    const f = fakeClient([{ data: [resultRow], error: null }])
+    const mine = await createSupabaseDirectory(f.client).listMyResults('a')
+    expect(mine).toHaveLength(1)
+    expect(f.calls).toEqual([
+      ['results', 'select', '*'],
+      ['results', 'or', 'winner_id.eq.a,loser_id.eq.a'],
+      ['results', 'order', 'ended_at', { ascending: false }],
+    ])
   })
 })

@@ -4,6 +4,7 @@ import { newEntryId } from './history'
 export const DEVICE_KEY = 'tic-tac-toe:device'
 export const NICKNAME_KEY = 'tic-tac-toe:nickname'
 export const OWNED_KEY = 'tic-tac-toe:rooms-owned'
+export const PLAYER_TOKEN_KEY = 'tic-tac-toe:player-token'
 
 const read = (storage: HistoryStorage, key: string): string | null => {
   try {
@@ -68,6 +69,15 @@ export function removeOwnedRoom(storage: HistoryStorage, roomId: string): void {
   const rest = { ...loadOwnedRooms(storage) }
   delete rest[roomId]
   write(storage, OWNED_KEY, JSON.stringify(rest))
+}
+
+/** The secret that lets only this device rename its player row. Made once. */
+export function loadPlayerToken(storage: HistoryStorage): string {
+  const saved = read(storage, PLAYER_TOKEN_KEY)
+  if (saved && saved.length >= 16) return saved
+  const token = newToken()
+  write(storage, PLAYER_TOKEN_KEY, token)
+  return token
 }
 
 export const newToken = (): string => `${newEntryId()}${newEntryId()}`.replace(/-/g, '')

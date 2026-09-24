@@ -76,6 +76,8 @@ function buildResult(state: SeriesState, winner: SeriesSide, reason: SeriesResul
   return {
     gameId: state.gameId,
     roomId: state.roomId,
+    challengerId: state.challenger.deviceId,
+    challengedId: state.challenged.deviceId,
     winner: playerOf(state, winner),
     loser: playerOf(state, loser),
     winnerScore: state.score[winner],

@@ -117,6 +117,8 @@ const bob = { deviceId: 'b', nickname: 'Bob' }
 const result = {
   gameId: 'g',
   roomId: 'r',
+  challengerId: 'a',
+  challengedId: 'b',
   winner: alice,
   loser: bob,
   winnerScore: 6,
@@ -137,6 +139,7 @@ describe('isRoomEvent', () => {
     expect(isRoomEvent({ type: 'room-deleted' })).toBe(true)
     expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: 'a', to: 'b' })).toBe(false)
     expect(isRoomEvent({ type: 'series-ended', result: { ...result, reason: 'quit' } })).toBe(false)
+    expect(isRoomEvent({ type: 'series-ended', result: { ...result, challengerId: 7 } })).toBe(false)
     expect(isRoomEvent({ type: 'kick' })).toBe(false)
     expect(isRoomEvent(null)).toBe(false)
   })

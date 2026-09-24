@@ -7,6 +7,7 @@ import {
   loadDeviceId,
   loadNickname,
   loadOwnedRooms,
+  loadPlayerToken,
   NICKNAME_MAX,
   normalizeNickname,
   sanitizeNicknameInput,
@@ -77,5 +78,12 @@ describe('identity', () => {
     const expected = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
     expect(sha256HexFallback('abc')).toBe(expected)
     expect(await sha256Hex('abc')).toBe(expected)
+  })
+
+  it('creates a player token once and keeps it', () => {
+    const s = fakeStorage()
+    const token = loadPlayerToken(s)
+    expect(token.length).toBeGreaterThanOrEqual(16)
+    expect(loadPlayerToken(s)).toBe(token)
   })
 })

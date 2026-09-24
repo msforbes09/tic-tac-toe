@@ -8,6 +8,8 @@ const bob = { deviceId: 'b', nickname: 'Bob' }
 const result = (gameId: string, endedAt = 10): SeriesResult => ({
   gameId,
   roomId: 'r1',
+  challengerId: 'a',
+  challengedId: 'b',
   winner: alice,
   loser: bob,
   winnerScore: 6,
@@ -61,5 +63,29 @@ describe('fake room directory', () => {
     off()
     await dir.createRoom({ id: 'r1', name: 'Sly Diagonal', creatorId: 'a', ownerHash: await hash('t1') })
     expect(seen).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves a player once per id and lets only the same token rename it', async () => {
+    const dir = createFakeDirectory(hash)
+    await dir.savePlayer({ id: 'a', nickname: 'Alice' }, 't-a')
+    await dir.savePlayer({ id: 'a', nickname: 'Ally' }, 't-a')
+    expect(dir.players()).toEqual([{ id: 'a', nickname: 'Ally' }])
+    await expect(dir.savePlayer({ id: 'a', nickname: 'Mallory' }, 'wrong')).rejects.toThrow()
+    expect(dir.players()).toEqual([{ id: 'a', nickname: 'Ally' }])
+  })
+
+  it('lists my results across rooms, newest first, and notifies on change', async () => {
+    const dir = createFakeDirectory(hash)
+    await dir.createRoom({ id: 'r1', name: 'Sly Diagonal', creatorId: 'a', ownerHash: await hash('t1') })
+    await dir.createRoom({ id: 'r2', name: 'Bold Corner', creatorId: 'z', ownerHash: await hash('t2') })
+    const seen = vi.fn()
+    dir.onMyResultsChange('b', seen)
+    await dir.addResult(result('g1', 10))
+    await dir.addResult({ ...result('g2', 20), roomId: 'r2' })
+    await dir.addResult({ ...result('g3', 30), winner: { deviceId: 'z', nickname: 'Zed' }, loser: { deviceId: 'y', nickname: 'Yan' }, challengerId: 'z', challengedId: 'y' })
+    expect((await dir.listMyResults('b')).map((r) => r.gameId)).toEqual(['g2', 'g1'])
+    expect((await dir.listMyResults('a')).map((r) => r.gameId)).toEqual(['g2', 'g1'])
+    expect(await dir.listMyResults('q')).toEqual([])
+    expect(seen).toHaveBeenCalledTimes(3)
   })
 })
