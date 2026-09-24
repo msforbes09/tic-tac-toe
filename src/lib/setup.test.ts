@@ -51,4 +51,16 @@ describe('setup memory', () => {
     expect(loadSetup(broken)).toEqual(DEFAULT_SETTINGS)
     expect(() => saveSetup(broken, DEFAULT_SETTINGS)).not.toThrow()
   })
+
+  it('never remembers online as the mode', () => {
+    const storage = fakeStorage()
+    saveSetup(storage, { mode: 'bot', difficulty: 'hard', p1Symbol: 'O' })
+    saveSetup(storage, { mode: 'online', difficulty: 'medium', p1Symbol: 'X' })
+    expect(loadSetup(storage)).toEqual({ mode: 'bot', difficulty: 'hard', p1Symbol: 'O' })
+  })
+
+  it('opens on two player when the saved mode is online', () => {
+    const raw = JSON.stringify({ mode: 'online', difficulty: 'easy', p1Symbol: 'X' })
+    expect(loadSetup(fakeStorage({ [SETUP_KEY]: raw }))).toEqual({ mode: 'pvp', difficulty: 'easy', p1Symbol: 'X' })
+  })
 })

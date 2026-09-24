@@ -1,12 +1,7 @@
 import { createBoard, getWinner, isDraw, makeMove, nextPlayer } from '@/lib/game'
-import type { Board, Player, Seat, Settings, WinLine } from '@/lib/types'
+import type { Board, GameStatus, Player, Score, Seat, Settings, WinLine } from '@/lib/types'
 
-export type { Seat }
-
-export type GameStatus = 'playing' | 'won' | 'draw'
-
-
-export type Score = { p1: number; p2: number; draws: number }
+export type { Seat, GameStatus, Score }
 
 export type GameState = {
   settings: Settings

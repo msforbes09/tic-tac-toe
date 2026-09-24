@@ -15,7 +15,7 @@ export type HistoryStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 export const STORAGE_KEY = 'tic-tac-toe:history'
 export const MAX_ENTRIES = 100
 
-const MODES: Mode[] = ['pvp', 'bot']
+const MODES: Mode[] = ['pvp', 'bot', 'online']
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 const OUTCOMES: Outcome[] = ['X', 'O', 'draw']
 const SYMBOLS: Player[] = ['X', 'O']
