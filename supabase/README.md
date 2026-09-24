@@ -12,6 +12,3 @@ Online play needs a Supabase project with Realtime (on by default) and two small
 The app ships only the publishable key. Rooms and results are readable and
 insertable by anyone with it; deleting a room requires the creator's secret
 token, which never leaves their device except inside the `delete_room` call.
-
-If `alter publication` fails because a table is already in the publication,
-that line can be skipped.

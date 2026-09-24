@@ -126,11 +126,22 @@ export function seriesReducer(state: SeriesState, action: SeriesAction, now: num
     case 'RECORDED':
       return { ...state, game: gameReducer(state.game, { type: 'RECORDED' }) }
     case 'SYNC': {
-      const { game, ...rest } = action.snapshot
+      // A finished series is final, whatever arrives later.
+      if (state.result) return state
+      const { gameId, roomId, challenger, challenged, score, gameNumber, result, game } = action.snapshot
       // The game part goes through the game reducer's SYNC so `recorded` and `settings` follow the
       // same rules as before: a new game number starts from an untouched board.
-      const base = rest.gameNumber === state.gameNumber ? state.game : newGame(rest.gameNumber)
-      return { ...rest, game: gameReducer(base, { type: 'SYNC', snapshot: game }) }
+      const base = gameNumber === state.gameNumber ? state.game : newGame(gameNumber)
+      return {
+        gameId,
+        roomId,
+        challenger: { deviceId: challenger.deviceId, nickname: challenger.nickname },
+        challenged: { deviceId: challenged.deviceId, nickname: challenged.nickname },
+        score: { challenger: score.challenger, challenged: score.challenged, draws: score.draws },
+        gameNumber,
+        result,
+        game: gameReducer(base, { type: 'SYNC', snapshot: game }),
+      }
     }
   }
 }

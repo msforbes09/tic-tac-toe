@@ -4,7 +4,8 @@ import { createSupabaseRealtime, membersFromPresence, type RealtimeClientLike } 
 type SubscribeCallback = (status: string, error?: Error) => void
 
 /** A stand-in for the Supabase client: one channel at a time, with spies on what matters. */
-function fakeClient() {
+function fakeClient(options: { holdRemoves?: boolean } = {}) {
+  const removeResolvers: (() => void)[] = []
   const handlers: Record<string, ((payload: unknown) => void)[]> = { broadcast: [], presence: [] }
   let subscribeCb: SubscribeCallback | null = null
   let presence: Record<string, unknown[]> = {}
@@ -23,9 +24,14 @@ function fakeClient() {
   }
   const client = {
     channel: vi.fn(() => channel),
-    removeChannel: vi.fn(async () => 'ok'),
+    removeChannel: vi.fn(() =>
+      options.holdRemoves ? new Promise<void>((r) => removeResolvers.push(r)) : Promise.resolve(),
+    ),
   }
   return {
+    finishRemoves: () => {
+      for (const r of removeResolvers.splice(0)) r()
+    },
     client: client as unknown as RealtimeClientLike,
     channel,
     status: (s: string, error?: Error) => subscribeCb?.(s, error),
@@ -121,10 +127,35 @@ describe('createSupabaseRealtime', () => {
     expect(seenB).toHaveBeenCalledTimes(2)
     b.leave()
     expect(f.client.removeChannel).toHaveBeenCalledTimes(1)
-    // A fresh open after everyone left makes a new channel.
+    // A fresh open after everyone left makes a new channel, once the old one is gone.
     const again = open<{ n: number }>('ttt-lobby', 'dev-1')
+    await new Promise((r) => setTimeout(r, 0))
     f.status('SUBSCRIBED')
     await again
     expect(f.client.channel).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits for a leaving channel to be removed before reopening its topic', async () => {
+    const f = fakeClient({ holdRemoves: true })
+    const open = createSupabaseRealtime(f.client)
+    const first = open<object>('ttt-lobby', 'dev-1')
+    f.status('SUBSCRIBED')
+    const a = await first
+    a.leave()
+    expect(f.client.removeChannel).toHaveBeenCalledTimes(1)
+    let reopened = false
+    const again = open<object>('ttt-lobby', 'dev-1').then((c) => {
+      reopened = true
+      return c
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    // Still leaving: no second channel yet, and the client's leaving channel is not reused.
+    expect(f.client.channel).toHaveBeenCalledTimes(1)
+    f.finishRemoves()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(f.client.channel).toHaveBeenCalledTimes(2)
+    f.status('SUBSCRIBED')
+    await again
+    expect(reopened).toBe(true)
   })
 })

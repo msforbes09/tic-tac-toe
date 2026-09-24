@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RoomScreen } from './RoomScreen'
 import type { Feedback } from '@/lib/feedback'
 import type { HistoryStorage } from '@/lib/history'
-import { createFakeRealtime, type FakeRealtime } from '@/lib/realtime'
-import { CHALLENGE_TIMEOUT_MS, LOBBY_CHANNEL } from '@/lib/room'
+import { createFakeRealtime, type FakeRealtime, type OpenChannel } from '@/lib/realtime'
+import { CHALLENGE_TIMEOUT_MS, LOBBY_CHANNEL, roomChannel } from '@/lib/room'
 import { createFakeDirectory, type RoomDirectory, type RoomRecord } from '@/lib/roomDirectory'
 
 const alice = { deviceId: 'a', nickname: 'Alice' }
@@ -176,5 +176,71 @@ describe('RoomScreen timeouts and deletion', () => {
     expect(dir.rooms()).toEqual([])
     expect(b.onLeave).toHaveBeenCalledWith('The room was deleted')
     expect(a.onLeave).toHaveBeenCalled()
+  })
+
+  it('an incoming challenge that is never cancelled still expires on the target', async () => {
+    const { rt, b } = await setup()
+    const raw = await rt.open(roomChannel('R1'), 'z')
+    raw.send({ type: 'challenge', gameId: 'gz', from: { deviceId: 'z', nickname: 'Zed' }, to: 'b' })
+    await flush()
+    expect(screen.getByText('Zed challenges you')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(CHALLENGE_TIMEOUT_MS))
+    await flush()
+    expect(screen.queryByText('Zed challenges you')).not.toBeInTheDocument()
+    void b
+  })
+
+  it('an accept for a challenge that no longer exists is answered with a cancel', async () => {
+    const { rt } = await setup()
+    const raw = await rt.open(roomChannel('R1'), 'z')
+    const seen = vi.fn()
+    raw.onMessage(seen)
+    raw.send({ type: 'accept', gameId: 'ghost', from: 'z', to: 'a' })
+    await flush()
+    expect(seen).toHaveBeenCalledWith({ type: 'cancel', gameId: 'ghost', from: 'a' })
+    expect(seen).not.toHaveBeenCalledWith({ type: 'cancel', gameId: 'ghost', from: 'b' })
+  })
+
+  it('a challenge arriving while you have one pending is declined, so crossing challenges cannot both start', async () => {
+    const { rt, a } = await setup()
+    fireEvent.click(a.button(/^challenge$/i)!)
+    await flush()
+    const raw = await rt.open(roomChannel('R1'), 'z')
+    const seen = vi.fn()
+    raw.onMessage(seen)
+    raw.send({ type: 'challenge', gameId: 'gz', from: { deviceId: 'z', nickname: 'Zed' }, to: 'a' })
+    await flush()
+    expect(seen).toHaveBeenCalledWith({ type: 'decline', gameId: 'gz', from: 'a' })
+    expect(screen.queryByText('Zed challenges you')).not.toBeInTheDocument()
+  })
+})
+
+describe('RoomScreen stability', () => {
+  it('re-rendering with fresh prop objects does not reopen the channels', async () => {
+    const rt = createFakeRealtime()
+    let opens = 0
+    const open: OpenChannel = (name, selfId) => {
+      opens++
+      return rt.open(name, selfId)
+    }
+    const dir = createFakeDirectory(hash)
+    await dir.createRoom({ id: room.id, name: room.name, creatorId: 'a', ownerHash: await hash('token-a') })
+    const props = () => ({
+      room: { ...room },
+      self: { ...alice },
+      ownerToken: 'token-a',
+      open,
+      directory: dir,
+      storage,
+      feedback,
+      onLeave: () => {},
+    })
+    const view = render(<RoomScreen {...props()} />)
+    await flush()
+    const calls = opens
+    expect(calls).toBe(2)
+    view.rerender(<RoomScreen {...props()} />)
+    await flush()
+    expect(opens).toBe(calls)
   })
 })

@@ -125,8 +125,8 @@ describe('App online rooms', () => {
   const pickOnline = () => fireEvent.click(screen.getByRole('button', { name: /^online$/i }))
   const saveNickname = () => fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
 
-  it('disables Online when Supabase is not configured', () => {
-    render(<App deps={{ open: null, directory: null }} />)
+  it('disables Online when Supabase is not configured (tests never see the real env)', () => {
+    render(<App />)
     expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
   })
 

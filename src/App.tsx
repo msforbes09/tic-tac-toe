@@ -222,13 +222,13 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     await createRoom()
   }
 
-  const leaveRoom = (roomNotice?: string) => {
+  const leaveRoom = useCallback((roomNotice?: string) => {
     setInitialMode('online')
     setNotice(roomNotice ?? null)
     setScreen({ kind: 'setup' })
-  }
+  }, [])
 
-  const self = nickname ? { deviceId, nickname } : null
+  const self = useMemo(() => (nickname ? { deviceId, nickname } : null), [deviceId, nickname])
 
   return (
     <AppShell>

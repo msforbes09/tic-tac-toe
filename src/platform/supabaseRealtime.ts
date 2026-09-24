@@ -39,6 +39,8 @@ type Shared = {
   lastMeta: unknown
   subscribed: boolean
   ready: Promise<void>
+  /** Set once the last connection left; the topic is reusable when it resolves. */
+  closing: Promise<void> | null
 }
 
 /**
@@ -53,7 +55,7 @@ export function createSupabaseRealtime(client: RealtimeClientLike): OpenChannel 
 
   const create = (name: string, selfId: string): Shared => {
     const channel = client.channel(name, { config: { broadcast: { self: false }, presence: { key: selfId } } })
-    const entry: Shared = { channel, facades: new Set(), members: [], lastMeta: undefined, subscribed: false, ready: Promise.resolve() }
+    const entry: Shared = { channel, facades: new Set(), members: [], lastMeta: undefined, subscribed: false, ready: Promise.resolve(), closing: null }
 
     channel.on('presence', { event: 'sync' }, () => {
       entry.members = membersFromPresence(channel.presenceState())
@@ -96,6 +98,10 @@ export function createSupabaseRealtime(client: RealtimeClientLike): OpenChannel 
   }
 
   return async <Meta,>(name: string, selfId: string): Promise<Connection<Meta>> => {
+    // The client hands back a channel that is still leaving if asked for the same topic too soon,
+    // and subscribing to it never completes. Wait for the removal to finish first.
+    const leaving = shared.get(name)
+    if (leaving?.closing) await leaving.closing
     const entry = shared.get(name) ?? create(name, selfId)
     await entry.ready
     const facade: Facade = { onMessage: new Set(), onPresence: new Set() }
@@ -125,9 +131,11 @@ export function createSupabaseRealtime(client: RealtimeClientLike): OpenChannel 
         if (left) return
         left = true
         entry.facades.delete(facade)
-        if (entry.facades.size === 0 && shared.get(name) === entry) {
-          shared.delete(name)
-          void client.removeChannel(entry.channel)
+        if (entry.facades.size === 0 && shared.get(name) === entry && !entry.closing) {
+          const forget = () => {
+            if (shared.get(name) === entry) shared.delete(name)
+          }
+          entry.closing = client.removeChannel(entry.channel).then(forget, forget)
         }
       },
     }

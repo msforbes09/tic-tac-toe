@@ -235,4 +235,25 @@ describe('SeriesScreen grace period', () => {
     expect(b.addResult.mock.calls[0][0].loser).toEqual(alice)
     expect(c.el()).toHaveTextContent('Bob wins the series')
   })
+
+  it('the referee re-sends its state whenever game presence changes, so a returning device resyncs', async () => {
+    const { rt } = await trio()
+    const late = await rt.open<GamePresence>(gameChannel('g'), 'late')
+    const seen = vi.fn()
+    late.onMessage(seen)
+    late.track({ deviceId: 'late', role: 'watcher' })
+    await flush()
+    expect(seen).toHaveBeenCalledWith(expect.objectContaining({ type: 'state' }))
+  })
+
+  it('a player who never hears from a referee goes back to the room after the grace period, recording nothing', async () => {
+    const rt = createFakeRealtime()
+    const b = mount(rt, bob, 'player', startSeries('r', 'g', alice, bob))
+    await flush()
+    act(() => vi.advanceTimersByTime(GRACE_MS))
+    await flush()
+    expect(b.onExit).toHaveBeenCalledWith(null)
+    expect(b.addResult).not.toHaveBeenCalled()
+    expect(rt.membersOf(gameChannel('g')).find((m) => m.id === 'b')?.meta).toEqual({ deviceId: 'b', role: 'player' })
+  })
 })

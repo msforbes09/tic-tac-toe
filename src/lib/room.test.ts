@@ -129,7 +129,8 @@ const result = {
 describe('isRoomEvent', () => {
   it('accepts every event and rejects junk', () => {
     expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: alice, to: 'b' })).toBe(true)
-    expect(isRoomEvent({ type: 'accept', gameId: 'g', from: 'b' })).toBe(true)
+    expect(isRoomEvent({ type: 'accept', gameId: 'g', from: 'b', to: 'a' })).toBe(true)
+    expect(isRoomEvent({ type: 'accept', gameId: 'g', from: 'b' })).toBe(false)
     expect(isRoomEvent({ type: 'decline', gameId: 'g', from: 'b' })).toBe(true)
     expect(isRoomEvent({ type: 'cancel', gameId: 'g', from: 'a' })).toBe(true)
     expect(isRoomEvent({ type: 'series-ended', result })).toBe(true)

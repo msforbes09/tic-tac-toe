@@ -84,6 +84,8 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
   const recordedBoard = useRef<BoardModel | null>(null)
   const previousBoard = useRef<BoardModel | null>(null)
   const resultHandled = useRef(false)
+  // True once this device holds the referee's truth: referees always, others after their first snapshot.
+  const synced = useRef(initialRole === 'referee')
 
   const mySide = sideOf(state, self.deviceId)
   const isPlayer = mySide !== null && role !== 'watcher'
@@ -107,6 +109,7 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
       offPresence = c.onPresence((list) => setMembers(list.map((m) => m.meta).filter(isGamePresence)))
       offMessage = c.onMessage((raw) => {
         if (!isGameMessage(raw)) return
+        if (raw.type === 'state') synced.current = true
         if (raw.type === 'hello') {
           if (roleRef.current === 'referee') c.send({ type: 'state', state: snapshotOfSeries(latest.current) })
           return
@@ -126,20 +129,22 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
     }
   }, [open, initial.gameId, self.deviceId])
 
-  // The referee shares its state after every change.
+  // The referee shares its state after every change and whenever presence changes, so a device that
+  // dropped and came back (or joined late) is brought up to date without asking.
   useEffect(() => {
     if (role === 'referee' && connection) connection.send({ type: 'state', state: snapshotOfSeries(state) })
-  }, [role, connection, state])
+  }, [role, connection, state, members])
 
-  // Two referees after a reconnect: the lower id keeps it.
+  // Two referees after a reconnect: the lower id keeps it. A finished series never changes hands.
   useEffect(() => {
+    if (state.result) return
     const resolved = resolveRole(self.deviceId, role, members)
     if (resolved !== role) {
       setRole(resolved)
       connection?.track({ deviceId: self.deviceId, role: resolved })
       if (resolved === 'player') connection?.send({ type: 'hello', from: self.deviceId })
     }
-  }, [members, role, connection, self.deviceId])
+  }, [members, role, connection, self.deviceId, state.result])
 
   // Grace period: a missing opponent is resigned by the referee; a missing referee is replaced, and
   // the new referee then gives the missing player the same grace before resigning them.
@@ -148,13 +153,16 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
     const id = setTimeout(() => {
       if (roleRef.current === 'referee') {
         dispatch({ type: 'RESIGN', by: opponent.deviceId, reason: 'left', at: now() })
+      } else if (!synced.current) {
+        // Never heard from a referee: there is no series to inherit. Back to the room.
+        onExit(null)
       } else {
         setRole('referee')
         connection.track({ deviceId: self.deviceId, role: 'referee' })
       }
     }, GRACE_MS)
     return () => clearTimeout(id)
-  }, [isPlayer, opponent, opponentPresent, phase, connection, self.deviceId, now, role])
+  }, [isPlayer, opponent, opponentPresent, phase, connection, self.deviceId, now, role, onExit])
 
   // Sound and haptics; the opponent's win sounds like a loss. Watchers just hear the moves.
   const opponentSymbol = isPlayer && mySide ? symbolOf(state.game, seatOfSide(otherSide(mySide))) : null

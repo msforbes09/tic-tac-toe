@@ -199,4 +199,16 @@ describe('snapshots and status text', () => {
     expect(seriesStatusText(won, null)).toBe('Bob wins!')
     expect(seriesStatusText(playDraw(fresh()), null)).toBe("It's a draw")
   })
+
+  it('a finished series is final: later snapshots are ignored', () => {
+    const done = seriesReducer(fresh(), { type: 'RESIGN', by: 'b', reason: 'resigned', at: 1 })
+    const live = seriesReducer(fresh(), { type: 'MOVE', index: 0, by: 'b' })
+    expect(seriesReducer(done, { type: 'SYNC', snapshot: snapshotOfSeries(live) })).toBe(done)
+  })
+
+  it('SYNC copies only the known fields', () => {
+    const snap = { ...snapshotOfSeries(fresh()), extra: 'nope' } as unknown as ReturnType<typeof snapshotOfSeries>
+    const synced = seriesReducer(fresh(), { type: 'SYNC', snapshot: snap })
+    expect(Object.keys(synced).sort()).toEqual(Object.keys(fresh()).sort())
+  })
 })

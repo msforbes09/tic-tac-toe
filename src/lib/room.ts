@@ -92,7 +92,7 @@ export type GamePresence = { deviceId: string; role: GameRole }
 /** Room channel broadcast. */
 export type RoomEvent =
   | { type: 'challenge'; gameId: string; from: SeriesPlayer; to: string }
-  | { type: 'accept'; gameId: string; from: string }
+  | { type: 'accept'; gameId: string; from: string; to: string }
   | { type: 'decline'; gameId: string; from: string }
   | { type: 'cancel'; gameId: string; from: string }
   | { type: 'series-ended'; result: SeriesResult }
@@ -152,6 +152,7 @@ export function isRoomEvent(v: unknown): v is RoomEvent {
     case 'challenge':
       return isString(v.gameId) && isPlayerRef(v.from) && isString(v.to)
     case 'accept':
+      return isString(v.gameId) && isString(v.from) && isString(v.to)
     case 'decline':
     case 'cancel':
       return isString(v.gameId) && isString(v.from)

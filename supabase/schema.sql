@@ -2,6 +2,8 @@
 -- The app talks to these tables with the publishable key only; Row Level Security below is the
 -- whole access model. Deleting a room needs the creator's secret token, checked by delete_room.
 
+create extension if not exists pgcrypto with schema extensions;
+
 create table if not exists public.rooms (
   id text primary key,
   name text not null,
@@ -59,6 +61,20 @@ $$;
 
 grant execute on function public.delete_room(text, text) to anon, authenticated;
 
--- Live updates for the room list and results.
-alter publication supabase_realtime add table public.rooms;
-alter publication supabase_realtime add table public.results;
+-- Live updates for the room list and results. Guarded so the script can be re-run.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'rooms'
+  ) then
+    alter publication supabase_realtime add table public.rooms;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'results'
+  ) then
+    alter publication supabase_realtime add table public.results;
+  end if;
+end
+$$;

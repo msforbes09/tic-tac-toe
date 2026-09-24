@@ -81,16 +81,17 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   const left = useRef(false)
   const latest = useRef({ activity, outgoing, incoming })
   latest.current = { activity, outgoing, incoming }
+  const selfRef = useRef(self)
+  selfRef.current = self
 
-  const leave = useCallback(
-    (notice?: string) => {
-      if (left.current) return
-      left.current = true
-      if (notice === undefined) onLeave()
-      else onLeave(notice)
-    },
-    [onLeave],
-  )
+  const onLeaveRef = useRef(onLeave)
+  onLeaveRef.current = onLeave
+  const leave = useCallback((notice?: string) => {
+    if (left.current) return
+    left.current = true
+    if (notice === undefined) onLeaveRef.current()
+    else onLeaveRef.current(notice)
+  }, [])
 
   const refreshResults = useCallback(() => {
     void directory.listResults(room.id).then(setResults)
@@ -108,17 +109,23 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
       offPresence = c.onPresence((list) => setMembers(list.map((m) => m.meta).filter(isRoomPresence)))
       off = c.onMessage((raw) => {
         if (!isRoomEvent(raw)) return
+        const me = selfRef.current
         const { activity: act, outgoing: out, incoming: inc } = latest.current
         switch (raw.type) {
           case 'challenge':
-            if (raw.to !== self.deviceId) return
-            if (act.kind === 'series' || inc !== null) c.send({ type: 'decline', gameId: raw.gameId, from: self.deviceId })
+            if (raw.to !== me.deviceId) return
+            // Busy, already asked, or asking someone ourselves: decline so crossing challenges never both start.
+            if (act.kind === 'series' || inc !== null || out !== null) c.send({ type: 'decline', gameId: raw.gameId, from: me.deviceId })
             else setIncoming({ gameId: raw.gameId, player: raw.from })
             return
           case 'accept':
-            if (out && out.gameId === raw.gameId && out.player.deviceId === raw.from) {
+            if (raw.to !== me.deviceId) return
+            if (out && out.gameId === raw.gameId && out.player.deviceId === raw.from && act.kind === 'idle') {
               setOutgoing(null)
-              setActivity({ kind: 'series', role: 'referee', state: startSeries(room.id, raw.gameId, self, out.player) })
+              setActivity({ kind: 'series', role: 'referee', state: startSeries(room.id, raw.gameId, me, out.player) })
+            } else {
+              // A late accept for a challenge we withdrew: tell them so they do not sit in an empty series.
+              c.send({ type: 'cancel', gameId: raw.gameId, from: me.deviceId })
             }
             return
           case 'decline':
@@ -126,6 +133,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
             return
           case 'cancel':
             if (inc && inc.gameId === raw.gameId) setIncoming(null)
+            if (act.kind === 'series' && act.role === 'player' && act.state.gameId === raw.gameId) setActivity({ kind: 'idle' })
             return
           case 'series-ended':
             refreshResults()
@@ -144,7 +152,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
       offPresence()
       conn?.leave()
     }
-  }, [open, room.id, self.deviceId, leave, refreshResults, self])
+  }, [open, room.id, self.deviceId, leave, refreshResults])
 
   // Lobby channel: tell the room list we are here.
   useEffect(() => {
@@ -183,6 +191,13 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
     [directory, room.id, leave],
   )
 
+  // An incoming challenge nobody answers goes away on its own too.
+  useEffect(() => {
+    if (!incoming) return
+    const id = setTimeout(() => setIncoming(null), CHALLENGE_TIMEOUT_MS)
+    return () => clearTimeout(id)
+  }, [incoming])
+
   // An unanswered challenge is withdrawn.
   useEffect(() => {
     if (!outgoing || !roomConn) return
@@ -217,7 +232,11 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   }
   const accept = () => {
     if (!incoming) return
-    roomConn?.send({ type: 'accept', gameId: incoming.gameId, from: self.deviceId })
+    if (outgoing) {
+      roomConn?.send({ type: 'cancel', gameId: outgoing.gameId, from: self.deviceId })
+      setOutgoing(null)
+    }
+    roomConn?.send({ type: 'accept', gameId: incoming.gameId, from: self.deviceId, to: incoming.player.deviceId })
     setActivity({ kind: 'series', role: 'player', state: startSeries(room.id, incoming.gameId, incoming.player, self) })
     setIncoming(null)
   }
