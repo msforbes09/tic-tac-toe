@@ -38,6 +38,12 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.
 
+## Hosting
+
+Cloudflare Pages builds `main` and PR previews from this repo (`npm run build` → `dist`,
+Node from `.node-version`). Supabase env values live in the Pages project settings.
+GitHub Actions (`ci.yml`) only runs tests and the build.
+
 ## Commands
 
 - `npm run dev` / `npm test` / `npm run test:watch` / `npm run build`

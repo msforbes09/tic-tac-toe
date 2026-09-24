@@ -242,14 +242,19 @@ shadcn's theme tokens. No behaviour changes in that pass.
 - `npm run test:watch` — Vitest watch
 - `npm run build` — production build
 
-## Deployment (added 2026-09-23)
+## Deployment (added 2026-09-23, moved to Cloudflare Pages 2026-09-24)
 
-The app is published to GitHub Pages from a GitHub Actions workflow on every
-push to `main`. The workflow runs `npm ci`, `npm test`, and `npm run build`
-with `BASE_PATH=/<repo-name>/` so Vite emits asset URLs under the Pages
-subpath, then uploads `dist/` with `actions/upload-pages-artifact` and
-deploys with `actions/deploy-pages`. Locally the base path stays `/`.
-No secrets are required beyond the workflow's built-in `GITHUB_TOKEN`.
+The app is a static build hosted on Cloudflare Pages, connected to the GitHub
+repository: every push to `main` deploys and every pull request gets a
+preview URL. The Pages project runs `npm run build` and serves `dist/`, with
+the Node version taken from `.node-version`. The site is served from the root,
+so Vite's `base` stays `/`; `BASE_PATH` remains available for hosting under a
+sub-path. GitHub Actions (`ci.yml`) runs `npm test` and `npm run build` on
+pull requests and pushes but does not deploy.
+
+Until 2026-09-24 the site was published to GitHub Pages by a workflow that
+built with `BASE_PATH=/<repo-name>/` and deployed `dist/` with
+`actions/deploy-pages`.
 
 ## Sound and haptics (added 2026-09-23)
 

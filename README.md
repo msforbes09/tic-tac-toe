@@ -12,7 +12,7 @@ and play from two phones.
 Built with Vite, React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 Tested with Vitest and React Testing Library.
 
-**Live:** https://msforbes09.github.io/tic-tac-toe-react/ (deployed from `main` by GitHub Actions)
+**Live:** deployed from `main` by Cloudflare Pages (see [Hosting](#hosting)).
 
 ## Run it
 
@@ -46,10 +46,25 @@ Online play runs over [Supabase Realtime](https://supabase.com/docs/guides/realt
 1. Create a free Supabase project.
 2. Copy the Project URL and anon key from Project Settings → API.
 3. Locally: copy `.env.example` to `.env` and fill both values.
-4. Deploys: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository
-   secrets; the deploy workflow passes them to the build.
+4. Deploys: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build
+   environment variables on the Cloudflare Pages project.
 
 Without them the Online option shows as "Not set up".
+
+## Hosting
+
+The site is a static build hosted on Cloudflare Pages, connected to this
+GitHub repository. Every push to `main` deploys; every pull request gets a
+preview URL. Project settings:
+
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Node version: read from `.node-version`
+- Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+  (optional; Online is disabled without them)
+
+GitHub Actions runs the tests and build on every pull request but does not
+deploy.
 
 ## How it's put together
 
