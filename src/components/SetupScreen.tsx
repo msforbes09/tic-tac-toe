@@ -5,6 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { KnockEvent } from '@/lib/knock'
 import { rungForSelection } from '@/lib/ladder'
 import { cn } from '@/lib/utils'
+import { SETUP_HINTS } from '@/lib/banter'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
@@ -40,9 +41,9 @@ function devDifficultyLabel(rung: number | null, band: Difficulty): string {
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
-  { value: 'easy', label: 'Easy', hint: 'Go on, warm up.' },
-  { value: 'medium', label: 'Medium', hint: 'Blocks. Bites back.' },
-  { value: 'hard', label: 'Hard', hint: "Bring your best. It won't matter." },
+  { value: 'easy', label: 'Easy', hint: SETUP_HINTS.friendly.easy },
+  { value: 'medium', label: 'Medium', hint: SETUP_HINTS.friendly.medium },
+  { value: 'hard', label: 'Hard', hint: SETUP_HINTS.friendly.hard },
 ]
 
 const segmentItem =

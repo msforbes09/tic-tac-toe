@@ -124,14 +124,29 @@ history.
 games. `difficulty` keeps recording the band the game was labelled with, so the
 record table is unchanged. Old entries stay valid.
 
+**The climb** (`src/lib/climb.ts`, `components/ClimbGraph.tsx`): in bot
+History, above the record table, a sparkline of the rung over the last 30 bot
+games with a rung, oldest first, over three shaded lanes labelled Easy, Medium,
+Hard. No rung numbers are printed. Shown once two such games exist.
+
 ## Copy
 
-Difficulty descriptions on setup, replacing "Makes mistakes" / "Blocks and
-pounces" / "Unbeatable":
+All bot copy lives in `src/lib/banter.ts` in two tones. `friendly` is what
+ships, for kids; `cocky` is kept for a later switch (see TODO).
 
-- Easy — **Go on, warm up.**
-- Medium — **Blocks. Bites back.**
-- Hard — **Bring your best. It won't matter.**
+Difficulty descriptions on setup:
+
+- Easy — **Go on, warm up.** (cocky: the same)
+- Medium — **I block. Can you?** (cocky: *Blocks. Bites back.*)
+- Hard — **My best game. Ready?** (cocky: *Bring your best. It won't matter.*)
+
+**Banter.** After every finished bot game the second status line carries one
+line from the bot, picked at random from ten per band and result (the band the
+game was played at). A ladder moment (promotion, top) takes that line instead.
+Voided and two-player games get none. New game clears it.
+
+**Streak pill.** From the third straight win, a pill beside the chip reads
+`🔥 N in a row`. Losing streaks are never shown.
 
 ## Modules
 
@@ -168,7 +183,8 @@ pounces" / "Unbeatable":
 
 - **Account-based badge.** When the rooms work lands its device identity and
   Supabase tables, the badge can live there and show beside a nickname.
-- **Level graph in History**, drawn from the stored rungs.
+- **Tone switch.** A setting (or developer-mode toggle) that swaps the
+  friendly bot copy for the cocky set already in `banter.ts`.
 - **Daily decay.** Each day without a bot game drops the rung by one.
 - **Achievements.** A small set beyond the top badge (first win at each
   band, a ten-win streak, a hundred games, held the top ten times), each with

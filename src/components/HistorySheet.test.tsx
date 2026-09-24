@@ -224,6 +224,36 @@ describe('HistorySheet cloud rows', () => {
   })
 })
 
+describe('HistorySheet climb graph', () => {
+  it('draws the rungs of recent bot games, oldest first, in bot mode', () => {
+    const storage = fakeStorage([
+      entry({ id: 'a', timestamp: 1, rung: 11, outcome: 'X' }),
+      entry({ id: 'b', timestamp: 3, rung: 13, outcome: 'X' }),
+      entry({ id: 'c', timestamp: 2, rung: 12, outcome: 'draw' }),
+      entry({ id: 'old', timestamp: 0, outcome: 'O' }),
+    ])
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    const graph = screen.getByRole('img', { name: /your climb/i })
+    expect(graph).toHaveAccessibleDescription('Rungs 11, 12, 13')
+    expect(screen.getByText('Your climb')).toBeInTheDocument()
+  })
+
+  it('needs at least two games with a rung', () => {
+    const storage = fakeStorage([entry({ id: 'a', rung: 11 }), entry({ id: 'old', outcome: 'O' })])
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.queryByRole('img', { name: /your climb/i })).not.toBeInTheDocument()
+  })
+
+  it('does not appear for two-player history', () => {
+    const storage = fakeStorage([
+      entry({ id: 'a', mode: 'pvp', difficulty: null, rung: 11 }),
+      entry({ id: 'b', mode: 'pvp', difficulty: null, rung: 12 }),
+    ])
+    render(<HistorySheet mode="pvp" open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.queryByRole('img', { name: /your climb/i })).not.toBeInTheDocument()
+  })
+})
+
 describe('HistorySheet badge', () => {
   it('shows the top-of-the-pack badge once the top has been held, with a share', async () => {
     const storage = fakeStorage([entry({ id: 'a' })])

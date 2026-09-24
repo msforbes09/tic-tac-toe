@@ -6,6 +6,7 @@ import { StatusBar } from './StatusBar'
 import { TopCard } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
+import { banterFor } from '@/lib/banter'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryEntry, type HistoryStorage } from '@/lib/history'
@@ -74,6 +75,8 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [gamesPlayed, setGamesPlayed] = useState(0)
   const [moment, setMoment] = useState<Moment | null>(null)
+  // What the bot said about the last game; a ladder moment speaks instead when there is one.
+  const [banter, setBanter] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
@@ -135,6 +138,7 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
       setLadder(next)
       setGamesPlayed((n) => n + 1)
       setMoment(what)
+      setBanter(banterFor(bandOf(rung), result))
       if (what === 'top-held') setCardOpen(true)
       if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     }
@@ -154,9 +158,13 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
   const tap = (index: number) => {
     if (onKnock?.(`cell:${index}`) === true) dispatch({ type: 'OVERRIDE', index })
   }
-  const note = finished && moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
+  const momentNote = moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
+  const note = finished ? (momentNote ?? banter ?? undefined) : undefined
+  // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
+  const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
     setMoment(null)
+    setBanter(null)
     dispatch({ type: 'NEW_GAME' })
   }
 
@@ -166,6 +174,12 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
           ← Back
         </Button>
+        {hotStreak > 0 && (
+          <span className="ml-auto mr-2 rounded-full bg-player-o-soft px-3 py-1 text-[13px] font-medium text-player-o">
+            <span aria-hidden="true">🔥 </span>
+            {hotStreak} in a row
+          </span>
+        )}
         {chipOpensDev ? (
           <button
             type="button"

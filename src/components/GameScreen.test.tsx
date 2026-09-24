@@ -5,7 +5,8 @@ import { BOT_DELAY_MS, GameScreen } from './GameScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { Settings } from '@/lib/types'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
-import { LADDER_KEY } from '@/lib/ladder'
+import { LADDER_KEY, type Ladder } from '@/lib/ladder'
+import { BANTER } from '@/lib/banter'
 import { SETUP_KEY } from '@/lib/setup'
 import { chooseMove } from '@/lib/bot'
 
@@ -488,5 +489,80 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(29)
     fireEvent.click(screen.getByRole('button', { name: 'Take it back' }))
     expect(screen.getByRole('button', { name: 'New game' })).toBeInTheDocument()
+  })
+})
+
+describe('GameScreen banter', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+  const botTurn = () =>
+    act(() => {
+      vi.advanceTimersByTime(BOT_DELAY_MS)
+    })
+  const play = (...cells: number[]) => {
+    for (const n of cells) {
+      fireEvent.click(cell(n))
+      botTurn()
+    }
+  }
+  const seeded = (ladder: Partial<Ladder>) => {
+    const storage = fakeStorage()
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: null, streak: 0, topHeldAt: null, topHeldCount: 0, ...ladder }))
+    return storage
+  }
+
+  it('lets the bot comment on an ordinary win, in the band the game was played at, until New game', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(screen.getByText(BANTER.friendly.easy.win[0])).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
+  })
+
+  it('comments on a loss', () => {
+    // Rung 3 picking Hard lands on 14, a Medium bot that wins fast with rng 0.
+    render(<GameScreen settings={hardBot} storage={seeded({ rung: 3 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(screen.getByText(BANTER.friendly.medium.loss[0])).toBeInTheDocument()
+  })
+
+  it('lets a ladder moment speak instead of the bot', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 10 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('Promoted to Medium')).toBeInTheDocument()
+    expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
+  })
+
+  it('says nothing after a two-player game', () => {
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
+    expect(screen.getByText('Player 1 wins!')).toBeInTheDocument()
+    for (const line of [...BANTER.friendly.easy.win, ...BANTER.friendly.easy.loss])
+      expect(screen.queryByText(line)).not.toBeInTheDocument()
+  })
+
+  it('shows a streak pill from the third straight win, and never for losses', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5, streak: 2 })} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.queryByText(/in a row/)).not.toBeInTheDocument()
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('3 in a row')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    expect(screen.getByText('3 in a row')).toBeInTheDocument()
+  })
+
+  it('shows no streak pill for a losing streak', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5, streak: -3 })} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.queryByText(/in a row/)).not.toBeInTheDocument()
   })
 })
