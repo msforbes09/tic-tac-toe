@@ -26,78 +26,110 @@ export function membersFromPresence<Meta>(state: Record<string, unknown[]>): Pre
   return members
 }
 
+type Facade = {
+  onMessage: Set<(m: unknown) => void>
+  onPresence: Set<(m: Presence<unknown>[]) => void>
+}
+
+/** One Supabase channel per topic, shared by every connection opened to it on this client. */
+type Shared = {
+  channel: RealtimeChannelLike
+  facades: Set<Facade>
+  members: Presence<unknown>[]
+  lastMeta: unknown
+  subscribed: boolean
+  ready: Promise<void>
+}
+
 /**
  * Lobby, room, and game channels over Supabase Realtime: broadcast plus presence, no tables.
- * Presence is re-tracked after every rejoin so a network blip does not make a member vanish.
+ * The client keeps one channel per topic, so two connections to the same topic (the room list and
+ * a room both watching the lobby, or StrictMode's double mount) share it and the channel goes away
+ * only when the last one leaves. Presence is re-tracked after every rejoin so a network blip does
+ * not make a member vanish.
  */
 export function createSupabaseRealtime(client: RealtimeClientLike): OpenChannel {
-  return <Meta,>(name: string, selfId: string) =>
-    new Promise<Connection<Meta>>((resolve, reject) => {
-      const channel = client.channel(name, { config: { broadcast: { self: false }, presence: { key: selfId } } })
-      const messageHandlers = new Set<(m: unknown) => void>()
-      const presenceHandlers = new Set<(m: Presence<Meta>[]) => void>()
-      let members: Presence<Meta>[] = []
-      let lastMeta: Meta | undefined
-      let subscribed = false
+  const shared = new Map<string, Shared>()
+
+  const create = (name: string, selfId: string): Shared => {
+    const channel = client.channel(name, { config: { broadcast: { self: false }, presence: { key: selfId } } })
+    const entry: Shared = { channel, facades: new Set(), members: [], lastMeta: undefined, subscribed: false, ready: Promise.resolve() }
+
+    channel.on('presence', { event: 'sync' }, () => {
+      entry.members = membersFromPresence(channel.presenceState())
+      for (const f of entry.facades) for (const h of f.onPresence) h(entry.members)
+    })
+    channel.on('broadcast', { event: EVENT }, ({ payload }) => {
+      for (const f of entry.facades) for (const h of f.onMessage) h(payload)
+    })
+
+    entry.ready = new Promise<void>((resolve, reject) => {
       let settled = false
-
-      channel.on('presence', { event: 'sync' }, () => {
-        members = membersFromPresence<Meta>(channel.presenceState())
-        for (const h of presenceHandlers) h(members)
-      })
-      channel.on('broadcast', { event: EVENT }, ({ payload }) => {
-        for (const h of messageHandlers) h(payload)
-      })
-
-      const connection: Connection<Meta> = {
-        selfId,
-        send: (message) => {
-          void channel.send({ type: 'broadcast', event: EVENT, payload: message })
-        },
-        onMessage: (h) => {
-          messageHandlers.add(h)
-          return () => messageHandlers.delete(h)
-        },
-        track: (meta) => {
-          lastMeta = meta
-          if (subscribed) void channel.track(meta)
-        },
-        onPresence: (h) => {
-          presenceHandlers.add(h)
-          return () => presenceHandlers.delete(h)
-        },
-        members: () => members,
-        leave: () => {
-          messageHandlers.clear()
-          presenceHandlers.clear()
-          void client.removeChannel(channel)
-        },
-      }
-
       const fail = (error: Error) => {
         if (settled) return
         settled = true
         clearTimeout(timer)
+        shared.delete(name)
         void client.removeChannel(channel)
         reject(error)
       }
       const timer = setTimeout(() => fail(new Error('Timed out connecting to the room')), CONNECT_TIMEOUT_MS)
-
       channel.subscribe((status, error) => {
         if (status === 'SUBSCRIBED') {
-          subscribed = true
-          if (lastMeta !== undefined) void channel.track(lastMeta)
+          entry.subscribed = true
+          if (entry.lastMeta !== undefined) void channel.track(entry.lastMeta)
           if (!settled) {
             settled = true
             clearTimeout(timer)
-            resolve(connection)
+            resolve()
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          subscribed = false
+          entry.subscribed = false
           fail(error ?? new Error(status))
         } else if (status === 'CLOSED') {
-          subscribed = false
+          entry.subscribed = false
         }
       })
     })
+    shared.set(name, entry)
+    return entry
+  }
+
+  return async <Meta,>(name: string, selfId: string): Promise<Connection<Meta>> => {
+    const entry = shared.get(name) ?? create(name, selfId)
+    await entry.ready
+    const facade: Facade = { onMessage: new Set(), onPresence: new Set() }
+    entry.facades.add(facade)
+    let left = false
+
+    return {
+      selfId,
+      send: (message) => {
+        if (!left) void entry.channel.send({ type: 'broadcast', event: EVENT, payload: message })
+      },
+      onMessage: (h) => {
+        facade.onMessage.add(h)
+        return () => facade.onMessage.delete(h)
+      },
+      track: (meta) => {
+        if (left) return
+        entry.lastMeta = meta
+        if (entry.subscribed) void entry.channel.track(meta)
+      },
+      onPresence: (h) => {
+        facade.onPresence.add(h as (m: Presence<unknown>[]) => void)
+        return () => facade.onPresence.delete(h as (m: Presence<unknown>[]) => void)
+      },
+      members: () => entry.members as Presence<Meta>[],
+      leave: () => {
+        if (left) return
+        left = true
+        entry.facades.delete(facade)
+        if (entry.facades.size === 0 && shared.get(name) === entry) {
+          shared.delete(name)
+          void client.removeChannel(entry.channel)
+        }
+      },
+    }
+  }
 }

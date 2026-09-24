@@ -163,7 +163,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     if (!services || !onSetup) return
     let cancelled = false
     let leave = () => {}
-    void services.open<LobbyPresence>(LOBBY_CHANNEL, `list:${deviceId}`).then((c) => {
+    void services.open<LobbyPresence>(LOBBY_CHANNEL, deviceId).then((c) => {
       if (cancelled) return c.leave()
       leave = () => c.leave()
       const tally = (members: { meta: LobbyPresence }[]) => {
