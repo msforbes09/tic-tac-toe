@@ -224,28 +224,15 @@ body {
   }
 }
 
-/* Opening splash: tiles pop in, marks draw, copy rises, then the sheet fades away. */
-.splash-tile {
-  animation: splash-tile-in 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--splash-delay, 0ms) both;
-}
-
-.splash-mark path,
-.splash-mark circle {
+/* Opening splash: the logo's marks draw in, copy rises, then the sheet fades away. */
+.logo-mark path,
+.logo-mark circle {
   stroke-dasharray: var(--mark-len);
-  animation: mark-draw var(--mark-duration, 320ms) cubic-bezier(0.22, 1, 0.36, 1) var(--splash-delay, 0ms) both;
+  animation: mark-draw var(--mark-duration, 320ms) cubic-bezier(0.22, 1, 0.36, 1) var(--logo-delay, 0ms) both;
 }
 
-.splash-mark path {
-  --mark-len: 80;
-}
-
-.splash-mark path:nth-of-type(2) {
-  animation-delay: calc(var(--splash-delay, 0ms) + 110ms);
-}
-
-.splash-mark circle {
-  --mark-len: 189;
-  --mark-duration: 420ms;
+.logo-mark path:nth-of-type(2) {
+  animation-delay: calc(var(--logo-delay, 0ms) + 110ms);
 }
 
 .splash-rise {
@@ -254,17 +241,6 @@ body {
 
 .splash-leave {
   animation: splash-out 360ms cubic-bezier(0.4, 0, 1, 1) forwards;
-}
-
-@keyframes splash-tile-in {
-  from {
-    opacity: 0;
-    transform: scale(0.55);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 @keyframes splash-rise {
