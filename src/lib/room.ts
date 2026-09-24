@@ -52,6 +52,8 @@ export function withoutRoomParam(url: string): string {
 // ---- Channels ---------------------------------------------------------------------------------
 
 export const LOBBY_CHANNEL = 'ttt-lobby'
+/** An unanswered challenge is withdrawn after this long. */
+export const CHALLENGE_TIMEOUT_MS = 30_000
 export const roomChannel = (roomId: string): string => `ttt-room:${roomId}`
 export const gameChannel = (gameId: string): string => `ttt-game:${gameId}`
 
