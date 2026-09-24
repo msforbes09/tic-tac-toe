@@ -32,6 +32,7 @@ describe('Splash', () => {
     const splash = screen.getByRole('status')
     expect(splash.querySelector('.max-w-\\[420px\\]')).not.toBeNull()
     expect(splash.querySelector('.splash-tile')).toBeNull()
+    expect(screen.getByText('Tic-Tac-Toe')).toHaveClass('font-heading')
     const marks = Array.from(splash.querySelectorAll('.logo-mark')) as HTMLElement[]
     expect(marks.map((m) => m.dataset.player)).toEqual(['O', 'X'])
     const delay = (m: HTMLElement) => parseInt(m.style.getPropertyValue('--logo-delay'))

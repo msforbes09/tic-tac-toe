@@ -37,7 +37,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
         <div className="flex -translate-y-[4vh] flex-col items-center">
           {/* The logo, bare on the background: the O draws itself first, then the X across it. */}
           <Logo animate className="size-56" />
-          <p className="splash-rise mt-7 text-4xl font-bold tracking-[-0.03em]" style={{ '--splash-delay': '1000ms' } as CSSProperties}>
+          <p className="splash-rise mt-7 font-heading text-[2.6rem] font-semibold tracking-[-0.01em]" style={{ '--splash-delay': '1000ms' } as CSSProperties}>
             Tic-Tac-Toe
           </p>
           <p className="splash-rise mt-2 text-muted-foreground" style={{ '--splash-delay': '1140ms' } as CSSProperties}>

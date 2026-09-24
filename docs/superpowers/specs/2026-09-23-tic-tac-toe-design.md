@@ -29,7 +29,7 @@ In scope:
   is selected (Easy / Medium / Hard), Start button, History button.
 - Game screen: 3×3 board, status line, New Game button, Back to Setup button.
 - Bot opponent with three strategies.
-- Game history persisted in `localStorage`, viewable and clearable.
+- Game history persisted in `localStorage`, viewable. (Clearing was dropped later; the list caps itself.)
 - Visual polish pass using the Impeccable skill after functionality is done.
 
 Out of scope (do not add without updating this spec):
@@ -131,7 +131,6 @@ tests use an in-memory fake and the UI passes `window.localStorage`.
   basic shape check.
 - `saveGame(storage, entry): HistoryEntry[]` — prepends the entry (newest
   first), caps the list at 100 entries, writes it back, returns the new list.
-- `clearHistory(storage): void` — removes the key.
 
 The UI wraps `localStorage` access in `try/catch`; if storage throws (private
 mode, quota), history silently behaves as empty and saving is a no-op.

@@ -1,22 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Mark } from './Mark'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
   botStats,
-  clearHistory,
   loadHistory,
   winnerSeat,
   type HistoryEntry,
@@ -118,7 +106,6 @@ function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
 
 export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
-  const [confirmOpen, setConfirmOpen] = useState(false)
   const [visible, setVisible] = useState(PAGE_SIZE)
 
   useEffect(() => {
@@ -128,16 +115,6 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
   }, [open, storage])
 
   const hasBotGames = entries.some((e) => e.mode === 'bot')
-
-  const handleClear = () => {
-    try {
-      clearHistory(storage)
-    } catch {
-      // best-effort
-    }
-    setEntries([])
-    setConfirmOpen(false)
-  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -149,7 +126,7 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
         style={{ height: '85dvh', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
-          <SheetTitle className="text-2xl font-bold tracking-tight">History</SheetTitle>
+          <SheetTitle className="font-heading text-2xl font-semibold">History</SheetTitle>
           <SheetDescription>
             {entries.length === 0
               ? 'Finished games show up here'
@@ -205,32 +182,9 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
           </ScrollArea>
         )}
 
-        <div className={cn('mt-2 grid gap-2', entries.length > 0 && 'grid-cols-2')}>
-          {entries.length > 0 && (
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-              <AlertDialogTrigger
-                render={<Button variant="outline" className="min-h-12 w-full rounded-[16px] text-base" />}
-              >
-                Clear history
-              </AlertDialogTrigger>
-              <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear all games?</AlertDialogTitle>
-                  <AlertDialogDescription>This removes every entry from your history. It can't be undone.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="min-h-11" onClick={handleClear}>
-                    Clear
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <SheetClose render={<Button className="min-h-12 w-full rounded-[16px] text-base font-semibold" />}>
-            Back
-          </SheetClose>
-        </div>
+        <SheetClose render={<Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" />}>
+          Back
+        </SheetClose>
       </SheetContent>
     </Sheet>
   )

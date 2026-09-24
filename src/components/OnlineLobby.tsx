@@ -63,7 +63,7 @@ export function OnlineLobby({ code, role, status, link, share, onCancel }: Onlin
         {canShare && (
           <Button
             size="lg"
-            className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+            className="min-h-14 w-full rounded-[18px] text-base font-medium"
             onClick={() => {
               void share(link).then((result) => setNote(SHARE_NOTE[result]))
             }}
@@ -74,7 +74,7 @@ export function OnlineLobby({ code, role, status, link, share, onCancel }: Onlin
         <Button
           size="lg"
           variant={canShare ? 'outline' : 'default'}
-          className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+          className="min-h-14 w-full rounded-[18px] text-base font-medium"
           onClick={onCancel}
         >
           {settled ? 'Back' : 'Cancel'}
