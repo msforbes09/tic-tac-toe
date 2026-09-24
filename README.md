@@ -12,7 +12,7 @@ and play from two phones.
 Built with Vite, React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 Tested with Vitest and React Testing Library.
 
-**Live:** deployed from `main` by Cloudflare Pages (see [Hosting](#hosting)).
+**Live:** https://tic-tac-toe.iam4bs.dev/ (deployed from `main` by Cloudflare Pages, see [Hosting](#hosting))
 
 ## Run it
 
@@ -62,6 +62,10 @@ preview URL. Project settings:
 - Node version: read from `.node-version`
 - Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
   (optional; Online is disabled without them)
+
+The project's `pages.dev` address redirects to the real domain via
+`functions/_middleware.js`, so shared room links always carry one address.
+Preview deployments are not redirected.
 
 GitHub Actions runs the tests and build on every pull request but does not
 deploy.
