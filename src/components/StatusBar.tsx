@@ -1,19 +1,22 @@
 import { Mark } from './Mark'
 import { nextPlayer } from '@/lib/game'
 import type { Player } from '@/lib/types'
-import type { GameState } from '@/state/reducer'
+import { seatOf, type GameState } from '@/state/reducer'
 import { cn } from '@/lib/utils'
+
+const SEAT_NAME = { p1: 'Player 1', p2: 'Player 2' } as const
 
 export function statusText(state: GameState): string {
   const bot = state.settings.mode === 'bot'
   if (state.status === 'draw') return "It's a draw"
+  const player = state.status === 'won' && state.winner ? state.winner : nextPlayer(state.board)
+  const seat = seatOf(state, player)
   if (state.status === 'won') {
-    if (!bot) return `${state.winner} wins!`
-    return state.winner === 'X' ? 'You win!' : 'Bot wins!'
+    if (!bot) return `${SEAT_NAME[seat]} wins!`
+    return seat === 'p1' ? 'You win!' : 'Bot wins!'
   }
-  const turn = nextPlayer(state.board)
-  if (!bot) return `${turn}'s turn`
-  return turn === 'X' ? 'Your turn' : 'Bot is thinking…'
+  if (!bot) return `${SEAT_NAME[seat]}'s turn`
+  return seat === 'p1' ? 'Your turn' : 'Bot is thinking…'
 }
 
 /** Which player the status line is about, for the accent mark. Null for a draw. */
@@ -25,7 +28,8 @@ function statusPlayer(state: GameState): Player | null {
 
 export function StatusBar({ state }: { state: GameState }) {
   const player = statusPlayer(state)
-  const thinking = state.status === 'playing' && state.settings.mode === 'bot' && player === 'O'
+  const thinking =
+    state.status === 'playing' && state.settings.mode === 'bot' && player !== null && seatOf(state, player) === 'p2'
   const finished = state.status !== 'playing'
 
   return (

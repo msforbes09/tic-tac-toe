@@ -3,9 +3,12 @@ import { Mark } from './Mark'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
-import type { Difficulty, Mode, Settings } from '@/lib/types'
+import { DEFAULT_SETTINGS } from '@/lib/setup'
+import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
 export type SetupScreenProps = {
+  /** Preselected choices, e.g. the last setup played. */
+  initial?: Settings
   onStart: (settings: Settings) => void
   onOpenHistory: () => void
 }
@@ -44,9 +47,10 @@ function Field({
   )
 }
 
-export function SetupScreen({ onStart, onOpenHistory }: SetupScreenProps) {
-  const [mode, setMode] = useState<Mode>('pvp')
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
+export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory }: SetupScreenProps) {
+  const [mode, setMode] = useState<Mode>(initial.mode)
+  const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
+  const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
 
   return (
     <section className="flex flex-1 flex-col gap-8">
@@ -112,13 +116,38 @@ export function SetupScreen({ onStart, onOpenHistory }: SetupScreenProps) {
             </ToggleGroup>
           </Field>
         )}
+
+        {mode === 'bot' && (
+          <Field label="You play" hint="X moves first" className="rise-in">
+            <ToggleGroup
+              value={[symbol]}
+              onValueChange={(v: string[]) => {
+                const next = v[0]
+                if (next) setSymbol(next as Player)
+              }}
+              spacing={0}
+              className="grid w-full grid-cols-2 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
+              aria-label="Your symbol"
+            >
+              {(['X', 'O'] as const).map((p) => (
+                <ToggleGroupItem key={p} value={p} className={segmentItem} aria-label={`Play as ${p}`}>
+                  <Mark
+                    player={p}
+                    weight={15}
+                    className={cn('size-5', p === 'X' ? 'text-player-x' : 'text-player-o')}
+                  />
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </Field>
+        )}
       </div>
 
       <div className="mt-auto flex flex-col gap-3">
         <Button
           size="lg"
           className="min-h-14 w-full rounded-[18px] text-base font-semibold"
-          onClick={() => onStart({ mode, difficulty })}
+          onClick={() => onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })}
         >
           Start game
         </Button>

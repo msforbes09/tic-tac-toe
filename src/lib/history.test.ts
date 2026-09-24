@@ -3,9 +3,11 @@ import {
   MAX_ENTRIES,
   STORAGE_KEY,
   clearHistory,
+  botStats,
   loadHistory,
   newEntryId,
   saveGame,
+  winnerSeat,
   type HistoryEntry,
   type HistoryStorage,
 } from './history'
@@ -101,5 +103,50 @@ describe('newEntryId', () => {
     const b = newEntryId()
     expect(a).toBeTruthy()
     expect(a).not.toBe(b)
+  })
+})
+
+describe('p1Symbol on entries', () => {
+  it('keeps a valid p1Symbol', () => {
+    const stored = [entry({ id: 'a', p1Symbol: 'O' })]
+    expect(loadHistory(fakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) }))).toEqual(stored)
+  })
+
+  it('drops entries with an invalid p1Symbol', () => {
+    const stored = [entry({ id: 'ok' }), { ...entry({ id: 'bad' }), p1Symbol: 'Z' }]
+    expect(loadHistory(fakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) }))).toEqual([entry({ id: 'ok' })])
+  })
+})
+
+describe('winnerSeat', () => {
+  it('is null for a draw', () => {
+    expect(winnerSeat(entry({ outcome: 'draw' }))).toBeNull()
+  })
+
+  it('reads older entries without p1Symbol as player one playing X', () => {
+    expect(winnerSeat(entry({ outcome: 'X' }))).toBe('p1')
+    expect(winnerSeat(entry({ outcome: 'O' }))).toBe('p2')
+  })
+
+  it('credits the seat that held the winning symbol', () => {
+    expect(winnerSeat(entry({ outcome: 'X', p1Symbol: 'O' }))).toBe('p2')
+    expect(winnerSeat(entry({ outcome: 'O', p1Symbol: 'O' }))).toBe('p1')
+  })
+})
+
+describe('botStats', () => {
+  it('counts your wins, losses, and draws per difficulty, ignoring two-player games', () => {
+    const stats = botStats([
+      entry({ difficulty: 'easy', outcome: 'X' }),
+      entry({ difficulty: 'easy', outcome: 'X', p1Symbol: 'O' }),
+      entry({ difficulty: 'easy', outcome: 'draw' }),
+      entry({ difficulty: 'hard', outcome: 'O' }),
+      entry({ mode: 'pvp', difficulty: null, outcome: 'X' }),
+    ])
+    expect(stats).toEqual({
+      easy: { wins: 1, losses: 1, draws: 1 },
+      medium: { wins: 0, losses: 0, draws: 0 },
+      hard: { wins: 0, losses: 1, draws: 0 },
+    })
   })
 })

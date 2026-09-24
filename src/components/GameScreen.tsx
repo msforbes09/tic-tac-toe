@@ -1,29 +1,36 @@
 import { useEffect, useReducer, useRef } from 'react'
 import { Board } from './Board'
+import { Celebration } from './Celebration'
+import { ScoreBar } from './ScoreBar'
 import { StatusBar } from './StatusBar'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
+import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryStorage } from '@/lib/history'
 import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
-import { createGameState, gameReducer } from '@/state/reducer'
+import { createGameState, gameReducer, seatOf, symbolOf } from '@/state/reducer'
 
 export const BOT_DELAY_MS = 400
 
 export type GameScreenProps = {
   settings: Settings
   storage: HistoryStorage
+  feedback: Feedback
   onBack: () => void
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
 
-export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
+export function GameScreen({ settings, storage, feedback, onBack }: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
+  const previousBoard = useRef(state.board)
 
-  const isBotTurn =
-    settings.mode === 'bot' && state.status === 'playing' && nextPlayer(state.board) === 'O'
+  const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
+  const isBotTurn = botSymbol !== null && state.status === 'playing' && nextPlayer(state.board) === botSymbol
+  const youBeatTheBot =
+    settings.mode === 'bot' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === 'p1'
 
   // Bot reply, delayed so it feels like a turn rather than an instant reaction.
   useEffect(() => {
@@ -33,6 +40,13 @@ export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
     }, BOT_DELAY_MS)
     return () => clearTimeout(id)
   }, [isBotTurn, state.board, settings.difficulty])
+
+  // Sound and haptics for every new mark, the player's and the bot's alike.
+  useEffect(() => {
+    const event = feedbackForChange(previousBoard.current, state.board, botSymbol)
+    previousBoard.current = state.board
+    if (event) feedback.play(event)
+  }, [state.board, botSymbol, feedback])
 
   // Record each finished game exactly once. The ref guards StrictMode's double effect run.
   useEffect(() => {
@@ -47,12 +61,13 @@ export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
         mode: settings.mode,
         difficulty: settings.mode === 'bot' ? settings.difficulty : null,
         outcome,
+        p1Symbol: state.p1Symbol,
       })
     } catch {
       // Storage unavailable (private mode, quota). History is best-effort.
     }
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, settings, storage])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage])
 
   const finished = state.status !== 'playing'
 
@@ -67,14 +82,19 @@ export function GameScreen({ settings, storage, onBack }: GameScreenProps) {
         </span>
       </header>
 
+      <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} />
+
       <div className="my-auto flex flex-col gap-5 pb-6">
         <StatusBar state={state} />
-        <Board
-          board={state.board}
-          winningLine={state.winningLine}
-          disabled={finished || isBotTurn}
-          onSelect={(index) => dispatch({ type: 'MOVE', index })}
-        />
+        <div className="relative">
+          <Board
+            board={state.board}
+            winningLine={state.winningLine}
+            disabled={finished || isBotTurn}
+            onSelect={(index) => dispatch({ type: 'MOVE', index })}
+          />
+          {youBeatTheBot && <Celebration />}
+        </div>
       </div>
 
       <Button

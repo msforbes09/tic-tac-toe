@@ -15,9 +15,23 @@ describe('App', () => {
   it('starts a game and returns to setup', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /start/i }))
-    expect(screen.getByText("X's turn")).toBeInTheDocument()
+    expect(screen.getByText("Player 1's turn")).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+  })
+
+  it('remembers the last setup on the next visit', () => {
+    const first = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^play as o$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    first.unmount()
+
+    render(<App />)
+    expect(screen.getByRole('button', { name: /versus bot/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^hard$/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^play as o$/i })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('opens the history sheet', () => {
