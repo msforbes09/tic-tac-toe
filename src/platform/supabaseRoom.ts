@@ -57,7 +57,9 @@ export function createSupabaseOpenRoom(config: SupabaseConfig): OpenRoom {
         },
         members: () => members,
         leave: () => {
+          // Each room has its own client, so closing the socket too stops any reconnect attempts.
           void client.removeChannel(channel)
+          client.realtime.disconnect()
         },
       }
 
