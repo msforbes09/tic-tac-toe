@@ -133,6 +133,31 @@ describe('SetupScreen install card', () => {
     expect(screen.getByRole('button', { name: /not now/i })).toBeInTheDocument()
   })
 
+  it('in developer mode, shows the saved rung and where the picked band would land you', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} dev={{ rung: 25 }} />)
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    expect(screen.getByText('Difficulty · 25 → 20')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
+    expect(screen.getByText('Difficulty · 25')).toBeInTheDocument()
+  })
+
+  it('in developer mode with no rung yet, shows a dash and the band bottom', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} dev={{ rung: null }} />)
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    expect(screen.getByText('Difficulty · – → 11')).toBeInTheDocument()
+  })
+
+  it('reports its taps for the knock', () => {
+    const onKnock = vi.fn()
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onKnock={onKnock} />)
+    fireEvent.click(screen.getByRole('button', { name: /two player/i }))
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^history$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /two player/i }))
+    fireEvent.click(screen.getByRole('button', { name: /start game/i }))
+    expect(onKnock.mock.calls.map((c) => c[0])).toEqual(['mode:pvp', 'mode:bot', 'history:open', 'mode:pvp', 'start'])
+  })
+
   it('carries the tagline and the bot descriptions', () => {
     render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
     expect(screen.getByText("Win three.")).toBeInTheDocument()

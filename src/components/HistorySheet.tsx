@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { botStats, loadHistory, winnerSeat, type GameRow, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import type { KnockEvent } from '@/lib/knock'
 import { loadLadder, type Ladder } from '@/lib/ladder'
 import type { SeriesResult } from '@/lib/room'
 import type { RoomDirectory } from '@/lib/roomDirectory'
@@ -25,6 +26,8 @@ export type HistorySheetProps = {
   /** For bragging from the top-of-the-pack badge. */
   share?: ShareLink
   siteUrl?: string
+  /** Reports the Back tap, one step of the developer knock. */
+  onKnock?: (event: KnockEvent) => void
 }
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
@@ -192,7 +195,7 @@ function seriesLine(r: SeriesResult, me: string): { title: string; score: string
 
 const TITLE: Record<Mode, string> = { pvp: 'Two-player history', bot: 'Bot history', online: 'Online history' }
 
-export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online, share, siteUrl }: HistorySheetProps) {
+export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online, share, siteUrl, onKnock }: HistorySheetProps) {
   const [games, setGames] = useState<Shown[]>([])
   const [ladder, setLadder] = useState<Ladder | null>(null)
   const [visible, setVisible] = useState(PAGE_SIZE)
@@ -325,7 +328,11 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
           </div>
         </ScrollArea>
 
-        <SheetClose render={<Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" />}>
+        <SheetClose
+          render={
+            <Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" onClick={() => onKnock?.('history:back')} />
+          }
+        >
           Back
         </SheetClose>
       </SheetContent>

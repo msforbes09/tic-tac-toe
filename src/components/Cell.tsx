@@ -31,7 +31,8 @@ export function Cell({ index, value, highlighted, disabled, onSelect, winOrder =
         'shadow-[0_1px_0_0_var(--tile-edge),0_6px_18px_-12px_var(--tile-shadow)]',
         'transition-[transform,background-color,box-shadow] duration-150 ease-out',
         'active:scale-[0.96] active:shadow-[0_0_0_0_var(--tile-edge),0_2px_8px_-8px_var(--tile-shadow)]',
-        'disabled:active:scale-100 disabled:active:shadow-[0_1px_0_0_var(--tile-edge),0_6px_18px_-12px_var(--tile-shadow)]',
+        // Disabled cells let taps through to the board, which listens for the developer knock.
+        'disabled:pointer-events-none disabled:active:scale-100 disabled:active:shadow-[0_1px_0_0_var(--tile-edge),0_6px_18px_-12px_var(--tile-shadow)]',
         'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60',
         value !== null && 'tile-pop',
         value === 'X' && 'text-player-x',

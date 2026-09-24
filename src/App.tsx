@@ -16,8 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry, type HistoryStorage } from '@/lib/history'
-import { loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
+import type { HistoryStorage } from '@/lib/history'
 import {
   loadDeviceId,
   loadNickname,
@@ -42,7 +41,11 @@ import {
   type LobbyPresence,
 } from '@/lib/room'
 import type { RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
-import { loadSetup, saveSetup } from '@/lib/setup'
+import { DevDialog } from '@/components/DevDialog'
+import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry } from '@/lib/history'
+import { KNOCK, KNOCK_DELAY_MS, knockStep, loadDevMode, saveDevMode, type KnockEvent } from '@/lib/knock'
+import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
+import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
 import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
@@ -140,8 +143,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         if (winner !== local) {
           const { playerId: _id, ...ladder } = winner as typeof winner & { playerId?: string }
           saveLadder(storage, ladder)
-        }
-        else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
+        } else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
       })
       .catch(() => {})
   }, [services, deviceId, playerToken])
@@ -161,6 +163,36 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
+
+  // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
+  const [devMode, setDevMode] = useState(() => loadDevMode(storage))
+  const [devDialog, setDevDialog] = useState<'enter' | 'panel' | null>(null)
+  const [knockProgress, setKnockProgress] = useState(0)
+  const [knockDone, setKnockDone] = useState(0)
+  const knock = useCallback(
+    (event: KnockEvent): boolean => {
+      const next = knockStep(knockProgress, event)
+      const done = next === KNOCK.length
+      setKnockProgress(done ? 0 : next)
+      if (done) setKnockDone((n) => n + 1)
+      return done
+    },
+    [knockProgress],
+  )
+  useEffect(() => {
+    if (knockDone === 0) return
+    const id = setTimeout(() => setDevDialog('enter'), KNOCK_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [knockDone])
+  const resetGameData = () => {
+    for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY]) {
+      try {
+        storage.removeItem(key)
+      } catch {
+        // Best-effort.
+      }
+    }
+  }
   const [pendingRoomId, setPendingRoomId] = useState<string | null>(() => {
     const code = roomCodeFromUrl(url)
     if (code) replaceUrl(withoutRoomParam(url))
@@ -299,6 +331,9 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           onBack={() => setScreen({ kind: 'setup' })}
           share={share}
           siteUrl={siteUrl}
+          dev={devMode}
+          onOpenDev={() => setDevDialog('panel')}
+          onKnock={knock}
           onRecorded={onRecorded}
         />
       )}
@@ -325,6 +360,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           }}
           onOpenHistory={() => setHistoryOpen(true)}
           onModeChange={setSetupMode}
+          dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
+          onKnock={knock}
           online={{
             available: services !== null,
             panel: services && (
@@ -365,6 +402,23 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         online={services && nickname ? { deviceId, directory: services.directory } : undefined}
         share={share}
         siteUrl={siteUrl}
+        onKnock={knock}
+      />
+
+      <DevDialog
+        mode={devDialog}
+        rung={loadLadder(storage).rung}
+        onClose={() => setDevDialog(null)}
+        onEnter={() => {
+          saveDevMode(storage, true)
+          setDevMode(true)
+        }}
+        onSetRung={(rung) => saveLadder(storage, { ...loadLadder(storage), rung, streak: 0 })}
+        onReset={resetGameData}
+        onExit={() => {
+          saveDevMode(storage, false)
+          setDevMode(false)
+        }}
       />
 
       <AlertDialog open={replacePrompt !== null} onOpenChange={(o) => !o && setReplacePrompt(null)}>

@@ -23,6 +23,19 @@ describe('Board', () => {
     expect(onSelect).toHaveBeenCalledWith(4)
   })
 
+  it('reports every tap through onTap, including taps on occupied cells', () => {
+    const onSelect = vi.fn()
+    const onTap = vi.fn()
+    render(<Board board={b('X........')} winningLine={null} disabled={false} onSelect={onSelect} onTap={onTap} />)
+    // A disabled button lets the tap fall through to its wrapper (pointer-events: none).
+    fireEvent.click(screen.getByRole('button', { name: 'Cell 1, X' }).parentElement!)
+    expect(onTap).toHaveBeenCalledWith(0)
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Cell 5, empty' }))
+    expect(onTap).toHaveBeenCalledWith(4)
+    expect(onSelect).toHaveBeenCalledWith(4)
+  })
+
   it('disables occupied cells', () => {
     render(<Board board={b('X........')} winningLine={null} disabled={false} onSelect={() => {}} />)
     expect(screen.getByRole('button', { name: 'Cell 1, X' })).toBeDisabled()
