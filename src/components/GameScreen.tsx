@@ -103,7 +103,7 @@ export function GameScreen({ settings, storage, feedback, onBack }: GameScreenPr
       <Button
         size="lg"
         variant={finished ? 'default' : 'outline'}
-        className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+        className="min-h-14 w-full rounded-[18px] text-base font-medium"
         onClick={() => dispatch({ type: 'NEW_GAME' })}
       >
         New game

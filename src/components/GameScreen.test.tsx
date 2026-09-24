@@ -154,7 +154,7 @@ describe('GameScreen versus bot', () => {
 
   it('lets the bot reply after the delay and disables the board while thinking', () => {
     render(<GameScreen settings={hardBot} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
     fireEvent.click(cell(1))
     expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
     expect(cell(2)).toBeDisabled()
@@ -163,7 +163,7 @@ describe('GameScreen versus bot', () => {
     })
     const os = screen.getAllByRole('button', { name: /, O$/ })
     expect(os).toHaveLength(1)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
   })
 
   it("plays feedback for the bot's move too", () => {
@@ -205,7 +205,7 @@ describe('GameScreen versus bot', () => {
       vi.advanceTimersByTime(BOT_DELAY_MS)
     })
     expect(screen.getAllByRole('button', { name: /, X$/ })).toHaveLength(1)
-    expect(screen.getByText('Your turn')).toBeInTheDocument()
+    expect(screen.getByText('Your move')).toBeInTheDocument()
   })
 
   describe('against an easy bot that always takes the first free cell', () => {

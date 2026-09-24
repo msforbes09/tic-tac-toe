@@ -52,7 +52,7 @@ function Field({
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <span className="text-base font-semibold">{label}</span>
+        <span className="font-heading text-base font-medium">{label}</span>
         <span className="text-sm text-muted-foreground">{hint}</span>
       </div>
       {children}
@@ -87,8 +87,8 @@ export function SetupScreen({
             <Mark player="X" weight={15} className="size-6" />
           </span>
         </div>
-        <h1 className="text-[2.5rem] font-bold leading-none tracking-[-0.03em]">Tic-Tac-Toe</h1>
-        <p className="mt-2 text-muted-foreground">Three&rsquo;s a win.</p>
+        <h1 className="font-heading text-[2.6rem] font-semibold leading-none tracking-[-0.01em]">Tic-Tac-Toe</h1>
+        <p className="mt-2 text-muted-foreground">Win three.</p>
       </header>
 
       <div className="flex flex-col gap-7">
@@ -180,7 +180,7 @@ export function SetupScreen({
         {mode !== 'online' && (
           <Button
             size="lg"
-            className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+            className="min-h-14 w-full rounded-[18px] text-base font-medium"
             onClick={() => onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })}
           >
             Start game
@@ -204,7 +204,7 @@ function InstallCard({ offer }: { offer: InstallOffer }) {
   return (
     <div className="rise-in mt-1 flex flex-col gap-3 rounded-[18px] bg-muted/70 p-4 dark:bg-muted/50">
       <div className="flex flex-col gap-1">
-        <span className="text-[15px] font-semibold">Add to Home Screen</span>
+        <span className="font-heading text-[15px] font-medium">Add to Home Screen</span>
         <span className="text-sm text-muted-foreground">
           {offer.kind === 'prompt'
             ? 'Opens full screen like an app and works offline.'
@@ -213,7 +213,7 @@ function InstallCard({ offer }: { offer: InstallOffer }) {
       </div>
       <div className="flex gap-2">
         {offer.kind === 'prompt' && (
-          <Button className="min-h-11 flex-1 rounded-[14px] text-[15px] font-semibold" onClick={offer.onInstall}>
+          <Button className="min-h-11 flex-1 rounded-[14px] text-[15px] font-medium" onClick={offer.onInstall}>
             Install
           </Button>
         )}

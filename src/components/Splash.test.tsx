@@ -19,6 +19,15 @@ describe('Splash', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('plays the splash cue once when it mounts', () => {
+    const play = vi.fn()
+    const view = render(<Splash onDone={() => {}} feedback={{ play }} />)
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(play).toHaveBeenCalledWith({ kind: 'splash' })
+    view.rerender(<Splash onDone={() => {}} feedback={{ play }} />)
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
   it('stops its timers when unmounted early', () => {
     const onDone = vi.fn()
     const view = render(<Splash onDone={onDone} />)
@@ -27,13 +36,16 @@ describe('Splash', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 
-  it('keeps the phone column on wide screens and draws the logo, O first then X', () => {
+  it('keeps the phone column on wide screens and draws the logo on the bare background, O first then X', () => {
     render(<Splash onDone={() => {}} />)
     const splash = screen.getByRole('status')
     expect(splash.querySelector('.max-w-\\[420px\\]')).not.toBeNull()
-    const marks = Array.from(splash.querySelectorAll('.splash-mark'))
-    expect(marks.map((m) => m.getAttribute('data-player'))).toEqual(['O', 'X'])
-    const delay = (m: Element) => parseInt((m as HTMLElement).style.getPropertyValue('--splash-delay'))
+    expect(splash.querySelector('.splash-tile')).toBeNull()
+    expect(screen.getByText('Tic-Tac-Toe')).toHaveClass('font-heading')
+    expect(screen.getByText('Win three.')).toBeInTheDocument()
+    const marks = Array.from(splash.querySelectorAll('.logo-mark')) as HTMLElement[]
+    expect(marks.map((m) => m.dataset.player)).toEqual(['O', 'X'])
+    const delay = (m: HTMLElement) => parseInt(m.style.getPropertyValue('--logo-delay'))
     expect(delay(marks[0])).toBeLessThan(delay(marks[1]))
   })
 })

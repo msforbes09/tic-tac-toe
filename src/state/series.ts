@@ -179,5 +179,5 @@ export function seriesStatusText(state: SeriesState, viewer: string | null): str
     if (viewerSide === null) return `${name} wins!`
     return you ? 'You win!' : 'You lost'
   }
-  return you ? 'Your turn' : `${name}'s turn`
+  return you ? 'Your move' : `${name}'s turn`
 }

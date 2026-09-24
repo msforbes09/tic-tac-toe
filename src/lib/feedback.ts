@@ -7,6 +7,8 @@ export type FeedbackEvent =
   | { kind: 'draw' }
   | { kind: 'lose' }
   | { kind: 'start' }
+  /** The opening splash: plays with no user gesture, so implementations may have to drop it. */
+  | { kind: 'splash' }
 
 /** Plays sound and haptics for a game event. Implementations must never throw. */
 export type Feedback = { play: (event: FeedbackEvent) => void }

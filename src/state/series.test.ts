@@ -190,7 +190,7 @@ describe('snapshots and status text', () => {
 
   it('reads the status from each side and for watchers', () => {
     const s = fresh()
-    expect(seriesStatusText(s, 'b')).toBe('Your turn')
+    expect(seriesStatusText(s, 'b')).toBe('Your move')
     expect(seriesStatusText(s, 'a')).toBe("Bob's turn")
     expect(seriesStatusText(s, null)).toBe("Bob's turn")
     const won = playXWins(s)

@@ -305,7 +305,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {splash && <Splash onDone={endSplash} />}
+      {splash && <Splash onDone={endSplash} feedback={feedback} />}
     </AppShell>
   )
 }

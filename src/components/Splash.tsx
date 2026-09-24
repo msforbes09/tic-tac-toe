@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { Mark } from './Mark'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Logo } from './Logo'
+import type { Feedback } from '@/lib/feedback'
 import { cn } from '@/lib/utils'
 
 /** How long the splash stays before it starts to fade. */
@@ -8,12 +9,18 @@ export const SPLASH_HOLD_MS = 1800
 export const SPLASH_FADE_MS = 360
 
 /**
- * Opening animation on every cold load: the app icon's X and O draw themselves in (O first, then X),
- * the title rises, then the whole thing fades to reveal setup. It stays a phone-width column on wide
+ * Opening animation on every cold load: the logo's O and then X draw themselves in on the bare
+ * background, the title rises, then the whole thing fades to reveal setup. It stays a phone-width column on wide
  * screens, like the app itself. Reduced motion collapses the animation to a brief still.
  */
-export function Splash({ onDone }: { onDone: () => void }) {
+export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Feedback }) {
   const [leaving, setLeaving] = useState(false)
+
+  // Once, on mount: the cue is timed to the animation, which only plays once too.
+  const cue = useRef(feedback)
+  useEffect(() => {
+    cue.current?.play({ kind: 'splash' })
+  }, [])
 
   useEffect(() => {
     const hold = setTimeout(() => setLeaving(true), SPLASH_HOLD_MS)
@@ -35,28 +42,13 @@ export function Splash({ onDone }: { onDone: () => void }) {
         className="grid w-full max-w-[420px] place-items-center bg-background text-foreground sm:border-x"
       >
         <div className="flex -translate-y-[4vh] flex-col items-center">
-          {/* The icon: X top-left, O bottom-right, on a rounded tile. Same geometry as public/icon.svg. */}
-          <div className="splash-tile relative size-40 rounded-[22%] bg-muted/70" style={{ '--splash-delay': '0ms' } as CSSProperties}>
-            <span
-              className="splash-mark absolute bottom-[19%] right-[19%] size-[30%] text-player-o"
-              data-player="O"
-              style={{ '--splash-delay': '220ms' } as CSSProperties}
-            >
-              <Mark player="O" weight={17} className="size-full" />
-            </span>
-            <span
-              className="splash-mark absolute left-[19%] top-[19%] size-[30%] text-player-x"
-              data-player="X"
-              style={{ '--splash-delay': '640ms' } as CSSProperties}
-            >
-              <Mark player="X" weight={17} className="size-full" />
-            </span>
-          </div>
-          <p className="splash-rise mt-7 text-4xl font-bold tracking-[-0.03em]" style={{ '--splash-delay': '900ms' } as CSSProperties}>
+          {/* The logo, bare on the background: the O draws itself first, then the X across it. */}
+          <Logo animate className="size-56" />
+          <p className="splash-rise mt-7 font-heading text-[2.6rem] font-semibold tracking-[-0.01em]" style={{ '--splash-delay': '1000ms' } as CSSProperties}>
             Tic-Tac-Toe
           </p>
-          <p className="splash-rise mt-2 text-muted-foreground" style={{ '--splash-delay': '1040ms' } as CSSProperties}>
-            Three&rsquo;s a win.
+          <p className="splash-rise mt-2 text-muted-foreground" style={{ '--splash-delay': '1140ms' } as CSSProperties}>
+            Win three.
           </p>
         </div>
       </div>

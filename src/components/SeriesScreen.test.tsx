@@ -87,7 +87,7 @@ describe('SeriesScreen basics', () => {
     expect(c.el()).toHaveTextContent('Watching')
     expect(a.el()).not.toHaveTextContent('Watching')
     expect(a.el()).toHaveTextContent("Bob's turn")
-    expect(b.el()).toHaveTextContent('Your turn')
+    expect(b.el()).toHaveTextContent('Your move')
     expect(c.el()).toHaveTextContent("Bob's turn")
   })
 
@@ -114,7 +114,7 @@ describe('SeriesScreen basics', () => {
     fireEvent.click(b.button(/^next game$/i))
     await flush()
     for (const side of [a, b, c]) expect(side.el()).toHaveTextContent(`Game 2 of ${SERIES_GAMES}`)
-    expect(a.el()).toHaveTextContent('Your turn')
+    expect(a.el()).toHaveTextContent('Your move')
     expect(a.cell(5)).not.toBeDisabled()
   })
 
