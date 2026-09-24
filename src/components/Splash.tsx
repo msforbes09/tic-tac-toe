@@ -41,7 +41,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
             Tic-Tac-Toe
           </p>
           <p className="splash-rise mt-2 text-muted-foreground" style={{ '--splash-delay': '1140ms' } as CSSProperties}>
-            Three&rsquo;s a win.
+            Win three.
           </p>
         </div>
       </div>

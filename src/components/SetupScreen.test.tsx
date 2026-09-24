@@ -151,7 +151,7 @@ describe('SetupScreen install card', () => {
 
   it('carries the tagline and the bot descriptions', () => {
     render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
-    expect(screen.getByText("Three’s a win.")).toBeInTheDocument()
+    expect(screen.getByText("Win three.")).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /bot/i }))
     expect(screen.getByText('Blocks and pounces')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^easy$/i }))
