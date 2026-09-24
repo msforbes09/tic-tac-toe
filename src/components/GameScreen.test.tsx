@@ -50,6 +50,7 @@ describe('GameScreen feedback', () => {
     render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)
     for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
     expect(feedback.played).toEqual([
+      { kind: 'start' },
       { kind: 'move', player: 'X' },
       { kind: 'move', player: 'O' },
       { kind: 'move', player: 'X' },
@@ -58,12 +59,13 @@ describe('GameScreen feedback', () => {
     ])
   })
 
-  it('plays nothing when starting a new game', () => {
+  it('plays a start cue when the screen opens and again on New game', () => {
     const feedback = recorder()
     render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)
+    expect(feedback.played).toEqual([{ kind: 'start' }])
     fireEvent.click(cell(1))
     fireEvent.click(screen.getByRole('button', { name: /new game/i }))
-    expect(feedback.played).toHaveLength(1)
+    expect(feedback.played).toEqual([{ kind: 'start' }, { kind: 'move', player: 'X' }, { kind: 'start' }])
   })
 
   it('always plays sound: there is no mute control', () => {
@@ -174,6 +176,7 @@ describe('GameScreen versus bot', () => {
       vi.advanceTimersByTime(BOT_DELAY_MS)
     })
     expect(feedback.played).toEqual([
+      { kind: 'start' },
       { kind: 'move', player: 'X' },
       { kind: 'move', player: 'O' },
     ])
@@ -243,7 +246,7 @@ describe('GameScreen versus bot', () => {
       botReplies()
       fireEvent.click(cell(5))
       botReplies()
-      expect(screen.getByText('Bot wins!')).toBeInTheDocument()
+      expect(screen.getByText('You lost')).toBeInTheDocument()
       expect(screen.queryByTestId('celebration')).not.toBeInTheDocument()
       expect(scoreOf('Bot')).toBe('1')
       expect(feedback.played.at(-1)).toEqual({ kind: 'lose' })
@@ -258,7 +261,7 @@ describe('GameScreen versus bot', () => {
       }
       fireEvent.click(cell(5))
       botReplies()
-      expect(screen.getByText('Bot wins!')).toBeInTheDocument()
+      expect(screen.getByText('You lost')).toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: /new game/i }))
       expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
     })
@@ -330,6 +333,15 @@ describe('GameScreen online', () => {
     fireEvent.click(cellIn('guest', 5))
     expect(cellIn('host', 5)).toHaveAccessibleName('Cell 5, O')
     expect(cellIn('guest', 5)).toHaveAccessibleName('Cell 5, O')
+  })
+
+  it('celebrates on the winner\'s device only, and the loser hears a loss', () => {
+    const { within, cellIn } = renderPair()
+    playXWins(cellIn)
+    expect(within('host').querySelector('[data-testid="celebration"]')).not.toBeNull()
+    expect(within('guest').querySelector('[data-testid="celebration"]')).toBeNull()
+    expect(within('host')).toHaveTextContent('You win!')
+    expect(within('guest')).toHaveTextContent('You lost')
   })
 
   it('a stale guest move request is dropped by the host', () => {
@@ -423,7 +435,7 @@ describe('GameScreen online', () => {
         </div>
       </>,
     )
-    expect(screen.getByTestId('guest')).toHaveTextContent('Friend wins!')
+    expect(screen.getByTestId('guest')).toHaveTextContent('You lost')
     expect(lateStorage.entries()).toHaveLength(0)
   })
 

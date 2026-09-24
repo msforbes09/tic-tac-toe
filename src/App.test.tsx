@@ -58,7 +58,7 @@ describe('App online', () => {
   })
 
   it('disables Online when Supabase is not configured', () => {
-    render(<App />)
+    render(<App deps={{ openRoom: null }} />)
     expect(screen.getByRole('button', { name: /online/i })).toBeDisabled()
   })
 

@@ -29,7 +29,7 @@
   <!-- Copy -->
   <g font-family="Geist Variable, Geist, -apple-system, 'Helvetica Neue', Arial, sans-serif" fill="#fafafa">
     <text x="600" y="282" font-size="104" font-weight="700" letter-spacing="-4">Tic-Tac-Toe</text>
-    <text x="600" y="356" font-size="40" fill="#b5b5b5">Three in a row wins.</text>
+    <text x="600" y="356" font-size="40" fill="#b5b5b5">Three’s a win.</text>
     <text x="600" y="430" font-size="34" fill="#8a8a8a">Play a friend online, on the same</text>
     <text x="600" y="476" font-size="34" fill="#8a8a8a">phone, or take on the bot.</text>
     <text x="600" y="556" font-size="28" fill="#6d6d6d">tic-tac-toe.iam4bs.dev</text>

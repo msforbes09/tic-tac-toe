@@ -26,4 +26,14 @@ describe('Splash', () => {
     act(() => vi.advanceTimersByTime(SPLASH_HOLD_MS + SPLASH_FADE_MS + 10))
     expect(onDone).not.toHaveBeenCalled()
   })
+
+  it('keeps the phone column on wide screens and draws the logo, O first then X', () => {
+    render(<Splash onDone={() => {}} />)
+    const splash = screen.getByRole('status')
+    expect(splash.querySelector('.max-w-\\[420px\\]')).not.toBeNull()
+    const marks = Array.from(splash.querySelectorAll('.splash-mark'))
+    expect(marks.map((m) => m.getAttribute('data-player'))).toEqual(['O', 'X'])
+    const delay = (m: Element) => parseInt((m as HTMLElement).style.getPropertyValue('--splash-delay'))
+    expect(delay(marks[0])).toBeLessThan(delay(marks[1]))
+  })
 })

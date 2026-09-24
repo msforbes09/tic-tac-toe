@@ -26,9 +26,9 @@ export type SetupScreenProps = {
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
-  { value: 'easy', label: 'Easy', hint: 'Plays at random' },
-  { value: 'medium', label: 'Medium', hint: 'Takes wins and blocks' },
-  { value: 'hard', label: 'Hard', hint: 'Never loses' },
+  { value: 'easy', label: 'Easy', hint: 'Makes mistakes' },
+  { value: 'medium', label: 'Medium', hint: 'Blocks and pounces' },
+  { value: 'hard', label: 'Hard', hint: 'Unbeatable' },
 ]
 
 const segmentItem =
@@ -91,7 +91,7 @@ export function SetupScreen({
           </span>
         </div>
         <h1 className="text-[2.5rem] font-bold leading-none tracking-[-0.03em]">Tic-Tac-Toe</h1>
-        <p className="mt-2 text-muted-foreground">Three in a row wins.</p>
+        <p className="mt-2 text-muted-foreground">Three&rsquo;s a win.</p>
       </header>
 
       <div className="flex flex-col gap-7">

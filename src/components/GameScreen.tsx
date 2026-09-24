@@ -39,7 +39,8 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
   const reducer = useMemo(() => roomReducer(role), [role])
   const [state, dispatch] = useReducer(reducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
-  const previousBoard = useRef(state.board)
+  // Null until the first board is seen, so the opening board plays the start cue.
+  const previousBoard = useRef<BoardModel | null>(null)
   const [waiting, setWaiting] = useState(false)
 
   const seat: Seat = role === 'guest' ? 'p2' : 'p1'
@@ -88,8 +89,11 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
   const isBotTurn = botSymbol !== null && state.status === 'playing' && nextPlayer(state.board) === botSymbol
-  const youBeatTheBot =
-    settings.mode === 'bot' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === 'p1'
+  // Your opponent's symbol, whose win sounds like a loss: the bot, or your friend online.
+  const opponentSymbol = botSymbol ?? (online ? symbolOf(state, seat === 'p1' ? 'p2' : 'p1') : null)
+  // Confetti when you beat the bot or your friend. Two players sharing a phone get none.
+  const youWon =
+    settings.mode !== 'pvp' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === seat
 
   // Bot reply, delayed so it feels like a turn rather than an instant reaction.
   useEffect(() => {
@@ -100,12 +104,12 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
     return () => clearTimeout(id)
   }, [isBotTurn, state.board, settings.difficulty])
 
-  // Sound and haptics for every new mark, the player's and the bot's alike.
+  // Sound and haptics for the start of each game and every new mark, yours and theirs alike.
   useEffect(() => {
-    const event = feedbackForChange(previousBoard.current, state.board, botSymbol)
+    const event = feedbackForChange(previousBoard.current, state.board, opponentSymbol)
     previousBoard.current = state.board
     if (event) feedback.play(event)
-  }, [state.board, botSymbol, feedback])
+  }, [state.board, opponentSymbol, feedback])
 
   // Record each finished game exactly once. The ref guards StrictMode's double effect run.
   useEffect(() => {
@@ -186,7 +190,7 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
             disabled={finished || isBotTurn || !myTurn || friendLeft}
             onSelect={play}
           />
-          {youBeatTheBot && <Celebration />}
+          {youWon && <Celebration />}
         </div>
       </div>
 

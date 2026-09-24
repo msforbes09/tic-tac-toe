@@ -148,4 +148,15 @@ describe('SetupScreen install card', () => {
     expect(screen.queryByRole('button', { name: /^install$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /not now/i })).toBeInTheDocument()
   })
+
+  it('carries the tagline and the bot descriptions', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
+    expect(screen.getByText("Three’s a win.")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    expect(screen.getByText('Blocks and pounces')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^easy$/i }))
+    expect(screen.getByText('Makes mistakes')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
+    expect(screen.getByText('Unbeatable')).toBeInTheDocument()
+  })
 })

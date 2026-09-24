@@ -13,12 +13,12 @@ export function statusText(state: GameState, youSeat?: Seat): string {
   const seat = seatOf(state, player)
   if (mode === 'online') {
     const you = seat === (youSeat ?? 'p1')
-    if (state.status === 'won') return you ? 'You win!' : 'Friend wins!'
+    if (state.status === 'won') return you ? 'You win!' : 'You lost'
     return you ? 'Your turn' : "Friend's turn"
   }
   if (state.status === 'won') {
     if (mode !== 'bot') return `${SEAT_NAME[seat]} wins!`
-    return seat === 'p1' ? 'You win!' : 'Bot wins!'
+    return seat === 'p1' ? 'You win!' : 'You lost'
   }
   if (mode !== 'bot') return `${SEAT_NAME[seat]}'s turn`
   return seat === 'p1' ? 'Your turn' : 'Bot is thinking…'
