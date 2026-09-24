@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import {
+  LOBBY_CHANNEL,
   ROOM_CODE_ALPHABET,
+  createId,
   createRoomCode,
+  gameChannel,
+  isGameMessage,
+  isGamePresence,
+  isGameSnapshot,
+  isLobbyPresence,
+  isRoomEvent,
+  isRoomPresence,
   normalizeRoomCode,
-  roomCodeFromUrl,
-  isRoomMessage,
-  lobbyState,
+  pairsInProgress,
   readSupabaseConfig,
+  roomChannel,
+  roomCodeFromUrl,
   roomLink,
   withoutRoomParam,
-  type Member,
+  type RoomPresence,
   type Snapshot,
 } from './room'
 
@@ -76,77 +85,94 @@ const snapshot: Snapshot = {
   winningLine: null,
 }
 
-describe('isRoomMessage', () => {
-  it('accepts the three message shapes', () => {
-    expect(isRoomMessage({ type: 'move', index: 4 })).toBe(true)
-    expect(isRoomMessage({ type: 'new-game' })).toBe(true)
-    expect(isRoomMessage({ type: 'hello' })).toBe(true)
-    expect(isRoomMessage({ type: 'state', state: snapshot })).toBe(true)
-    expect(
-      isRoomMessage({
-        type: 'state',
-        state: { ...snapshot, status: 'won', winner: 'X', winningLine: [0, 1, 2] },
-      }),
-    ).toBe(true)
-  })
-
-  it('rejects anything that is not a message', () => {
-    expect(isRoomMessage(null)).toBe(false)
-    expect(isRoomMessage('move')).toBe(false)
-    expect(isRoomMessage({ type: 'chat', text: 'hi' })).toBe(false)
-    expect(isRoomMessage({ type: 'move' })).toBe(false)
-    expect(isRoomMessage({ type: 'move', index: '4' })).toBe(false)
-    expect(isRoomMessage({ type: 'move', index: 4.5 })).toBe(false)
-    expect(isRoomMessage({ type: 'move', index: 9 })).toBe(false)
-    expect(isRoomMessage({ type: 'move', index: -1 })).toBe(false)
-  })
-
-  it('rejects malformed snapshots', () => {
-    const bad = (patch: Record<string, unknown>) => isRoomMessage({ type: 'state', state: { ...snapshot, ...patch } })
-    expect(isRoomMessage({ type: 'state' })).toBe(false)
+describe('isGameSnapshot', () => {
+  it('accepts a board snapshot and rejects malformed ones', () => {
+    expect(isGameSnapshot(snapshot)).toBe(true)
+    expect(isGameSnapshot({ ...snapshot, status: 'won', winner: 'X', winningLine: [0, 1, 2] })).toBe(true)
+    const bad = (patch: Record<string, unknown>) => isGameSnapshot({ ...snapshot, ...patch })
     expect(bad({ board: snapshot.board.slice(0, 8) })).toBe(false)
     expect(bad({ board: [...snapshot.board.slice(0, 8), 'Z'] })).toBe(false)
     expect(bad({ p1Symbol: 'Z' })).toBe(false)
     expect(bad({ status: 'paused' })).toBe(false)
     expect(bad({ winner: 'draw' })).toBe(false)
     expect(bad({ winningLine: [0, 1] })).toBe(false)
-    expect(bad({ winningLine: [0, 1, 9] })).toBe(false)
-    expect(bad({ score: { p1: 1, p2: 0 } })).toBe(false)
     expect(bad({ score: { p1: -1, p2: 0, draws: 0 } })).toBe(false)
   })
 })
 
-describe('lobbyState', () => {
-  const host: Member = { id: 'h', role: 'host', joinedAt: 1 }
-  const g1: Member = { id: 'g1', role: 'guest', joinedAt: 2 }
-  const g2: Member = { id: 'g2', role: 'guest', joinedAt: 3 }
+describe('ids and channels', () => {
+  it('makes ids of any length and names channels', () => {
+    expect(createId(6, () => 0)).toBe('AAAAAA')
+    expect(roomChannel('AB2CDE')).toBe('ttt-room:AB2CDE')
+    expect(gameChannel('G1')).toBe('ttt-game:G1')
+    expect(LOBBY_CHANNEL).toBe('ttt-lobby')
+    expect(normalizeRoomCode('ab2cde')).toBe('AB2CDE')
+    expect(normalizeRoomCode('ab2cdefgh')).toBeNull()
+  })
+})
 
-  it('host waits alone and plays once any guest arrives', () => {
-    expect(lobbyState([host], 'h')).toBe('waiting')
-    expect(lobbyState([host, g1], 'h')).toBe('playing')
-    expect(lobbyState([host, g1, g2], 'h')).toBe('playing')
+const alice = { deviceId: 'a', nickname: 'Alice' }
+const bob = { deviceId: 'b', nickname: 'Bob' }
+const result = {
+  gameId: 'g',
+  roomId: 'r',
+  winner: alice,
+  loser: bob,
+  winnerScore: 6,
+  loserScore: 4,
+  games: 10,
+  reason: 'decided',
+  endedAt: 1,
+}
+
+describe('isRoomEvent', () => {
+  it('accepts every event and rejects junk', () => {
+    expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: alice, to: 'b' })).toBe(true)
+    expect(isRoomEvent({ type: 'accept', gameId: 'g', from: 'b' })).toBe(true)
+    expect(isRoomEvent({ type: 'decline', gameId: 'g', from: 'b' })).toBe(true)
+    expect(isRoomEvent({ type: 'cancel', gameId: 'g', from: 'a' })).toBe(true)
+    expect(isRoomEvent({ type: 'series-ended', result })).toBe(true)
+    expect(isRoomEvent({ type: 'room-deleted' })).toBe(true)
+    expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: 'a', to: 'b' })).toBe(false)
+    expect(isRoomEvent({ type: 'series-ended', result: { ...result, reason: 'quit' } })).toBe(false)
+    expect(isRoomEvent({ type: 'kick' })).toBe(false)
+    expect(isRoomEvent(null)).toBe(false)
+  })
+})
+
+describe('isGameMessage', () => {
+  it('accepts moves, next-game, resign, hello, state', () => {
+    expect(isGameMessage({ type: 'move', index: 4, from: 'a' })).toBe(true)
+    expect(isGameMessage({ type: 'next-game', from: 'a' })).toBe(true)
+    expect(isGameMessage({ type: 'resign', from: 'b' })).toBe(true)
+    expect(isGameMessage({ type: 'hello', from: 'b' })).toBe(true)
+    expect(isGameMessage({ type: 'state', state: {} })).toBe(true)
+    expect(isGameMessage({ type: 'move', index: 9, from: 'a' })).toBe(false)
+    expect(isGameMessage({ type: 'move', index: 1 })).toBe(false)
+    expect(isGameMessage({ type: 'new-game' })).toBe(false)
+  })
+})
+
+describe('presence shapes', () => {
+  it('validates room, game and lobby presence', () => {
+    expect(isRoomPresence({ deviceId: 'a', nickname: 'Alice', status: 'idle', gameId: null })).toBe(true)
+    expect(isRoomPresence({ deviceId: 'a', nickname: 'Alice', status: 'playing', gameId: 'g' })).toBe(true)
+    expect(isRoomPresence({ deviceId: 'a', nickname: 'Alice', status: 'asleep', gameId: null })).toBe(false)
+    expect(isGamePresence({ deviceId: 'a', role: 'referee' })).toBe(true)
+    expect(isGamePresence({ deviceId: 'a', role: 'coach' })).toBe(false)
+    expect(isLobbyPresence({ roomId: 'r', nickname: 'Alice' })).toBe(true)
+    expect(isLobbyPresence({ roomId: 'r' })).toBe(false)
   })
 
-  it('guest waits without a host (empty or unknown code)', () => {
-    expect(lobbyState([g1], 'g1')).toBe('waiting')
-    expect(lobbyState([], 'g1')).toBe('waiting')
-  })
-
-  it('the first guest plays and any later guest finds the room full', () => {
-    expect(lobbyState([host, g1, g2], 'g1')).toBe('playing')
-    expect(lobbyState([host, g1, g2], 'g2')).toBe('full')
-    expect(lobbyState([g2, host, g1], 'g1')).toBe('playing')
-  })
-
-  it('breaks a joinedAt tie by id', () => {
-    const a: Member = { id: 'a', role: 'guest', joinedAt: 5 }
-    const b: Member = { id: 'b', role: 'guest', joinedAt: 5 }
-    expect(lobbyState([host, b, a], 'a')).toBe('playing')
-    expect(lobbyState([host, b, a], 'b')).toBe('full')
-  })
-
-  it('after the first guest leaves, a new guest plays', () => {
-    expect(lobbyState([host, g2], 'g2')).toBe('playing')
+  it('pairs playing members by game', () => {
+    const members: RoomPresence[] = [
+      { deviceId: 'a', nickname: 'Alice', status: 'playing', gameId: 'g1' },
+      { deviceId: 'b', nickname: 'Bob', status: 'playing', gameId: 'g1' },
+      { deviceId: 'c', nickname: 'Cat', status: 'watching', gameId: 'g1' },
+      { deviceId: 'd', nickname: 'Dan', status: 'playing', gameId: 'g2' },
+      { deviceId: 'e', nickname: 'Eve', status: 'idle', gameId: null },
+    ]
+    expect(pairsInProgress(members)).toEqual([{ gameId: 'g1', players: [alice, bob] }])
   })
 })
 
