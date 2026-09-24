@@ -117,8 +117,9 @@ grant execute on function public.upsert_player(text, text, text) to anon, authen
 create table if not exists public.games (
   id text primary key,
   player_id text not null,
-  mode text not null check (mode in ('bot', 'online')),
+  mode text not null check (mode in ('pvp', 'bot', 'online')),
   difficulty text check (difficulty in ('easy', 'medium', 'hard')),
+  rung int check (rung between 1 and 30),
   outcome text not null check (outcome in ('won', 'lost', 'draw')),
   symbol text not null check (symbol in ('X', 'O')),
   opponent_id text,
@@ -142,3 +143,41 @@ begin
   end if;
 end
 $$;
+
+-- ladders: the adaptive bot's state per player, renamed only with the device's secret token.
+create table if not exists public.ladders (
+  player_id text primary key,
+  token_hash text not null,
+  rung int check (rung between 1 and 30),
+  streak int not null default 0,
+  top_held_at timestamptz,
+  top_held_count int not null default 0 check (top_held_count >= 0),
+  updated_at timestamptz not null default now()
+);
+alter table public.ladders enable row level security;
+drop policy if exists "ladders are public" on public.ladders;
+create policy "ladders are public" on public.ladders for select to anon, authenticated using (true);
+
+create or replace function public.save_ladder(
+  p_id text, p_token text, p_rung int, p_streak int, p_top_held_at timestamptz, p_top_held_count int, p_updated_at timestamptz
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hashed text := encode(extensions.digest(p_token, 'sha256'), 'hex');
+begin
+  insert into public.ladders (player_id, token_hash, rung, streak, top_held_at, top_held_count, updated_at)
+  values (p_id, hashed, p_rung, p_streak, p_top_held_at, p_top_held_count, p_updated_at)
+  on conflict (player_id) do update
+    set rung = excluded.rung,
+        streak = excluded.streak,
+        top_held_at = excluded.top_held_at,
+        top_held_count = excluded.top_held_count,
+        updated_at = excluded.updated_at
+    where public.ladders.token_hash = excluded.token_hash;
+end
+$$;
+grant execute on function public.save_ladder(text, text, int, int, timestamptz, int, timestamptz) to anon, authenticated;

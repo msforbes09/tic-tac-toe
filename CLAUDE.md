@@ -31,7 +31,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/platform/supabase*.ts` — the only files that import `@supabase/supabase-js`: realtime adapter, directory adapter, shared client.
 - `src/platform/share.ts` — Web Share / clipboard behind `ShareLink`.
 - `src/components/OnlinePanel.tsx`, `RoomScreen.tsx`, `SeriesScreen.tsx`, `NicknameSheet.tsx`, `Interstitial.tsx` — the online UI.
-- `supabase/schema.sql` — full schema for a fresh project (rooms, results, players, games, `delete_room`, `upsert_player`); `supabase/migrations/` holds dated deltas for existing projects.
+- `supabase/schema.sql` — full schema for a fresh project (rooms, results, players, games, ladders, `delete_room`, `upsert_player`, `save_ladder`); `supabase/migrations/` holds dated deltas for existing projects.
 - `src/components/` — React UI. `ui/` is shadcn-generated; don't hand-edit.
 - `docs/superpowers/specs/` — design spec. Read before changing behaviour.
 - `design/og-image.svg` — source of the link-preview banner `public/og-image.png`. `index.html` carries the SEO / Open Graph tags; keep the live URL there in sync with the domain.
@@ -44,7 +44,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - lib/ and state/ never import React or touch the DOM.
 - TDD for all logic: failing test first, minimal code, refactor.
 - Mobile-first single column (max 420px) on every screen size. Dark theme only: `<html class="dark">` in index.html; nothing follows the system setting.
-- Online: the challenger's device is the referee and holds the `SeriesState`; the challenged player and watchers send requests / `hello` and apply `state` snapshots. The challenger is `p1`; the challenged player is X in game 1 and first move alternates. First to 6 of 10, tie breaker if level, resign = loss, 30 s grace on a drop. Online games are not saved locally; the referee stores the series result (with challenger and challenged ids) and History shows a player's series from the directory. Online is never the remembered setup mode.
+- Online: the challenger's device is the referee and holds the `SeriesState`; the challenged player and watchers send requests / `hello` and apply `state` snapshots. The challenger is `p1`; the challenged player is X in game 1 and first move alternates. First to 6 of 10, tie breaker if level, resign = loss, 30 s grace on a drop. Online games are not saved locally; the referee stores the series result (with challenger and challenged ids). History shows one mode at a time (the mode picked on setup): two-player and bot rows from the cloud with the local list as offline fallback, online series from `results`. Local entries carry `synced`; unsynced ones are pushed on launch. Two-player rows are from Player 1's side. Online is never the remembered setup mode.
 - Nicknames: 2–12 characters, letters, digits and single spaces, filtered as typed; random ones come from `randomNickname`. Each device has a player token that alone can rename its `players` row.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.

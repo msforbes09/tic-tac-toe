@@ -22,3 +22,5 @@ order instead; each is safe to re-run.
 - `2026-09-25-players-and-history.sql` — players table with token-checked
   renames, challenger/challenged on results, and a `games` table reserved for
   per-game history.
+- `2026-09-25-cloud-history.sql` — two-player rows and the bot rung in `games`,
+  plus the `ladders` table and `save_ladder` for the adaptive bot.
