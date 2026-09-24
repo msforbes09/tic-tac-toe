@@ -29,4 +29,12 @@ describe('NicknameSheet', () => {
     view.rerender(<NicknameSheet open={false} initial="Sly Diagonal" onSave={onSave} />)
     expect(screen.queryByRole('textbox', { name: /nickname/i })).not.toBeInTheDocument()
   })
+
+  it('filters what is typed: only letters, digits and single spaces, at most 12 characters', () => {
+    render(<NicknameSheet open initial="Sly Fork" onSave={() => {}} />)
+    const input = screen.getByRole('textbox', { name: /nickname/i })
+    fireEvent.change(input, { target: { value: 'Bob!!  Cat_99 extra' } })
+    expect(input).toHaveValue('Bob Cat99 ex')
+    expect(input).toHaveAttribute('maxlength', '12')
+  })
 })

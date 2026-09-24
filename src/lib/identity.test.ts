@@ -7,7 +7,9 @@ import {
   loadDeviceId,
   loadNickname,
   loadOwnedRooms,
+  NICKNAME_MAX,
   normalizeNickname,
+  sanitizeNicknameInput,
   removeOwnedRoom,
   saveNickname,
   saveOwnedRoom,
@@ -34,11 +36,23 @@ describe('identity', () => {
     expect(loadDeviceId(s)).toBe(id)
   })
 
-  it('normalizes nicknames to 2–20 trimmed characters', () => {
-    expect(normalizeNickname('  Sly   Diagonal ')).toBe('Sly Diagonal')
+  it('normalizes nicknames: 2–12 letters, digits and single spaces', () => {
+    expect(normalizeNickname('  Sly   Fork ')).toBe('Sly Fork')
     expect(normalizeNickname('a')).toBeNull()
-    expect(normalizeNickname('x'.repeat(21))).toBeNull()
+    expect(normalizeNickname('x'.repeat(13))).toBeNull()
+    expect(normalizeNickname('x'.repeat(12))).toBe('x'.repeat(12))
     expect(normalizeNickname('   ')).toBeNull()
+    expect(normalizeNickname('Bob!')).toBeNull()
+    expect(normalizeNickname('Ana 2')).toBe('Ana 2')
+  })
+
+  it('filters input as it is typed: drops other characters, collapses spaces, caps at 12', () => {
+    expect(sanitizeNicknameInput('Bob!@# Cat')).toBe('Bob Cat')
+    expect(sanitizeNicknameInput('Bob   Cat')).toBe('Bob Cat')
+    expect(sanitizeNicknameInput('  Bob')).toBe('Bob')
+    expect(sanitizeNicknameInput('Bob ')).toBe('Bob ')
+    expect(sanitizeNicknameInput('abcdefghijklmnop')).toBe('abcdefghijkl')
+    expect(NICKNAME_MAX).toBe(12)
   })
 
   it('round-trips the nickname', () => {

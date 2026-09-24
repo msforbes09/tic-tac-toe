@@ -117,4 +117,18 @@ describe('createBrowserFeedback', () => {
     expect(audio.tones).toHaveLength(2)
     expect(vibrate).toHaveBeenCalledTimes(1)
   })
+
+  it('plays a rising chime with a double buzz for an incoming challenge, and a lighter cue when accepted', () => {
+    const audio = fakeAudio()
+    const vibrate = vi.fn(() => true)
+    const feedback = createBrowserFeedback({ vibrate, createAudio: () => audio })
+    feedback.play({ kind: 'challenge' })
+    expect(audio.tones.length).toBeGreaterThanOrEqual(3)
+    expect([...audio.tones].sort((a, b) => a - b)).toEqual(audio.tones)
+    expect(Array.isArray((vibrate.mock.calls[0] as unknown as [unknown])[0])).toBe(true)
+    const before = audio.tones.length
+    feedback.play({ kind: 'accepted' })
+    expect(audio.tones.length).toBeGreaterThan(before)
+    expect(vibrate).toHaveBeenCalledTimes(2)
+  })
 })
