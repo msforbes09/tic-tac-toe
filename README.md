@@ -1,8 +1,8 @@
 # Tic-Tac-Toe
 
 Mobile-first tic-tac-toe in the browser. Play a friend on the same phone, or
-take on a bot with three difficulty levels — the hard bot never loses. Every
-finished game is saved to a local history. Moves and wins come with sound
+take on a bot with three difficulty levels — the hard bot never loses. Bot games
+are saved to a local history; online series are kept with your player. Moves and wins come with sound
 and, on phones that support it, haptics. Pick X or O against the bot; after
 that the winner takes X and starts the next game, and a draw swaps. A session
 score sits above the board, and history shows your record per difficulty.
@@ -50,7 +50,8 @@ Online play runs over [Supabase](https://supabase.com): Realtime channels for
 presence and moves, plus two small tables for rooms and results. To enable it:
 
 1. Create a free Supabase project.
-2. Run `supabase/schema.sql` once in its SQL editor (see `supabase/README.md`).
+2. Run `supabase/schema.sql` once in its SQL editor (see `supabase/README.md`;
+   existing projects apply `supabase/migrations/` instead).
 3. Copy the Project URL and publishable key from Project Settings → API.
 4. Locally: copy `.env.example` to `.env` and fill both values.
 5. Deploys: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build

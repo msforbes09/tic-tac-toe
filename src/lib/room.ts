@@ -74,6 +74,9 @@ export type SeriesPlayer = { deviceId: string; nickname: string }
 export type SeriesResult = {
   gameId: string
   roomId: string
+  /** Who issued and who accepted the challenge; the challenger is shown on the left. */
+  challengerId: string
+  challengedId: string
   winner: SeriesPlayer
   loser: SeriesPlayer
   winnerScore: number
@@ -136,6 +139,8 @@ export function isSeriesResult(v: unknown): v is SeriesResult {
   return (
     isString(v.gameId) &&
     isString(v.roomId) &&
+    isString(v.challengerId) &&
+    isString(v.challengedId) &&
     isPlayerRef(v.winner) &&
     isPlayerRef(v.loser) &&
     isCount(v.winnerScore) &&

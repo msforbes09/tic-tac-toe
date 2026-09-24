@@ -73,6 +73,14 @@ describe('GameScreen feedback', () => {
 })
 
 describe('GameScreen two-player', () => {
+  it('does not save two-player games to history', () => {
+    const storage = fakeStorage()
+    render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
+    expect(screen.getByText('Player 1 wins!')).toBeInTheDocument()
+    expect(storage.entries()).toEqual([])
+  })
+
   it('alternates X and O and names whose turn it is', () => {
     render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
     expect(screen.getByText("Player 1's turn")).toBeInTheDocument()
@@ -83,24 +91,19 @@ describe('GameScreen two-player', () => {
     expect(cell(2)).toHaveAccessibleName('Cell 2, O')
   })
 
-  it('announces the winner and records exactly one history entry', () => {
-    const storage = fakeStorage()
-    render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} />)
+  it('announces the winner and highlights the line', () => {
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
     expect(screen.getByText('Player 1 wins!')).toBeInTheDocument()
     expect(cell(1)).toHaveAttribute('data-highlighted', 'true')
-    const entries = storage.entries()
-    expect(entries).toHaveLength(1)
-    expect(entries[0]).toMatchObject({ mode: 'pvp', difficulty: null, outcome: 'X', p1Symbol: 'X' })
-    expect(typeof entries[0].timestamp).toBe('number')
   })
 
-  it('records a draw', () => {
+  it('announces a draw', () => {
     const storage = fakeStorage()
     render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} />)
     for (const n of [1, 2, 3, 5, 4, 6, 8, 7, 9]) fireEvent.click(cell(n))
     expect(screen.getByText("It's a draw")).toBeInTheDocument()
-    expect(storage.entries()[0]).toMatchObject({ outcome: 'draw' })
+    expect(storage.entries()).toEqual([])
   })
 
   it('New game clears the board and keeps playing', () => {

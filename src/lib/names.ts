@@ -29,3 +29,14 @@ export function uniqueName(existing: Iterable<string>, random: () => number = Ma
   }
   return `${base} ${taken.size}`
 }
+
+const NICKNAME_MAX = 12
+
+/** A themed name short enough for a nickname (12 characters or fewer). */
+export function randomNickname(random: () => number = Math.random): string {
+  const adjective = pick(ADJECTIVES, random)
+  const fits = TERMS.filter((t) => adjective.length + 1 + t.length <= NICKNAME_MAX)
+  const term = fits.length > 0 ? pick(fits, random) : pick(TERMS, random)
+  const name = `${adjective} ${term}`
+  return name.length <= NICKNAME_MAX ? name : adjective.slice(0, NICKNAME_MAX)
+}

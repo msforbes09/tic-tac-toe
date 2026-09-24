@@ -144,6 +144,8 @@ describe('scoring and decision', () => {
     expect(s.result).toEqual({
       gameId: 'g',
       roomId: 'r',
+      challengerId: 'a',
+      challengedId: 'b',
       winner: alice,
       loser: bob,
       winnerScore: 0,

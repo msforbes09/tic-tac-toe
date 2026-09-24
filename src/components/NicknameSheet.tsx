@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { normalizeNickname } from '@/lib/identity'
+import { NICKNAME_MAX, normalizeNickname, sanitizeNicknameInput } from '@/lib/identity'
 
 export type NicknameSheetProps = {
   open: boolean
@@ -28,16 +28,16 @@ export function NicknameSheet({ open, initial, onSave }: NicknameSheetProps) {
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="text-2xl font-bold tracking-tight">Your nickname</SheetTitle>
-          <SheetDescription>Others in a room see this name. You can change it any time.</SheetDescription>
+          <SheetDescription>Others in a room see this name. Letters, digits and spaces, up to 12. You can change it any time.</SheetDescription>
         </SheetHeader>
         <input
           aria-label="Nickname"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => setValue(sanitizeNicknameInput(e.target.value))}
           onKeyDown={(e) => {
             if (e.key === 'Enter') save()
           }}
-          maxLength={20}
+          maxLength={NICKNAME_MAX}
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
