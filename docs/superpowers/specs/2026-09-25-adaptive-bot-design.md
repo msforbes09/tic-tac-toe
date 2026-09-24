@@ -68,14 +68,16 @@ whole-game simulations are cheap.
 | 1 | 0 | 0 | 0 |
 | 2–6 | 20 → 100 (+20 per rung) | 10 → 50 (+10 per rung) | 0 |
 | 7–10 | 100 | 60 → 90 (+10 per rung) | 0 |
-| 11–20 | 100 | 100 | 0 → 90 (+10 per rung) |
-| 21–29 | 100 | 100 | 91 → 97 (+1 to 25, then +0.5 to 29) |
+| 11–20 | 100 | 100 | 0 → 63 (+7 per rung) |
+| 21–29 | 100 | 100 | 75 → 91 (+2 per rung) |
 | 30 | 100 | 100 | 100 |
 
 Rung 1 is today's Easy, rung 11 today's Medium, rung 30 today's Hard: nothing
-regresses. **Rungs 21–29 can lose; rung 30 cannot.** The P values for 21–29 are
-placeholders pinned by the simulation test below and may be retuned; the
-anchors and the monotonic shape are the contract.
+regresses. **Rungs 21–29 can lose; rung 30 cannot.** The P ramp was set by
+simulation: a perfect player wins about 11% of games at 75% and 4% at 91%,
+so the climb from 21 to 30 is nine wins spread over roughly a hundred games
+for someone who never slips, far fewer for the bot's usual opponents. The
+anchors, the monotonic shape, and the simulation bounds are the contract.
 
 ## The moments
 
