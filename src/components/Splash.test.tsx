@@ -19,6 +19,15 @@ describe('Splash', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('plays the splash cue once when it mounts', () => {
+    const play = vi.fn()
+    const view = render(<Splash onDone={() => {}} feedback={{ play }} />)
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(play).toHaveBeenCalledWith({ kind: 'splash' })
+    view.rerender(<Splash onDone={() => {}} feedback={{ play }} />)
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
   it('stops its timers when unmounted early', () => {
     const onDone = vi.fn()
     const view = render(<Splash onDone={onDone} />)

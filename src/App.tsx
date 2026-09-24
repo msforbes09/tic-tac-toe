@@ -132,7 +132,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           install={installOffer}
         />
       )}
-      {splash && <Splash onDone={endSplash} />}
+      {splash && <Splash onDone={endSplash} feedback={feedback} />}
       <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
     </AppShell>
   )

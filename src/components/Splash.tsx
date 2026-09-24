@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Logo } from './Logo'
+import type { Feedback } from '@/lib/feedback'
 import { cn } from '@/lib/utils'
 
 /** How long the splash stays before it starts to fade. */
@@ -12,8 +13,14 @@ export const SPLASH_FADE_MS = 360
  * background, the title rises, then the whole thing fades to reveal setup. It stays a phone-width column on wide
  * screens, like the app itself. Reduced motion collapses the animation to a brief still.
  */
-export function Splash({ onDone }: { onDone: () => void }) {
+export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Feedback }) {
   const [leaving, setLeaving] = useState(false)
+
+  // Once, on mount: the cue is timed to the animation, which only plays once too.
+  const cue = useRef(feedback)
+  useEffect(() => {
+    cue.current?.play({ kind: 'splash' })
+  }, [])
 
   useEffect(() => {
     const hold = setTimeout(() => setLeaving(true), SPLASH_HOLD_MS)
