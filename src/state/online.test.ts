@@ -1,74 +1,62 @@
 import { describe, expect, it } from 'vitest'
-import { roomReducer } from './online'
-import { createGameState, gameReducer, snapshotOf } from './reducer'
-import type { Settings } from '@/lib/types'
+import { onlineReducer, resolveRole } from './online'
+import { snapshotOfSeries, startSeries } from './series'
+import type { GamePresence } from '@/lib/room'
 
-const settings: Settings = { mode: 'online', difficulty: 'medium', p1Symbol: 'X' }
-const fresh = () => createGameState(settings)
+const alice = { deviceId: 'a', nickname: 'Alice' }
+const bob = { deviceId: 'b', nickname: 'Bob' }
+const fresh = () => startSeries('r', 'g', alice, bob)
 
-describe('roomReducer host', () => {
-  const host = roomReducer('host')
+describe('onlineReducer referee', () => {
+  const ref = onlineReducer('referee')
 
-  it('plays its own moves on its turn only', () => {
-    const s = host(fresh(), { type: 'MOVE', index: 0 })
-    expect(s.board[0]).toBe('X')
-    const again = host(s, { type: 'MOVE', index: 1 })
-    expect(again).toBe(s)
+  it('applies opponent moves by id and drops out-of-turn ones', () => {
+    const s = ref(fresh(), { type: 'GAME_MESSAGE', message: { type: 'move', index: 0, from: 'b' } })
+    expect(s.game.board[0]).toBe('X')
+    expect(ref(s, { type: 'GAME_MESSAGE', message: { type: 'move', index: 1, from: 'b' } })).toBe(s)
+    const t = ref(s, { type: 'MOVE', index: 1, by: 'a' })
+    expect(t.game.board[1]).toBe('O')
   })
 
-  it("applies a guest move on the guest's turn and drops it otherwise", () => {
-    const early = host(fresh(), { type: 'ROOM_MESSAGE', message: { type: 'move', index: 4 } })
-    expect(early.board.every((c) => c === null)).toBe(true)
-    const afterHost = host(fresh(), { type: 'MOVE', index: 0 })
-    const applied = host(afterHost, { type: 'ROOM_MESSAGE', message: { type: 'move', index: 4 } })
-    expect(applied.board[4]).toBe('O')
-    const taken = host(applied, { type: 'ROOM_MESSAGE', message: { type: 'move', index: 0 } })
-    expect(taken).toBe(applied)
-  })
-
-  it('a hello changes nothing (the screen answers it with state)', () => {
-    const s = host(fresh(), { type: 'MOVE', index: 0 })
-    expect(host(s, { type: 'ROOM_MESSAGE', message: { type: 'hello' } })).toBe(s)
-    expect(roomReducer('guest')(s, { type: 'ROOM_MESSAGE', message: { type: 'hello' } })).toBe(s)
-  })
-
-  it('starts a new game on request and ignores state messages', () => {
-    const s = host(fresh(), { type: 'MOVE', index: 0 })
-    const next = host(s, { type: 'ROOM_MESSAGE', message: { type: 'new-game' } })
-    expect(next.board.every((c) => c === null)).toBe(true)
-    const other = gameReducer(fresh(), { type: 'MOVE', index: 8 })
-    expect(host(s, { type: 'ROOM_MESSAGE', message: { type: 'state', state: snapshotOf(other) } })).toBe(s)
+  it('handles resign and next-game requests, ignores hello and state', () => {
+    const s = ref(fresh(), { type: 'GAME_MESSAGE', message: { type: 'resign', from: 'b' } })
+    expect(s.result?.loser).toEqual(bob)
+    expect(s.result?.reason).toBe('resigned')
+    const f = fresh()
+    expect(ref(f, { type: 'GAME_MESSAGE', message: { type: 'hello', from: 'b' } })).toBe(f)
+    expect(ref(f, { type: 'GAME_MESSAGE', message: { type: 'state', state: snapshotOfSeries(s) } })).toBe(f)
+    expect(ref(f, { type: 'GAME_MESSAGE', message: { type: 'next-game', from: 'b' } })).toBe(f)
   })
 })
 
-describe('roomReducer guest', () => {
-  const guest = roomReducer('guest')
-
-  it('never changes its board from local moves or new game', () => {
-    const s = fresh()
-    expect(guest(s, { type: 'MOVE', index: 0 })).toBe(s)
-    expect(guest(s, { type: 'NEW_GAME' })).toBe(s)
-  })
-
-  it('applies host state and ignores requests', () => {
-    const hostState = gameReducer(fresh(), { type: 'MOVE', index: 0 })
-    const synced = guest(fresh(), { type: 'ROOM_MESSAGE', message: { type: 'state', state: snapshotOf(hostState) } })
-    expect(synced.board).toEqual(hostState.board)
-    expect(guest(synced, { type: 'ROOM_MESSAGE', message: { type: 'move', index: 4 } })).toBe(synced)
-    expect(guest(synced, { type: 'ROOM_MESSAGE', message: { type: 'new-game' } })).toBe(synced)
-  })
-
-  it('still records', () => {
-    expect(guest(fresh(), { type: 'RECORDED' }).recorded).toBe(true)
+describe('onlineReducer player and watcher', () => {
+  it('only sync from state messages; local moves are requests, not changes', () => {
+    const player = onlineReducer('player')
+    const watcher = onlineReducer('watcher')
+    const truth = onlineReducer('referee')(fresh(), { type: 'GAME_MESSAGE', message: { type: 'move', index: 4, from: 'b' } })
+    const msg = { type: 'GAME_MESSAGE', message: { type: 'state', state: snapshotOfSeries(truth) } } as const
+    expect(player(fresh(), msg).game.board[4]).toBe('X')
+    expect(watcher(fresh(), msg).game.board[4]).toBe('X')
+    const f = fresh()
+    expect(player(f, { type: 'MOVE', index: 0, by: 'b' })).toBe(f)
+    expect(player(f, { type: 'NEXT_GAME' })).toBe(f)
+    expect(player(f, { type: 'RESIGN', by: 'b', reason: 'resigned', at: 1 })).toBe(f)
+    expect(watcher(f, { type: 'GAME_MESSAGE', message: { type: 'move', index: 0, from: 'b' } })).toBe(f)
+    expect(player(f, { type: 'GAME_MESSAGE', message: { type: 'state', state: { nope: true } } })).toBe(f)
+    expect(player(f, { type: 'RECORDED' }).game.recorded).toBe(true)
   })
 })
 
-describe('roomReducer offline', () => {
-  it('is the plain game reducer and ignores room messages', () => {
-    const local = roomReducer(null)
-    const s = local(fresh(), { type: 'MOVE', index: 0 })
-    const t = local(s, { type: 'MOVE', index: 1 })
-    expect(t.board.slice(0, 2)).toEqual(['X', 'O'])
-    expect(local(t, { type: 'ROOM_MESSAGE', message: { type: 'new-game' } })).toBe(t)
+describe('resolveRole', () => {
+  it('lets the lower id keep referee when two claim it', () => {
+    const members: GamePresence[] = [
+      { deviceId: 'a', role: 'referee' },
+      { deviceId: 'b', role: 'referee' },
+    ]
+    expect(resolveRole('a', 'referee', members)).toBe('referee')
+    expect(resolveRole('b', 'referee', members)).toBe('player')
+    expect(resolveRole('b', 'player', members)).toBe('player')
+    expect(resolveRole('c', 'watcher', members)).toBe('watcher')
+    expect(resolveRole('a', 'referee', [{ deviceId: 'a', role: 'referee' }])).toBe('referee')
   })
 })
