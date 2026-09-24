@@ -4,11 +4,11 @@ import { TOP_SHARE_TEXT } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { botStats, loadHistory, winnerSeat, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import { botStats, loadHistory, winnerSeat, type GameRow, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 import { loadLadder, type Ladder } from '@/lib/ladder'
 import type { SeriesResult } from '@/lib/room'
 import type { RoomDirectory } from '@/lib/roomDirectory'
-import type { Difficulty } from '@/lib/types'
+import type { Difficulty, Mode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import type { ShareLink } from '@/platform/share'
 
@@ -16,7 +16,11 @@ export type HistorySheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   storage: HistoryStorage
-  /** When set, an Online section lists this player's series from the directory. */
+  /** The mode selected on setup; the sheet shows that mode's history. */
+  mode: Mode
+  /** When set, two-player and bot rows come from the cloud (local list as fallback). */
+  cloud?: { deviceId: string; directory: RoomDirectory }
+  /** When set, the Online section lists this player's series from the directory. */
   online?: { deviceId: string; directory: RoomDirectory }
   /** For bragging from the top-of-the-pack badge. */
   share?: ShareLink
@@ -28,17 +32,39 @@ const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
 
 /** Games shown per page; View more reveals another page. */
 export const PAGE_SIZE = 10
+/** How many rows the cloud is asked for. */
+export const CLOUD_LIMIT = 50
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
-function botOutcome(e: HistoryEntry): string {
-  const seat = winnerSeat(e)
-  if (seat === null) return 'Draw'
-  return seat === 'p1' ? 'You won' : 'You lost'
-}
+/** Cloud rows and local entries meet here: a game from Player 1's side. */
+type Shown = { id: string; at: number; difficulty: Difficulty | null; outcome: 'won' | 'lost' | 'draw'; symbol: 'X' | 'O' }
 
-function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
-  const stats = botStats(entries)
+const fromEntry = (e: HistoryEntry): Shown => {
+  const seat = winnerSeat(e)
+  return {
+    id: e.id,
+    at: e.timestamp,
+    difficulty: e.difficulty,
+    outcome: seat === null ? 'draw' : seat === 'p1' ? 'won' : 'lost',
+    symbol: e.p1Symbol ?? 'X',
+  }
+}
+const fromRow = (g: GameRow): Shown => ({ id: g.id, at: g.playedAt, difficulty: g.difficulty, outcome: g.outcome, symbol: g.symbol })
+
+/** botStats works on entries; rebuild the minimum it needs from what is shown. */
+const asEntries = (games: Shown[]): HistoryEntry[] =>
+  games.map((g) => ({
+    id: g.id,
+    timestamp: g.at,
+    mode: 'bot' as const,
+    difficulty: g.difficulty,
+    outcome: g.outcome === 'draw' ? 'draw' : g.outcome === 'won' ? g.symbol : g.symbol === 'X' ? 'O' : 'X',
+    p1Symbol: g.symbol,
+  }))
+
+function BotRecordTable({ games }: { games: Shown[] }) {
+  const stats = botStats(asEntries(games))
   return (
     <table aria-label="Record against the bot" className="w-full text-sm tabular-nums">
       <thead>
@@ -67,10 +93,33 @@ function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
   )
 }
 
-/** Local history holds bot games only now; older two-player and online rows are ignored. */
-function safeLoad(storage: HistoryStorage): HistoryEntry[] {
+function PvpTally({ games }: { games: Shown[] }) {
+  const p1 = games.filter((g) => g.outcome === 'won').length
+  const p2 = games.filter((g) => g.outcome === 'lost').length
+  const draws = games.length - p1 - p2
+  return (
+    <table aria-label="Two-player tally" className="w-full text-sm tabular-nums">
+      <tbody>
+        {[
+          ['Player 1', p1],
+          ['Player 2', p2],
+          ['Draws', draws],
+        ].map(([label, n]) => (
+          <tr key={label}>
+            <th scope="row" className="py-0.5 text-left font-medium">
+              {label}
+            </th>
+            <td className="py-0.5 text-right">{n}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function safeLoad(storage: HistoryStorage, mode: Mode): HistoryEntry[] {
   try {
-    return loadHistory(storage).filter((e) => e.mode === 'bot')
+    return loadHistory(storage).filter((e) => e.mode === mode)
   } catch {
     return []
   }
@@ -92,12 +141,7 @@ function TopBadge({ ladder, share, siteUrl }: { ladder: Ladder; share?: ShareLin
         </span>
       </div>
       {share && siteUrl && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="min-h-10 rounded-xl px-3 text-[14px]"
-          onClick={() => void share(siteUrl, TOP_SHARE_TEXT)}
-        >
+        <Button variant="outline" size="sm" className="min-h-10 rounded-xl px-3 text-[14px]" onClick={() => void share(siteUrl, TOP_SHARE_TEXT)}>
           Share
         </Button>
       )}
@@ -105,7 +149,7 @@ function TopBadge({ ladder, share, siteUrl }: { ladder: Ladder; share?: ShareLin
   )
 }
 
-function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
+function OutcomeBadge({ symbol, outcome }: { symbol: 'X' | 'O'; outcome: Shown['outcome'] }) {
   if (outcome === 'draw') {
     return (
       <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[28%] bg-muted text-muted-foreground">
@@ -113,15 +157,16 @@ function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
       </span>
     )
   }
+  const winner: 'X' | 'O' = outcome === 'won' ? symbol : symbol === 'X' ? 'O' : 'X'
   return (
     <span
       aria-hidden="true"
       className={cn(
         'flex size-10 shrink-0 items-center justify-center rounded-[28%]',
-        outcome === 'X' ? 'bg-player-x-soft text-player-x' : 'bg-player-o-soft text-player-o',
+        winner === 'X' ? 'bg-player-x-soft text-player-x' : 'bg-player-o-soft text-player-o',
       )}
     >
-      <Mark player={outcome} weight={15} className="size-5" />
+      <Mark player={winner} weight={15} className="size-5" />
     </span>
   )
 }
@@ -135,10 +180,6 @@ function When({ at }: { at: number }) {
   )
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return <h3 className="font-heading pt-2 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">{children}</h3>
-}
-
 /** One series from my side: who I played, whether I won, the score, and how it ended. */
 function seriesLine(r: SeriesResult, me: string): { title: string; score: string; tag: string | null } {
   const won = r.winner.deviceId === me
@@ -149,27 +190,43 @@ function seriesLine(r: SeriesResult, me: string): { title: string; score: string
   return { title, score, tag }
 }
 
-export function HistorySheet({ open, onOpenChange, storage, online, share, siteUrl }: HistorySheetProps) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([])
+const TITLE: Record<Mode, string> = { pvp: 'Two-player history', bot: 'Bot history', online: 'Online history' }
+
+export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online, share, siteUrl }: HistorySheetProps) {
+  const [games, setGames] = useState<Shown[]>([])
   const [ladder, setLadder] = useState<Ladder | null>(null)
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [series, setSeries] = useState<SeriesResult[] | null>(null)
 
+  // Two-player and bot games: the cloud when it answers, the local list otherwise.
   useEffect(() => {
     if (!open) return
-    setEntries(safeLoad(storage))
+    const local = safeLoad(storage, mode).map(fromEntry)
+    setGames(local)
     setLadder(loadLadder(storage))
     setVisible(PAGE_SIZE)
-  }, [open, storage])
+    if (mode === 'online' || !cloud) return
+    let live = true
+    cloud.directory
+      .listGames(cloud.deviceId, mode, CLOUD_LIMIT)
+      .then((rows) => {
+        if (live) setGames(rows.map(fromRow))
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [open, storage, mode, cloud])
 
   const deviceId = online?.deviceId
   const directory = online?.directory
   useEffect(() => {
-    if (!open || !deviceId || !directory) return
+    if (!open || mode !== 'online' || !deviceId || !directory) return
     return directory.onMyResultsChange(deviceId, setSeries)
-  }, [open, deviceId, directory])
+  }, [open, mode, deviceId, directory])
 
-  const total = entries.length + (series?.length ?? 0)
+  const outcomeLabel = (g: Shown) =>
+    g.outcome === 'draw' ? 'Draw' : mode === 'pvp' ? (g.outcome === 'won' ? 'Player 1 won' : 'Player 2 won') : g.outcome === 'won' ? 'You won' : 'You lost'
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -181,81 +238,84 @@ export function HistorySheet({ open, onOpenChange, storage, online, share, siteU
         style={{ height: '85dvh', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
-          <SheetTitle className="font-heading text-2xl font-semibold">History</SheetTitle>
-          <SheetDescription>{total === 0 ? 'Finished games show up here' : 'Bot games on this phone, series from online play'}</SheetDescription>
+          <SheetTitle className="font-heading text-2xl font-semibold">{TITLE[mode]}</SheetTitle>
+          <SheetDescription>
+            {mode === 'online' ? 'Series you played, from every room' : mode === 'bot' ? 'Your games against the bot' : 'Games shared on this phone'}
+          </SheetDescription>
         </SheetHeader>
 
         {/* min-h-0 lets the scroll area shrink inside the flex column instead of growing with its content. */}
         <ScrollArea className="-mx-5 min-h-0 flex-1 px-5">
-          <div className="flex flex-col gap-3 pb-2">
-            {online && (
-              <section className="flex flex-col gap-2">
-                <SectionTitle>Online</SectionTitle>
-                {series === null ? (
-                  <p className="text-sm text-muted-foreground">Loading…</p>
-                ) : series.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No series yet</p>
-                ) : (
-                  <ul className="divide-y divide-border/70">
-                    {series.map((r) => {
-                      const { title, score, tag } = seriesLine(r, deviceId!)
-                      const won = r.winner.deviceId === deviceId
-                      return (
-                        <li key={r.gameId} data-testid="series-row" className="flex min-h-16 items-center gap-3.5 py-3">
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              'flex size-10 shrink-0 items-center justify-center rounded-[28%] text-sm font-semibold tabular-nums',
-                              won ? 'bg-player-x-soft text-player-x' : 'bg-muted text-muted-foreground',
-                            )}
-                          >
-                            {score}
-                          </span>
-                          <div className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-[15px] font-semibold">{title}</span>
-                            <span className="text-sm text-muted-foreground">{tag ?? `${r.games} games`}</span>
-                          </div>
-                          <When at={r.endedAt} />
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            <section className="flex flex-col gap-2">
-              <SectionTitle>Bot</SectionTitle>
-              {ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
-              {entries.length > 0 && (
-                <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
-                  <BotRecordTable entries={entries} />
-                </div>
-              )}
-              {entries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No bot games yet</p>
+          <div className="flex flex-col gap-3 pb-2 pt-1">
+            {mode === 'online' &&
+              (!online ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">Online play is not set up</p>
+              ) : series === null ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : series.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">No series yet</p>
               ) : (
-                <>
-                  <ul className="divide-y divide-border/70">
-                    {entries.slice(0, visible).map((e) => (
-                      <li key={e.id} className="flex min-h-16 items-center gap-3.5 py-3">
-                        <OutcomeBadge outcome={e.outcome} />
+                <ul className="divide-y divide-border/70">
+                  {series.map((r) => {
+                    const { title, score, tag } = seriesLine(r, deviceId!)
+                    const won = r.winner.deviceId === deviceId
+                    return (
+                      <li key={r.gameId} data-testid="series-row" className="flex min-h-16 items-center gap-3.5 py-3">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex size-10 shrink-0 items-center justify-center rounded-[28%] text-sm font-semibold tabular-nums',
+                            won ? 'bg-player-x-soft text-player-x' : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {score}
+                        </span>
                         <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-[15px] font-semibold">{botOutcome(e)}</span>
-                          <span className="text-sm text-muted-foreground">{DIFFICULTY_LABEL[e.difficulty ?? 'medium']}</span>
+                          <span className="truncate text-[15px] font-semibold">{title}</span>
+                          <span className="text-sm text-muted-foreground">{tag ?? `${r.games} games`}</span>
                         </div>
-                        <When at={e.timestamp} />
+                        <When at={r.endedAt} />
                       </li>
-                    ))}
-                  </ul>
-                  {entries.length > visible && (
-                    <Button variant="ghost" className="min-h-11 w-full rounded-[14px] text-[15px] font-medium" onClick={() => setVisible((n) => n + PAGE_SIZE)}>
-                      View more
-                    </Button>
-                  )}
-                </>
-              )}
-            </section>
+                    )
+                  })}
+                </ul>
+              ))}
+
+            {mode !== 'online' && (
+              <>
+                {mode === 'bot' && ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
+                {games.length > 0 && (
+                  <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                    {mode === 'bot' ? <BotRecordTable games={games} /> : <PvpTally games={games} />}
+                  </div>
+                )}
+                {games.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">{mode === 'bot' ? 'No bot games yet' : 'No two-player games yet'}</p>
+                ) : (
+                  <>
+                    <ul className="divide-y divide-border/70">
+                      {games.slice(0, visible).map((g) => (
+                        <li key={g.id} className="flex min-h-16 items-center gap-3.5 py-3">
+                          <OutcomeBadge symbol={g.symbol} outcome={g.outcome} />
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate text-[15px] font-semibold">{outcomeLabel(g)}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {mode === 'bot' ? DIFFICULTY_LABEL[g.difficulty ?? 'medium'] : 'Same phone'}
+                            </span>
+                          </div>
+                          <When at={g.at} />
+                        </li>
+                      ))}
+                    </ul>
+                    {games.length > visible && (
+                      <Button variant="ghost" className="min-h-11 w-full rounded-[14px] text-[15px] font-medium" onClick={() => setVisible((n) => n + PAGE_SIZE)}>
+                        View more
+                      </Button>
+                    )}
+                  </>
+                )}
+              </>
+            )}
           </div>
         </ScrollArea>
 
