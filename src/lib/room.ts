@@ -54,10 +54,14 @@ export type Snapshot = {
   winningLine: WinLine | null
 }
 
-/** Guest → host: `move`, `new-game` (requests). Host → guest: `state` (the truth). */
+/**
+ * Guest → host: `move`, `new-game` (requests) and `hello` (my screen is up, send me the state).
+ * Host → guest: `state` (the truth).
+ */
 export type RoomMessage =
   | { type: 'move'; index: number }
   | { type: 'new-game' }
+  | { type: 'hello' }
   | { type: 'state'; state: Snapshot }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -85,6 +89,7 @@ export function isRoomMessage(value: unknown): value is RoomMessage {
     case 'move':
       return isCellIndex(value.index)
     case 'new-game':
+    case 'hello':
       return true
     case 'state':
       return isSnapshot(value.state)

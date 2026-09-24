@@ -409,6 +409,33 @@ describe('GameScreen online', () => {
     expect(onBack).toHaveBeenCalled()
   })
 
+  it('a guest whose screen mounts late asks for and gets the host state', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const guestConn = room.join('guest', 'g')
+    const base = { settings: onlineSettings, storage: fakeStorage(), feedback: recorder(), onBack: () => {} }
+    const view = render(
+      <div data-testid="host">
+        <GameScreen {...base} online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }} />
+      </div>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^Cell 1,/ }))
+    view.rerender(
+      <>
+        <div data-testid="host">
+          <GameScreen {...base} online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }} />
+        </div>
+        <div data-testid="guest">
+          <GameScreen {...base} online={{ role: 'guest', code: 'AB2C', connection: guestConn, friendPresent: true }} />
+        </div>
+      </>,
+    )
+    const guestCell1 = Array.from(screen.getByTestId('guest').querySelectorAll('button')).find((b) =>
+      b.getAttribute('aria-label')?.startsWith('Cell 1,'),
+    )!
+    expect(guestCell1).toHaveAccessibleName('Cell 1, X')
+  })
+
   it('the host sends its state to a friend who arrives', () => {
     const room = createFakeRoom()
     const hostConn = room.join('host', 'h')

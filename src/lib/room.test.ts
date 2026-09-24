@@ -80,6 +80,7 @@ describe('isRoomMessage', () => {
   it('accepts the three message shapes', () => {
     expect(isRoomMessage({ type: 'move', index: 4 })).toBe(true)
     expect(isRoomMessage({ type: 'new-game' })).toBe(true)
+    expect(isRoomMessage({ type: 'hello' })).toBe(true)
     expect(isRoomMessage({ type: 'state', state: snapshot })).toBe(true)
     expect(
       isRoomMessage({

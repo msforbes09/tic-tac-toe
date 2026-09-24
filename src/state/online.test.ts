@@ -26,6 +26,12 @@ describe('roomReducer host', () => {
     expect(taken).toBe(applied)
   })
 
+  it('a hello changes nothing (the screen answers it with state)', () => {
+    const s = host(fresh(), { type: 'MOVE', index: 0 })
+    expect(host(s, { type: 'ROOM_MESSAGE', message: { type: 'hello' } })).toBe(s)
+    expect(roomReducer('guest')(s, { type: 'ROOM_MESSAGE', message: { type: 'hello' } })).toBe(s)
+  })
+
   it('starts a new game on request and ignores state messages', () => {
     const s = host(fresh(), { type: 'MOVE', index: 0 })
     const next = host(s, { type: 'ROOM_MESSAGE', message: { type: 'new-game' } })

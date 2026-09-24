@@ -46,11 +46,25 @@ export function GameScreen({ settings, storage, feedback, onBack, online }: Game
   const friendPresent = online ? online.friendPresent : true
   const connection = online?.connection
 
-  // Incoming room messages, from either side.
+  // Incoming room messages, from either side. A guest's hello means its screen is up and may have
+  // missed the snapshot sent on its arrival, so the host answers with the current state.
+  const latest = useRef(state)
+  latest.current = state
   useEffect(() => {
     if (!connection) return
-    return connection.onMessage((message) => dispatch({ type: 'ROOM_MESSAGE', message }))
-  }, [connection])
+    return connection.onMessage((message) => {
+      if (message.type === 'hello') {
+        if (role === 'host') connection.send({ type: 'state', state: snapshotOf(latest.current) })
+        return
+      }
+      dispatch({ type: 'ROOM_MESSAGE', message })
+    })
+  }, [connection, role])
+
+  // The guest announces itself once its screen is listening.
+  useEffect(() => {
+    if (role === 'guest' && connection) connection.send({ type: 'hello' })
+  }, [role, connection])
 
   // The host shares its state after every change and whenever the friend (re)joins.
   useEffect(() => {
