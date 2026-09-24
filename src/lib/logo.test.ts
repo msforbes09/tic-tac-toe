@@ -38,7 +38,20 @@ describe('public/icon.svg', () => {
     expect(num(/circle cx="(\d+)"/)).toBe(LOGO.o.cx)
     expect(num(/circle cx="\d+" cy="(\d+)"/)).toBe(LOGO.o.cy)
     expect(num(/ r="(\d+)"/)).toBe(LOGO.o.r)
-    expect(svg.match(/stroke-width="(\d+)"/g)?.every((m) => m === `stroke-width="${LOGO.stroke}"`)).toBe(true)
+    const widths = (svg.match(/stroke-width="(\d+)"/g) ?? []).map((m) => Number(m.match(/\d+/)![0]))
+    expect(new Set(widths)).toEqual(new Set([LOGO.stroke, LOGO.stroke + 2 * LOGO.gap]))
+  })
+
+  it('cuts a gap in the O with a background-coloured copy of the crossing arm, drawn under the X', () => {
+    const { cx, cy, arm } = LOGO.x
+    const d = `d="M${cx - arm} ${cy - arm} L${cx + arm} ${cy + arm}"`
+    const first = svg.indexOf(d)
+    const second = svg.indexOf(d, first + 1)
+    expect(first).toBeGreaterThan(svg.indexOf('<circle'))
+    expect(second).toBeGreaterThan(first)
+    const knockout = svg.slice(svg.lastIndexOf('<path', first), svg.indexOf('/>', first))
+    expect(knockout).toContain('stroke="#0a0a0a"')
+    expect(knockout).toContain(`stroke-width="${LOGO.stroke + 2 * LOGO.gap}"`)
   })
 
   it('draws the O before the X so the X sits on top', () => {

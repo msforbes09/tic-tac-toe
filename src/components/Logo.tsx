@@ -28,6 +28,10 @@ export function Logo({ animate = false, className }: { animate?: boolean; classN
     style: animate ? ({ '--logo-delay': `${delay}ms` } as CSSProperties) : undefined,
   })
 
+  const arm1 = `M${x.cx - x.arm} ${x.cy - x.arm} L${x.cx + x.arm} ${x.cy + x.arm}`
+  const arm2 = `M${x.cx + x.arm} ${x.cy - x.arm} L${x.cx - x.arm} ${x.cy + x.arm}`
+  const armStyle = { '--mark-len': X_STROKE_LEN } as CSSProperties
+
   return (
     <svg
       viewBox={`0 0 ${LOGO.size} ${LOGO.size}`}
@@ -46,8 +50,10 @@ export function Logo({ animate = false, className }: { animate?: boolean; classN
         />
       </g>
       <g {...mark('X', X_DELAY_MS)}>
-        <path d={`M${x.cx - x.arm} ${x.cy - x.arm} L${x.cx + x.arm} ${x.cy + x.arm}`} {...common} style={{ '--mark-len': X_STROKE_LEN } as CSSProperties} />
-        <path d={`M${x.cx + x.arm} ${x.cy - x.arm} L${x.cx - x.arm} ${x.cy + x.arm}`} {...common} style={{ '--mark-len': X_STROKE_LEN } as CSSProperties} />
+        {/* Knockout: the crossing arm again in the background colour, wider, so it cuts a gap through the O. */}
+        <path d={arm1} {...common} stroke="var(--background)" strokeWidth={LOGO.stroke + 2 * LOGO.gap} style={armStyle} />
+        <path d={arm1} {...common} style={armStyle} />
+        <path d={arm2} {...common} style={{ ...armStyle, '--mark-delay': '110ms' } as CSSProperties} />
       </g>
     </svg>
   )

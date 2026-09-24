@@ -2,9 +2,11 @@
   <rect width="512" height="512" rx="112" fill="#0a0a0a"/>
   <!-- Geometry mirrors src/lib/logo.ts (LOGO); logo.test.ts checks they agree. -->
   <!-- O, bottom right, drawn first so the X sits on top -->
-  <circle cx="330" cy="330" r="90" fill="none" stroke="#ff9f7a" stroke-width="40"/>
-  <!-- X, top left, its lower-right arm crossing into the O -->
-  <g stroke="#8fa8ff" stroke-width="40" stroke-linecap="round">
+  <circle cx="330" cy="330" r="90" fill="none" stroke="#ff9f7a" stroke-width="44"/>
+  <!-- X, top left, its lower-right arm crossing into the O. The first path is a wider,
+       background-coloured copy of that arm: it cuts a gap through the O's ring. -->
+  <path d="M110 110 L290 290" stroke="#0a0a0a" stroke-width="62" stroke-linecap="round" fill="none"/>
+  <g stroke="#8fa8ff" stroke-width="44" stroke-linecap="round" fill="none">
     <path d="M110 110 L290 290"/>
     <path d="M290 110 L110 290"/>
   </g>
