@@ -43,7 +43,7 @@ import {
 import type { RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
 import { DevDialog } from '@/components/DevDialog'
 import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry } from '@/lib/history'
-import { KNOCK, KNOCK_DELAY_MS, knockStep, loadDevMode, saveDevMode, type KnockEvent } from '@/lib/knock'
+import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
 import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
 import type { Mode, Settings } from '@/lib/types'
@@ -165,25 +165,28 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [historyOpen, setHistoryOpen] = useState(false)
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
-  const [devMode, setDevMode] = useState(() => loadDevMode(storage))
+  // In memory only, so it ends with the session; the knock is ignored while it is already on.
+  const [devMode, setDevMode] = useState(false)
   const [devDialog, setDevDialog] = useState<'enter' | 'panel' | null>(null)
   const [knockProgress, setKnockProgress] = useState(0)
   const [knockDone, setKnockDone] = useState(0)
   const knock = useCallback(
     (event: KnockEvent): boolean => {
+      if (devMode) return false
       const next = knockStep(knockProgress, event)
       const done = next === KNOCK.length
       setKnockProgress(done ? 0 : next)
       if (done) setKnockDone((n) => n + 1)
       return done
     },
-    [knockProgress],
+    [knockProgress, devMode],
   )
   useEffect(() => {
     if (knockDone === 0) return
     const id = setTimeout(() => setDevDialog('enter'), KNOCK_DELAY_MS)
     return () => clearTimeout(id)
   }, [knockDone])
+  // Developer reset: this device's games, ladder, and remembered setup, locally and in the cloud.
   const resetGameData = () => {
     for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY]) {
       try {
@@ -192,6 +195,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         // Best-effort.
       }
     }
+    services?.directory.resetPlayerData(deviceId, playerToken).catch(() => {})
   }
   const [pendingRoomId, setPendingRoomId] = useState<string | null>(() => {
     const code = roomCodeFromUrl(url)
@@ -408,17 +412,15 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
       <DevDialog
         mode={devDialog}
         rung={loadLadder(storage).rung}
-        onClose={() => setDevDialog(null)}
-        onEnter={() => {
-          saveDevMode(storage, true)
-          setDevMode(true)
+        // Any action in the developer dialog lands on the setup screen.
+        onClose={() => {
+          setDevDialog(null)
+          setScreen({ kind: 'setup' })
         }}
+        onEnter={() => setDevMode(true)}
         onSetRung={(rung) => saveLadder(storage, { ...loadLadder(storage), rung, streak: 0 })}
         onReset={resetGameData}
-        onExit={() => {
-          saveDevMode(storage, false)
-          setDevMode(false)
-        }}
+        onExit={() => setDevMode(false)}
       />
 
       <AlertDialog open={replacePrompt !== null} onOpenChange={(o) => !o && setReplacePrompt(null)}>
