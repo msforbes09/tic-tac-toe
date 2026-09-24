@@ -5,8 +5,11 @@ import {
   normalizeRoomCode,
   roomCodeFromUrl,
   isRoomMessage,
+  lobbyState,
+  readSupabaseConfig,
   roomLink,
   withoutRoomParam,
+  type Member,
   type Snapshot,
 } from './room'
 
@@ -109,5 +112,55 @@ describe('isRoomMessage', () => {
     expect(bad({ winningLine: [0, 1, 9] })).toBe(false)
     expect(bad({ score: { p1: 1, p2: 0 } })).toBe(false)
     expect(bad({ score: { p1: -1, p2: 0, draws: 0 } })).toBe(false)
+  })
+})
+
+describe('lobbyState', () => {
+  const host: Member = { id: 'h', role: 'host', joinedAt: 1 }
+  const g1: Member = { id: 'g1', role: 'guest', joinedAt: 2 }
+  const g2: Member = { id: 'g2', role: 'guest', joinedAt: 3 }
+
+  it('host waits alone and plays once any guest arrives', () => {
+    expect(lobbyState([host], 'h')).toBe('waiting')
+    expect(lobbyState([host, g1], 'h')).toBe('playing')
+    expect(lobbyState([host, g1, g2], 'h')).toBe('playing')
+  })
+
+  it('guest waits without a host (empty or unknown code)', () => {
+    expect(lobbyState([g1], 'g1')).toBe('waiting')
+    expect(lobbyState([], 'g1')).toBe('waiting')
+  })
+
+  it('the first guest plays and any later guest finds the room full', () => {
+    expect(lobbyState([host, g1, g2], 'g1')).toBe('playing')
+    expect(lobbyState([host, g1, g2], 'g2')).toBe('full')
+    expect(lobbyState([g2, host, g1], 'g1')).toBe('playing')
+  })
+
+  it('breaks a joinedAt tie by id', () => {
+    const a: Member = { id: 'a', role: 'guest', joinedAt: 5 }
+    const b: Member = { id: 'b', role: 'guest', joinedAt: 5 }
+    expect(lobbyState([host, b, a], 'a')).toBe('playing')
+    expect(lobbyState([host, b, a], 'b')).toBe('full')
+  })
+
+  it('after the first guest leaves, a new guest plays', () => {
+    expect(lobbyState([host, g2], 'g2')).toBe('playing')
+  })
+})
+
+describe('readSupabaseConfig', () => {
+  it('reads both values', () => {
+    expect(readSupabaseConfig({ VITE_SUPABASE_URL: 'https://p.supabase.co', VITE_SUPABASE_ANON_KEY: 'key' })).toEqual({
+      url: 'https://p.supabase.co',
+      anonKey: 'key',
+    })
+  })
+
+  it('is null when either is missing or blank', () => {
+    expect(readSupabaseConfig({})).toBeNull()
+    expect(readSupabaseConfig({ VITE_SUPABASE_URL: 'https://p.supabase.co' })).toBeNull()
+    expect(readSupabaseConfig({ VITE_SUPABASE_URL: ' ', VITE_SUPABASE_ANON_KEY: 'key' })).toBeNull()
+    expect(readSupabaseConfig({ VITE_SUPABASE_URL: 'https://p.supabase.co', VITE_SUPABASE_ANON_KEY: 42 })).toBeNull()
   })
 })

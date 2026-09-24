@@ -94,3 +94,34 @@ export function isRoomMessage(value: unknown): value is RoomMessage {
 }
 
 export type Role = 'host' | 'guest'
+
+export type Member = { id: string; role: Role; joinedAt: number }
+export type LobbyState = 'waiting' | 'playing' | 'full'
+
+const byArrival = (a: Member, b: Member) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
+/**
+ * What the lobby shows this member. The host plays as soon as a guest is present. The first guest to
+ * arrive plays; any later guest finds the room full. A guest with no host waits (an empty room and a
+ * wrong code look the same without a server).
+ */
+export function lobbyState(members: Member[], selfId: string): LobbyState {
+  const self = members.find((m) => m.id === selfId)
+  const hostPresent = members.some((m) => m.role === 'host')
+  const guests = members.filter((m) => m.role === 'guest').sort(byArrival)
+  if (!self) return 'waiting'
+  if (self.role === 'host') return guests.length > 0 ? 'playing' : 'waiting'
+  if (!hostPresent) return 'waiting'
+  return guests[0].id === selfId ? 'playing' : 'full'
+}
+
+export type SupabaseConfig = { url: string; anonKey: string }
+
+/** Both values, or null when online play is not set up. The anon key is public by design. */
+export function readSupabaseConfig(env: Record<string, unknown>): SupabaseConfig | null {
+  const url = env.VITE_SUPABASE_URL
+  const anonKey = env.VITE_SUPABASE_ANON_KEY
+  if (typeof url !== 'string' || typeof anonKey !== 'string') return null
+  if (url.trim() === '' || anonKey.trim() === '') return null
+  return { url: url.trim(), anonKey: anonKey.trim() }
+}
