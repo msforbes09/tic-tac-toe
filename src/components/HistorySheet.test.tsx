@@ -104,12 +104,14 @@ describe('HistorySheet bot section', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(10)
   })
 
-  it('offers no way to clear history, and Back closes the sheet', () => {
+  it('offers no way to clear history, and Back closes the sheet and reports the knock', () => {
     const onOpenChange = vi.fn()
-    render(<HistorySheet open onOpenChange={onOpenChange} storage={fakeStorage([entry({ id: 'a' })])} />)
+    const onKnock = vi.fn()
+    render(<HistorySheet open onOpenChange={onOpenChange} storage={fakeStorage([entry({ id: 'a' })])} onKnock={onKnock} />)
     expect(screen.queryByRole('button', { name: /clear/i })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /^back$/i }))
     expect(onOpenChange.mock.calls[0][0]).toBe(false)
+    expect(onKnock).toHaveBeenCalledWith('history:back')
   })
 })
 

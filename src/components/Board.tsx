@@ -7,6 +7,8 @@ export type BoardProps = {
   winningLine: WinLine | null
   disabled: boolean
   onSelect: (index: number) => void
+  /** Every tap, including on occupied or disabled cells (they let taps fall through). */
+  onTap?: (index: number) => void
 }
 
 // Row and column step for each arrow key.
@@ -17,7 +19,7 @@ const STEPS: Record<string, [number, number]> = {
   ArrowRight: [0, 1],
 }
 
-export function Board({ board, winningLine, disabled, onSelect }: BoardProps) {
+export function Board({ board, winningLine, disabled, onSelect, onTap }: BoardProps) {
   const grid = useRef<HTMLDivElement>(null)
 
   // Arrow keys walk focus across the board, skipping taken cells and stopping at the edge.
@@ -53,15 +55,17 @@ export function Board({ board, winningLine, disabled, onSelect }: BoardProps) {
         {board.map((value, index) => {
           const winOrder = winningLine ? winningLine.indexOf(index) : -1
           return (
-            <Cell
-              key={index}
-              index={index}
-              value={value}
-              highlighted={winOrder >= 0}
-              winOrder={Math.max(winOrder, 0)}
-              disabled={disabled}
-              onSelect={onSelect}
-            />
+            // The wrapper catches taps that a disabled cell lets through, for the developer knock.
+            <div key={index} onClick={() => onTap?.(index)}>
+              <Cell
+                index={index}
+                value={value}
+                highlighted={winOrder >= 0}
+                winOrder={Math.max(winOrder, 0)}
+                disabled={disabled}
+                onSelect={onSelect}
+              />
+            </div>
           )
         })}
       </div>

@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import type { KnockEvent } from '@/lib/knock'
+import { rungForSelection } from '@/lib/ladder'
 import { cn } from '@/lib/utils'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
@@ -24,6 +26,17 @@ export type SetupScreenProps = {
   /** Shown when the app can be added to the home screen and has not been dismissed lately. */
   install?: InstallOffer
   onModeChange?: (mode: Mode) => void
+  /** Developer mode: the saved rung, shown next to Difficulty with where the picked band lands. */
+  dev?: { rung: number | null }
+  /** Reports taps that are steps of the developer knock. */
+  onKnock?: (event: KnockEvent) => void
+}
+
+/** "Difficulty · 25 → 20": the saved rung and, when the picked band would move it, where it lands. */
+function devDifficultyLabel(rung: number | null, band: Difficulty): string {
+  const lands = rungForSelection(rung, band)
+  const current = rung === null ? '–' : String(rung)
+  return lands === rung ? `Difficulty · ${current}` : `Difficulty · ${current} → ${lands}`
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
@@ -67,6 +80,8 @@ export function SetupScreen({
   online = NO_ONLINE,
   install,
   onModeChange,
+  dev,
+  onKnock,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
@@ -106,10 +121,10 @@ export function SetupScreen({
             className="grid w-full grid-cols-3 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
             aria-label="Game mode"
           >
-            <ToggleGroupItem value="pvp" className={segmentItem} aria-label="Two player">
+            <ToggleGroupItem value="pvp" className={segmentItem} aria-label="Two player" onClick={() => onKnock?.('mode:pvp')}>
               Two player
             </ToggleGroupItem>
-            <ToggleGroupItem value="bot" className={segmentItem} aria-label="Versus bot">
+            <ToggleGroupItem value="bot" className={segmentItem} aria-label="Versus bot" onClick={() => onKnock?.('mode:bot')}>
               Versus bot
             </ToggleGroupItem>
             <ToggleGroupItem
@@ -126,7 +141,7 @@ export function SetupScreen({
 
         {mode === 'bot' && (
           <Field
-            label="Difficulty"
+            label={dev ? devDifficultyLabel(dev.rung, difficulty) : 'Difficulty'}
             hint={DIFFICULTIES.find((d) => d.value === difficulty)?.hint ?? ''}
             className="rise-in"
           >
@@ -181,7 +196,10 @@ export function SetupScreen({
           <Button
             size="lg"
             className="min-h-14 w-full rounded-[18px] text-base font-medium"
-            onClick={() => onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })}
+            onClick={() => {
+              onKnock?.('start')
+              onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })
+            }}
           >
             Start game
           </Button>
@@ -190,7 +208,10 @@ export function SetupScreen({
           variant="outline"
           size="lg"
           className="min-h-14 w-full rounded-[18px] text-base font-medium"
-          onClick={onOpenHistory}
+          onClick={() => {
+            onKnock?.('history:open')
+            onOpenHistory()
+          }}
         >
           History
         </Button>
