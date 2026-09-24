@@ -102,7 +102,9 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const replaceUrl = deps.replaceUrl ?? ((next: string) => window.history.replaceState(null, '', next))
   const newId = deps.newId ?? (() => createId(6))
   const random = deps.random ?? Math.random
-  void (deps.share ?? shareLink)
+  const share = deps.share ?? shareLink
+  // The bare site link, for bragging: whatever room code the page opened with is dropped.
+  const siteUrl = withoutRoomParam(url)
 
   const [deviceId] = useState(() => loadDeviceId(storage))
   const [playerToken] = useState(() => loadPlayerToken(storage))
@@ -241,7 +243,14 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   return (
     <AppShell>
       {screen.kind === 'game' && (
-        <GameScreen settings={screen.settings} storage={storage} feedback={feedback} onBack={() => setScreen({ kind: 'setup' })} />
+        <GameScreen
+          settings={screen.settings}
+          storage={storage}
+          feedback={feedback}
+          onBack={() => setScreen({ kind: 'setup' })}
+          share={share}
+          siteUrl={siteUrl}
+        />
       )}
       {screen.kind === 'room' && services && self && (
         <RoomScreen
@@ -301,6 +310,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         onOpenChange={setHistoryOpen}
         storage={storage}
         online={services && nickname ? { deviceId, directory: services.directory } : undefined}
+        share={share}
+        siteUrl={siteUrl}
       />
 
       <AlertDialog open={replacePrompt !== null} onOpenChange={(o) => !o && setReplacePrompt(null)}>
