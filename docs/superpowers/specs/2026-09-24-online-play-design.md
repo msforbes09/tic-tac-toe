@@ -11,7 +11,7 @@ only.
 
 Two people on different devices play each other by sharing a room code or
 link. There are no accounts, no matchmaking with strangers, and nothing is
-stored on a server. It works on the existing GitHub Pages deploy with no server
+stored on a server. It works on a static deploy (now Cloudflare Pages) with no server
 code of our own.
 
 ## Transport: Supabase Realtime
@@ -20,9 +20,9 @@ code of our own.
   over **broadcast** and who is in the room is tracked with **presence**. No
   database tables, no Postgres changes, no auth.
 - Config comes from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. They
-  go in `.env.example` (blank), in the owner's local `.env`, and in GitHub
-  repository secrets that `deploy.yml` passes to `npm run build`. The anon key
-  is public by design.
+  go in `.env.example` (blank), in the owner's local `.env`, and in the
+  Cloudflare Pages project's build environment variables (originally GitHub
+  repository secrets passed by `deploy.yml`). The anon key is public by design.
 - If either value is missing, the Online option still shows on setup but is
   disabled, with the hint "Not set up".
 - `public/sw.js` already ignores cross-origin requests, so the service worker

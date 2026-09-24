@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
-  // GitHub Pages serves the site under /<repo>/; the workflow sets BASE_PATH.
+  // Served from the root on Cloudflare Pages. BASE_PATH stays for hosting under a sub-path.
   base: process.env.BASE_PATH ?? '/',
   plugins: [react(), tailwindcss()],
   resolve: {
