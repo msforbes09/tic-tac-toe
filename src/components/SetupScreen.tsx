@@ -2,15 +2,22 @@ import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { normalizeRoomCode } from '@/lib/room'
 import { cn } from '@/lib/utils'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
+
+export type OnlineSetup = { available: boolean; onCreate: () => void; onJoin: (code: string) => void }
+
+const NO_ONLINE: OnlineSetup = { available: false, onCreate() {}, onJoin() {} }
 
 export type SetupScreenProps = {
   /** Preselected choices, e.g. the last setup played. */
   initial?: Settings
   onStart: (settings: Settings) => void
   onOpenHistory: () => void
+  /** Online play, when Supabase is configured. */
+  online?: OnlineSetup
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
@@ -47,10 +54,15 @@ function Field({
   )
 }
 
-export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory }: SetupScreenProps) {
-  const [mode, setMode] = useState<Mode>(initial.mode)
+export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory, online = NO_ONLINE }: SetupScreenProps) {
+  const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
   const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
+  const [codeInput, setCodeInput] = useState('')
+  const joinCode = normalizeRoomCode(codeInput)
+  const join = () => {
+    if (joinCode) online.onJoin(joinCode)
+  }
 
   return (
     <section className="flex flex-1 flex-col gap-8">
@@ -80,7 +92,7 @@ export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory
               if (next) setMode(next as Mode)
             }}
             spacing={0}
-            className="grid w-full grid-cols-2 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
+            className="grid w-full grid-cols-3 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
             aria-label="Game mode"
           >
             <ToggleGroupItem value="pvp" className={segmentItem} aria-label="Two player">
@@ -88,6 +100,15 @@ export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory
             </ToggleGroupItem>
             <ToggleGroupItem value="bot" className={segmentItem} aria-label="Versus bot">
               Versus bot
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="online"
+              className={cn(segmentItem, 'flex-col gap-0 leading-tight')}
+              aria-label="Online"
+              disabled={!online.available}
+            >
+              Online
+              {!online.available && <span className="text-[11px] font-normal text-muted-foreground">Not set up</span>}
             </ToggleGroupItem>
           </ToggleGroup>
         </Field>
@@ -141,16 +162,56 @@ export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory
             </ToggleGroup>
           </Field>
         )}
+        {mode === 'online' && (
+          <Field label="Room" hint="Play a friend on their phone" className="rise-in">
+            <Button
+              size="lg"
+              className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+              onClick={online.onCreate}
+            >
+              Create room
+            </Button>
+            <div className="flex gap-2">
+              <input
+                aria-label="Room code"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') join()
+                }}
+                placeholder="Code"
+                autoCapitalize="characters"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={8}
+                inputMode="text"
+                className="min-h-14 min-w-0 flex-1 rounded-[18px] border border-input bg-background px-4 text-center text-xl font-semibold uppercase tracking-[0.3em] outline-none placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <Button
+                size="lg"
+                variant="outline"
+                className="min-h-14 rounded-[18px] px-6 text-base font-semibold"
+                disabled={!joinCode}
+                onClick={join}
+              >
+                Join
+              </Button>
+            </div>
+          </Field>
+        )}
       </div>
 
       <div className="mt-auto flex flex-col gap-3">
-        <Button
-          size="lg"
-          className="min-h-14 w-full rounded-[18px] text-base font-semibold"
-          onClick={() => onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })}
-        >
-          Start game
-        </Button>
+        {mode !== 'online' && (
+          <Button
+            size="lg"
+            className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+            onClick={() => onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })}
+          >
+            Start game
+          </Button>
+        )}
         <Button
           variant="outline"
           size="lg"
