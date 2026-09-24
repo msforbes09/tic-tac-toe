@@ -402,6 +402,55 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(22)
   })
 
+  it('shows the rung and streak on the chip in developer mode, and the chip opens the dev panel', () => {
+    const onOpenDev = vi.fn()
+    const storage = fakeStorage()
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 2 }))
+    render(
+      <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} dev onOpenDev={onOpenDev} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Bot · Medium · 17 · +2' }))
+    expect(onOpenDev).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows no streak on the chip when there is none, and no chip button outside developer mode', () => {
+    render(<GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={seeded(17)} feedback={recorder()} onBack={() => {}} dev />)
+    expect(screen.getByText('Bot · Medium · 17')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
+  })
+
+  it('reports board taps for the knock, and the completing tap overrides the cell and voids the game', () => {
+    const storage = fakeStorage()
+    // Says the knock completed on the tap of the occupied centre.
+    const onKnock = vi.fn((event: string) => event === 'cell:4')
+    render(<GameScreen settings={pvp} storage={storage} feedback={recorder()} onBack={() => {}} onKnock={onKnock} />)
+    for (const n of [1, 5, 9, 3]) fireEvent.click(cell(n))
+    expect(onKnock).toHaveBeenLastCalledWith('cell:2')
+    fireEvent.click(cell(5).parentElement!)
+    expect(onKnock).toHaveBeenLastCalledWith('cell:4')
+    expect(cell(5)).toHaveAccessibleName('Cell 5, X')
+    expect(screen.getByText('Game voided')).toBeInTheDocument()
+    expect(screen.queryByText(/wins/)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('celebration')).not.toBeInTheDocument()
+    expect(cell(2)).toBeDisabled()
+    expect(storage.entries()).toHaveLength(0)
+  })
+
+  it('does not record a voided bot game or move the ladder', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const storage = seeded(5)
+    const onKnock = vi.fn((event: string) => event === 'cell:4')
+    render(<GameScreen settings={easyBot('X')} storage={storage} feedback={recorder()} onBack={() => {}} onKnock={onKnock} />)
+    play(1)
+    fireEvent.click(cell(2).parentElement!) // the bot took cell 2; irrelevant to the knock here
+    fireEvent.click(cell(5))
+    play(9)
+    fireEvent.click(cell(5).parentElement!)
+    expect(screen.getByText('Game voided')).toBeInTheDocument()
+    expect(storage.entries()).toHaveLength(0)
+    expect(ladderIn(storage).rung).toBe(5)
+  })
+
   it('starts a first-ever bot game at the bottom of the picked band', () => {
     const storage = fakeStorage()
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
