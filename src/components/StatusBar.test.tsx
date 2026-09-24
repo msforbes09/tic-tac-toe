@@ -32,6 +32,14 @@ describe('statusText bot', () => {
   })
 })
 
+describe('StatusBar note', () => {
+  it('shows a second line under the status when given one', () => {
+    render(<StatusBar state={createGameState(settings)} youSeat="p1" note="Promoted to Hard" />)
+    expect(screen.getByText('Your move')).toBeInTheDocument()
+    expect(screen.getByText('Promoted to Hard')).toBeInTheDocument()
+  })
+})
+
 describe('StatusBar message override', () => {
   it('shows the message instead of the turn', () => {
     render(<StatusBar state={createGameState(settings)} youSeat="p1" message="Waiting for your friend…" />)

@@ -108,6 +108,18 @@ describe('p1Symbol on entries', () => {
   })
 })
 
+describe('rung on entries', () => {
+  it('keeps a valid rung and reads entries without one', () => {
+    const stored = [entry({ id: 'a', rung: 17 }), entry({ id: 'b' })]
+    expect(loadHistory(fakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) }))).toEqual(stored)
+  })
+
+  it('drops entries with a rung off the ladder', () => {
+    const stored = [entry({ id: 'ok' }), { ...entry({ id: 'bad' }), rung: 31 }, { ...entry({ id: 'bad2' }), rung: 1.5 }]
+    expect(loadHistory(fakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) }))).toEqual([entry({ id: 'ok' })])
+  })
+})
+
 describe('winnerSeat', () => {
   it('is null for a draw', () => {
     expect(winnerSeat(entry({ outcome: 'draw' }))).toBeNull()

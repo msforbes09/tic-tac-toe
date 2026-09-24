@@ -31,7 +31,18 @@ function statusPlayer(state: GameState): Player | null {
   return nextPlayer(state.board)
 }
 
-export function StatusBar({ state, youSeat, message }: { state: GameState; youSeat?: Seat; message?: string }) {
+export function StatusBar({
+  state,
+  youSeat,
+  message,
+  note,
+}: {
+  state: GameState
+  youSeat?: Seat
+  message?: string
+  /** A second line under the status, e.g. a promotion. */
+  note?: string
+}) {
   const player = message ? null : statusPlayer(state)
   const thinking =
     state.status === 'playing' && state.settings.mode === 'bot' && player !== null && seatOf(state, player) === 'p2'
@@ -40,7 +51,7 @@ export function StatusBar({ state, youSeat, message }: { state: GameState; youSe
   return (
     <div
       key={message ?? `${state.status}-${player ?? 'draw'}`}
-      className={cn('rise-in flex min-h-9 items-center justify-center gap-2.5', finished && 'min-h-10')}
+      className={cn('rise-in flex min-h-9 flex-wrap items-center justify-center gap-x-2.5', finished && 'min-h-10')}
     >
       {player && (
         <span
@@ -63,6 +74,11 @@ export function StatusBar({ state, youSeat, message }: { state: GameState; youSe
       >
         {message ?? statusText(state, youSeat)}
       </p>
+      {note && (
+        <p aria-live="polite" className="rise-in basis-full text-center font-heading text-[15px] font-medium text-player-o">
+          {note}
+        </p>
+      )}
     </div>
   )
 }
