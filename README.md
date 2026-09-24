@@ -1,8 +1,8 @@
 # Tic-Tac-Toe
 
 Mobile-first tic-tac-toe in the browser. Play a friend on the same phone, or
-take on a bot with three difficulty levels — the hard bot never loses. Every
-finished game is saved to a local history. Moves and wins come with sound
+take on a bot with three difficulty levels — the hard bot never loses. Bot games
+are saved to a local history; online series are kept with your player. Moves and wins come with sound
 and, on phones that support it, haptics. Pick X or O against the bot; after
 that the winner takes X and starts the next game, and a draw swaps. A session
 score sits above the board, and history shows your record per difficulty.
@@ -36,17 +36,25 @@ around the board and Enter places a mark.
 
 ## Play online
 
-Choose **Online** on the setup screen. **Create room** gives you a code and a
-**Share** button; your friend types the code or opens the link. The host plays
-X first; after that the winner takes X. Either player can start a new game.
+Choose **Online** on the setup screen. The first time, pick a nickname (a
+random one is offered). Then **Create room** or tap a room in the live list.
+Inside a room you see who is there, who is playing whom, and past results.
+**Challenge** any idle member; if they accept, you play a series: first to 6
+wins out of 10 games, with a tie breaker if it is level after 10. The
+challenged player moves first in game 1 and first move alternates. **Resign**
+counts as a loss whatever the score. Everyone else in the room can **Watch**.
+Rooms and results persist; only the room's creator can delete it, and each
+device owns one room at a time.
 
-Online play runs over [Supabase Realtime](https://supabase.com/docs/guides/realtime)
-(broadcast + presence, no database). To enable it:
+Online play runs over [Supabase](https://supabase.com): Realtime channels for
+presence and moves, plus two small tables for rooms and results. To enable it:
 
 1. Create a free Supabase project.
-2. Copy the Project URL and anon key from Project Settings → API.
-3. Locally: copy `.env.example` to `.env` and fill both values.
-4. Deploys: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build
+2. Run `supabase/schema.sql` once in its SQL editor (see `supabase/README.md`;
+   existing projects apply `supabase/migrations/` instead).
+3. Copy the Project URL and publishable key from Project Settings → API.
+4. Locally: copy `.env.example` to `.env` and fill both values.
+5. Deploys: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build
    environment variables on the Cloudflare Pages project.
 
 Without them the Online option shows as "Not set up".
@@ -88,10 +96,12 @@ deploy.
 - `src/lib/bot.ts` — easy (random), medium (win/block), hard (minimax)
 - `src/lib/history.ts` — localStorage history, capped at 100 games
 - `src/lib/feedback.ts` + `src/platform/browserFeedback.ts` — move/win/draw sounds and haptics
-- `src/lib/room.ts` — room codes, links, and message validation for online play
+- `src/lib/room.ts` — channels, events, messages, and validation for online play
 - `src/state/reducer.ts` — game state
-- `src/state/online.ts` — the host-as-referee reducer for online rooms
-- `src/platform/supabaseRoom.ts` — Supabase Realtime transport (the only Supabase import)
+- `src/state/series.ts` — series rules (first to 6, tie breaker, resign)
+- `src/state/online.ts` — the referee / player / watcher reducer
+- `src/platform/supabase*.ts` — Supabase adapters (the only Supabase imports)
+- `supabase/schema.sql` — rooms and results tables
 - `src/components/` — React UI on shadcn/ui
 
 The design spec lives in `docs/superpowers/specs/`.

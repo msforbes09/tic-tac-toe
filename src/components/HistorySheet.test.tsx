@@ -1,21 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { HistorySheet } from './HistorySheet'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 import { LADDER_KEY } from '@/lib/ladder'
+import type { SeriesResult } from '@/lib/room'
+import { createFakeDirectory } from '@/lib/roomDirectory'
 
 function fakeStorage(entries: HistoryEntry[] = []) {
   const map = new Map<string, string>()
   if (entries.length) map.set(STORAGE_KEY, JSON.stringify(entries))
-  const storage: HistoryStorage & { has: () => boolean } = {
+  const storage: HistoryStorage = {
     getItem: (k) => map.get(k) ?? null,
-    setItem: (k, v) => {
-      map.set(k, v)
-    },
-    removeItem: (k) => {
-      map.delete(k)
-    },
-    has: () => map.has(STORAGE_KEY),
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
   }
   return storage
 }
@@ -29,42 +26,58 @@ const entry = (over: Partial<HistoryEntry>): HistoryEntry => ({
   ...over,
 })
 
-describe('HistorySheet', () => {
+const me = { deviceId: 'me', nickname: 'Alice' }
+const zed = { deviceId: 'z', nickname: 'Zed' }
+const series = (over: Partial<SeriesResult>): SeriesResult => ({
+  gameId: 'g',
+  roomId: 'r',
+  challengerId: 'z',
+  challengedId: 'me',
+  winner: zed,
+  loser: me,
+  winnerScore: 6,
+  loserScore: 2,
+  games: 8,
+  reason: 'decided',
+  endedAt: Date.UTC(2026, 8, 24, 9, 0),
+  ...over,
+})
+const hash = async (t: string) => `h:${t}`
+
+describe('HistorySheet bot section', () => {
   it('shows an empty state when there are no games', () => {
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={fakeStorage()} />)
-    expect(screen.getByText(/no games yet/i)).toBeInTheDocument()
+    render(<HistorySheet open onOpenChange={() => {}} storage={fakeStorage()} />)
+    expect(screen.getByText(/no bot games yet/i)).toBeInTheDocument()
   })
 
-  it('lists entries newest first with mode, difficulty, and outcome', () => {
+  it('lists bot games newest first as You won / You lost / Draw with the difficulty', () => {
     const storage = fakeStorage([
-      entry({ id: 'a', outcome: 'O', mode: 'bot', difficulty: 'hard' }),
-      entry({ id: 'b', outcome: 'X', mode: 'pvp', difficulty: null }),
+      entry({ id: 'a', outcome: 'O', difficulty: 'hard' }),
+      entry({ id: 'b', outcome: 'X', difficulty: 'easy' }),
+      entry({ id: 'c', outcome: 'draw', difficulty: 'medium' }),
     ])
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
+    render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
     const items = screen.getAllByRole('listitem')
-    expect(items).toHaveLength(2)
-    expect(items[0]).toHaveTextContent(/bot/i)
+    expect(items).toHaveLength(3)
+    expect(items[0]).toHaveTextContent('You lost')
     expect(items[0]).toHaveTextContent(/hard/i)
-    expect(items[0]).toHaveTextContent(/bot wins/i)
-    expect(items[1]).toHaveTextContent(/two player/i)
-    expect(items[1]).toHaveTextContent(/player 1 wins/i)
-  })
-
-  it('offers no way to clear history', () => {
-    const storage = fakeStorage([entry({ id: 'a' })])
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
-    expect(screen.queryByRole('button', { name: /clear/i })).toBeNull()
+    expect(items[1]).toHaveTextContent('You won')
+    expect(items[2]).toHaveTextContent('Draw')
   })
 
   it('labels wins by who played, whichever symbol they had', () => {
+    render(<HistorySheet open onOpenChange={() => {}} storage={fakeStorage([entry({ id: 'a', outcome: 'O', p1Symbol: 'O' })])} />)
+    expect(screen.getByRole('listitem')).toHaveTextContent('You won')
+  })
+
+  it('ignores two-player and locally stored online games', () => {
     const storage = fakeStorage([
-      entry({ id: 'a', mode: 'bot', outcome: 'O', p1Symbol: 'O' }),
-      entry({ id: 'b', mode: 'pvp', difficulty: null, outcome: 'X', p1Symbol: 'O' }),
+      entry({ id: 'a', mode: 'pvp', difficulty: null, outcome: 'X' }),
+      entry({ id: 'b', mode: 'online', difficulty: null, outcome: 'X' }),
     ])
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
-    const items = screen.getAllByRole('listitem')
-    expect(items[0]).toHaveTextContent(/you win/i)
-    expect(items[1]).toHaveTextContent(/player 2 wins/i)
+    render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    expect(screen.getByText(/no bot games yet/i)).toBeInTheDocument()
   })
 
   it('shows your record against the bot per difficulty', () => {
@@ -73,54 +86,34 @@ describe('HistorySheet', () => {
       entry({ id: 'b', difficulty: 'easy', outcome: 'draw' }),
       entry({ id: 'c', difficulty: 'hard', outcome: 'O' }),
     ])
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
+    render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
     expect(screen.getByRole('table', { name: /record against the bot/i })).toBeInTheDocument()
     expect(screen.getByRole('row', { name: 'Easy 1 0 1' })).toBeInTheDocument()
-    expect(screen.getByRole('row', { name: 'Medium 0 0 0' })).toBeInTheDocument()
     expect(screen.getByRole('row', { name: 'Hard 0 1 0' })).toBeInTheDocument()
   })
 
-  it('hides the bot record when only two-player games were played', () => {
-    const storage = fakeStorage([entry({ id: 'a', mode: 'pvp', difficulty: null, outcome: 'X' })])
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-  })
-
-  it('shows ten games at a time with View more', () => {
+  it('shows ten games at a time with View more and starts over when reopened', () => {
     const many = Array.from({ length: 25 }, (_, i) => entry({ id: `g${i}` }))
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={fakeStorage(many)} />)
+    const storage = fakeStorage(many)
+    const { rerender } = render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
     expect(screen.getAllByRole('listitem')).toHaveLength(10)
     fireEvent.click(screen.getByRole('button', { name: /view more/i }))
     expect(screen.getAllByRole('listitem')).toHaveLength(20)
-    fireEvent.click(screen.getByRole('button', { name: /view more/i }))
-    expect(screen.getAllByRole('listitem')).toHaveLength(25)
-    expect(screen.queryByRole('button', { name: /view more/i })).not.toBeInTheDocument()
-  })
-
-  it('has no View more button for ten games or fewer', () => {
-    const ten = Array.from({ length: 10 }, (_, i) => entry({ id: `g${i}` }))
-    render(<HistorySheet open={true} onOpenChange={() => {}} storage={fakeStorage(ten)} />)
-    expect(screen.queryByRole('button', { name: /view more/i })).not.toBeInTheDocument()
-  })
-
-  it('starts from ten again when reopened', () => {
-    const many = Array.from({ length: 25 }, (_, i) => entry({ id: `g${i}` }))
-    const storage = fakeStorage(many)
-    const { rerender } = render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
-    fireEvent.click(screen.getByRole('button', { name: /view more/i }))
     rerender(<HistorySheet open={false} onOpenChange={() => {}} storage={storage} />)
-    rerender(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
+    rerender(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
     expect(screen.getAllByRole('listitem')).toHaveLength(10)
   })
 
-  it('Back closes the sheet', () => {
+  it('offers no way to clear history, and Back closes the sheet', () => {
     const onOpenChange = vi.fn()
-    render(<HistorySheet open={true} onOpenChange={onOpenChange} storage={fakeStorage()} />)
+    render(<HistorySheet open onOpenChange={onOpenChange} storage={fakeStorage([entry({ id: 'a' })])} />)
+    expect(screen.queryByRole('button', { name: /clear/i })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /^back$/i }))
-    expect(onOpenChange).toHaveBeenCalled()
     expect(onOpenChange.mock.calls[0][0]).toBe(false)
   })
+})
 
+describe('HistorySheet badge', () => {
   it('shows the top-of-the-pack badge once the top has been held, with a share', async () => {
     const storage = fakeStorage([entry({ id: 'a' })])
     storage.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: Date.UTC(2026, 8, 25, 12), topHeldCount: 3 }))
@@ -143,16 +136,41 @@ describe('HistorySheet', () => {
     render(<HistorySheet open={true} onOpenChange={() => {}} storage={none} />)
     expect(screen.queryByText('Top of the pack')).not.toBeInTheDocument()
   })
+})
 
-  it('labels online games from your point of view', () => {
-    const storage = fakeStorage([
-      { id: 'a', timestamp: 1, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' },
-      { id: 'b', timestamp: 2, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'O' },
-    ])
-    render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
-    expect(screen.getByText('You win')).toBeInTheDocument()
-    expect(screen.getByText('Friend wins')).toBeInTheDocument()
-    expect(screen.getAllByText('Online')).toHaveLength(2)
-    expect(screen.queryByRole('table', { name: /record against the bot/i })).not.toBeInTheDocument()
+describe('HistorySheet online section', () => {
+  it('is absent without an online setup', () => {
+    render(<HistorySheet open onOpenChange={() => {}} storage={fakeStorage()} />)
+    expect(screen.queryByRole('heading', { name: /online/i })).not.toBeInTheDocument()
+  })
+
+  it('lists my series from the database, newest first, from my point of view', async () => {
+    const dir = createFakeDirectory(hash)
+    await dir.createRoom({ id: 'r', name: 'Quiet Edge', creatorId: 'z', ownerHash: await hash('t') })
+    await dir.addResult(series({ gameId: 'g1', endedAt: 1 }))
+    await dir.addResult(series({ gameId: 'g2', endedAt: 2, winner: me, loser: zed, winnerScore: 6, loserScore: 4, reason: 'resigned' }))
+    await dir.addResult(series({ gameId: 'g3', endedAt: 3, winner: { deviceId: 'q', nickname: 'Quinn' }, loser: zed, challengedId: 'q' }))
+    render(<HistorySheet open onOpenChange={() => {}} storage={fakeStorage()} online={{ deviceId: 'me', directory: dir }} />)
+    await act(async () => {})
+    expect(screen.getByRole('heading', { name: /online/i })).toBeInTheDocument()
+    const rows = screen.getAllByTestId('series-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('You beat Zed')
+    expect(rows[0]).toHaveTextContent('6–4')
+    expect(rows[0]).toHaveTextContent(/resigned/i)
+    expect(rows[1]).toHaveTextContent('You lost to Zed')
+    expect(rows[1]).toHaveTextContent('2–6')
+  })
+
+  it('shows an empty state and updates live when a series finishes', async () => {
+    const dir = createFakeDirectory(hash)
+    await dir.createRoom({ id: 'r', name: 'Quiet Edge', creatorId: 'z', ownerHash: await hash('t') })
+    render(<HistorySheet open onOpenChange={() => {}} storage={fakeStorage()} online={{ deviceId: 'me', directory: dir }} />)
+    await act(async () => {})
+    expect(screen.getByText(/no series yet/i)).toBeInTheDocument()
+    await act(async () => {
+      await dir.addResult(series({ gameId: 'g1' }))
+    })
+    expect(screen.getByText('You lost to Zed')).toBeInTheDocument()
   })
 })

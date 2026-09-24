@@ -2,24 +2,22 @@ import { useEffect, useState } from 'react'
 import { Mark } from './Mark'
 import { TOP_SHARE_TEXT } from './TopCard'
 import { Button } from '@/components/ui/button'
-import { loadLadder, type Ladder } from '@/lib/ladder'
-import type { ShareLink } from '@/platform/share'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import {
-  botStats,
-  loadHistory,
-  winnerSeat,
-  type HistoryEntry,
-  type HistoryStorage,
-} from '@/lib/history'
+import { botStats, loadHistory, winnerSeat, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import { loadLadder, type Ladder } from '@/lib/ladder'
+import type { SeriesResult } from '@/lib/room'
+import type { RoomDirectory } from '@/lib/roomDirectory'
 import type { Difficulty } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import type { ShareLink } from '@/platform/share'
 
 export type HistorySheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   storage: HistoryStorage
+  /** When set, an Online section lists this player's series from the directory. */
+  online?: { deviceId: string; directory: RoomDirectory }
   /** For bragging from the top-of-the-pack badge. */
   share?: ShareLink
   siteUrl?: string
@@ -33,12 +31,10 @@ export const PAGE_SIZE = 10
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
-function outcomeLabel(e: HistoryEntry): string {
+function botOutcome(e: HistoryEntry): string {
   const seat = winnerSeat(e)
   if (seat === null) return 'Draw'
-  if (e.mode === 'pvp') return seat === 'p1' ? 'Player 1 wins' : 'Player 2 wins'
-  if (e.mode === 'online') return seat === 'p1' ? 'You win' : 'Friend wins'
-  return seat === 'p1' ? 'You win' : 'Bot wins'
+  return seat === 'p1' ? 'You won' : 'You lost'
 }
 
 function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
@@ -71,16 +67,10 @@ function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
   )
 }
 
-function modeLabel(e: HistoryEntry): string {
-  if (e.mode === 'pvp') return 'Two player'
-  if (e.mode === 'online') return 'Online'
-  const d = e.difficulty ?? 'medium'
-  return `Bot · ${d.charAt(0).toUpperCase()}${d.slice(1)}`
-}
-
+/** Local history holds bot games only now; older two-player and online rows are ignored. */
 function safeLoad(storage: HistoryStorage): HistoryEntry[] {
   try {
-    return loadHistory(storage)
+    return loadHistory(storage).filter((e) => e.mode === 'bot')
   } catch {
     return []
   }
@@ -118,10 +108,7 @@ function TopBadge({ ladder, share, siteUrl }: { ladder: Ladder; share?: ShareLin
 function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
   if (outcome === 'draw') {
     return (
-      <span
-        aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-[28%] bg-muted text-muted-foreground"
-      >
+      <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[28%] bg-muted text-muted-foreground">
         <span className="h-[3px] w-4 rounded-full bg-current" />
       </span>
     )
@@ -139,10 +126,34 @@ function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
   )
 }
 
-export function HistorySheet({ open, onOpenChange, storage, share, siteUrl }: HistorySheetProps) {
+function When({ at }: { at: number }) {
+  return (
+    <time dateTime={new Date(at).toISOString()} className="flex shrink-0 flex-col items-end text-sm tabular-nums text-muted-foreground">
+      <span>{dayFormat.format(at)}</span>
+      <span className="text-xs">{timeFormat.format(at)}</span>
+    </time>
+  )
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <h3 className="font-heading pt-2 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">{children}</h3>
+}
+
+/** One series from my side: who I played, whether I won, the score, and how it ended. */
+function seriesLine(r: SeriesResult, me: string): { title: string; score: string; tag: string | null } {
+  const won = r.winner.deviceId === me
+  const other = won ? r.loser : r.winner
+  const title = won ? `You beat ${other.nickname}` : `You lost to ${other.nickname}`
+  const score = won ? `${r.winnerScore}–${r.loserScore}` : `${r.loserScore}–${r.winnerScore}`
+  const tag = r.reason === 'resigned' ? `${r.loser.nickname} resigned` : r.reason === 'left' ? `${r.loser.nickname} left` : null
+  return { title, score, tag }
+}
+
+export function HistorySheet({ open, onOpenChange, storage, online, share, siteUrl }: HistorySheetProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [ladder, setLadder] = useState<Ladder | null>(null)
   const [visible, setVisible] = useState(PAGE_SIZE)
+  const [series, setSeries] = useState<SeriesResult[] | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -151,7 +162,14 @@ export function HistorySheet({ open, onOpenChange, storage, share, siteUrl }: Hi
     setVisible(PAGE_SIZE)
   }, [open, storage])
 
-  const hasBotGames = entries.some((e) => e.mode === 'bot')
+  const deviceId = online?.deviceId
+  const directory = online?.directory
+  useEffect(() => {
+    if (!open || !deviceId || !directory) return
+    return directory.onMyResultsChange(deviceId, setSeries)
+  }, [open, deviceId, directory])
+
+  const total = entries.length + (series?.length ?? 0)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -164,62 +182,82 @@ export function HistorySheet({ open, onOpenChange, storage, share, siteUrl }: Hi
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="font-heading text-2xl font-semibold">History</SheetTitle>
-          <SheetDescription>
-            {entries.length === 0
-              ? 'Finished games show up here'
-              : `Your last ${entries.length === 1 ? 'game' : `${entries.length} games`}`}
-          </SheetDescription>
+          <SheetDescription>{total === 0 ? 'Finished games show up here' : 'Bot games on this phone, series from online play'}</SheetDescription>
         </SheetHeader>
 
-        {ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
-
-        {hasBotGames && (
-          <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
-            <BotRecordTable entries={entries} />
-          </div>
-        )}
-
-        {entries.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <div aria-hidden="true" className="grid grid-cols-3 gap-1 opacity-60">
-              {Array.from({ length: 9 }, (_, i) => (
-                <span key={i} className="size-5 rounded-[26%] bg-muted" />
-              ))}
-            </div>
-            <p className="text-muted-foreground">No games yet</p>
-          </div>
-        ) : (
-          // min-h-0 lets the scroll area shrink inside the flex column instead of growing with its content.
-          <ScrollArea className="-mx-5 min-h-0 flex-1 px-5">
-            <ul className="divide-y divide-border/70">
-              {entries.slice(0, visible).map((e) => (
-                <li key={e.id} className="flex min-h-16 items-center gap-3.5 py-3">
-                  <OutcomeBadge outcome={e.outcome} />
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-[15px] font-semibold">{outcomeLabel(e)}</span>
-                    <span className="text-sm text-muted-foreground">{modeLabel(e)}</span>
-                  </div>
-                  <time
-                    dateTime={new Date(e.timestamp).toISOString()}
-                    className="flex shrink-0 flex-col items-end text-sm tabular-nums text-muted-foreground"
-                  >
-                    <span>{dayFormat.format(e.timestamp)}</span>
-                    <span className="text-xs">{timeFormat.format(e.timestamp)}</span>
-                  </time>
-                </li>
-              ))}
-            </ul>
-            {entries.length > visible && (
-              <Button
-                variant="ghost"
-                className="mb-1 mt-1 min-h-11 w-full rounded-[14px] text-[15px] font-medium"
-                onClick={() => setVisible((n) => n + PAGE_SIZE)}
-              >
-                View more
-              </Button>
+        {/* min-h-0 lets the scroll area shrink inside the flex column instead of growing with its content. */}
+        <ScrollArea className="-mx-5 min-h-0 flex-1 px-5">
+          <div className="flex flex-col gap-3 pb-2">
+            {online && (
+              <section className="flex flex-col gap-2">
+                <SectionTitle>Online</SectionTitle>
+                {series === null ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : series.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No series yet</p>
+                ) : (
+                  <ul className="divide-y divide-border/70">
+                    {series.map((r) => {
+                      const { title, score, tag } = seriesLine(r, deviceId!)
+                      const won = r.winner.deviceId === deviceId
+                      return (
+                        <li key={r.gameId} data-testid="series-row" className="flex min-h-16 items-center gap-3.5 py-3">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'flex size-10 shrink-0 items-center justify-center rounded-[28%] text-sm font-semibold tabular-nums',
+                              won ? 'bg-player-x-soft text-player-x' : 'bg-muted text-muted-foreground',
+                            )}
+                          >
+                            {score}
+                          </span>
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate text-[15px] font-semibold">{title}</span>
+                            <span className="text-sm text-muted-foreground">{tag ?? `${r.games} games`}</span>
+                          </div>
+                          <When at={r.endedAt} />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </section>
             )}
-          </ScrollArea>
-        )}
+
+            <section className="flex flex-col gap-2">
+              <SectionTitle>Bot</SectionTitle>
+              {ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
+              {entries.length > 0 && (
+                <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                  <BotRecordTable entries={entries} />
+                </div>
+              )}
+              {entries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No bot games yet</p>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border/70">
+                    {entries.slice(0, visible).map((e) => (
+                      <li key={e.id} className="flex min-h-16 items-center gap-3.5 py-3">
+                        <OutcomeBadge outcome={e.outcome} />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-[15px] font-semibold">{botOutcome(e)}</span>
+                          <span className="text-sm text-muted-foreground">{DIFFICULTY_LABEL[e.difficulty ?? 'medium']}</span>
+                        </div>
+                        <When at={e.timestamp} />
+                      </li>
+                    ))}
+                  </ul>
+                  {entries.length > visible && (
+                    <Button variant="ghost" className="min-h-11 w-full rounded-[14px] text-[15px] font-medium" onClick={() => setVisible((n) => n + PAGE_SIZE)}>
+                      View more
+                    </Button>
+                  )}
+                </>
+              )}
+            </section>
+          </div>
+        </ScrollArea>
 
         <SheetClose render={<Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" />}>
           Back

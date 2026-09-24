@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { Board } from './Board'
 import { Celebration } from './Celebration'
 import { ScoreBar } from './ScoreBar'
@@ -20,30 +20,18 @@ import {
   type Ladder,
   type Moment,
 } from '@/lib/ladder'
-import type { Role } from '@/lib/room'
-import type { RoomConnection } from '@/lib/roomConnection'
 import { saveSetup } from '@/lib/setup'
-import type { Board as BoardModel, Outcome, Seat, Settings } from '@/lib/types'
+import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
 import type { ShareLink } from '@/platform/share'
-import { roomReducer } from '@/state/online'
-import { canSeatMove, createGameState, seatOf, snapshotOf, symbolOf } from '@/state/reducer'
+import { createGameState, gameReducer, seatOf, symbolOf } from '@/state/reducer'
 
 export const BOT_DELAY_MS = 400
-
-export type OnlineSession = {
-  role: Role
-  code: string
-  connection: RoomConnection
-  /** Whether the other player is in the room right now. */
-  friendPresent: boolean
-}
 
 export type GameScreenProps = {
   settings: Settings
   storage: HistoryStorage
   feedback: Feedback
   onBack: () => void
-  online?: OnlineSession
   /** For bragging from the top-of-the-pack card. */
   share?: ShareLink
   siteUrl?: string
@@ -56,14 +44,11 @@ const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
   top: () => "Top of the pack. Nobody's above you now.",
 }
 
-export function GameScreen({ settings, storage, feedback, onBack, online, share, siteUrl }: GameScreenProps) {
-  const role = online?.role ?? null
-  const reducer = useMemo(() => roomReducer(role), [role])
-  const [state, dispatch] = useReducer(reducer, settings, createGameState)
+export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl }: GameScreenProps) {
+  const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
   // Null until the first board is seen, so the opening board plays the start cue.
   const previousBoard = useRef<BoardModel | null>(null)
-  const [waiting, setWaiting] = useState(false)
 
   // The ladder, for bot games: resolved once from the saved rung and the picked band, then moved
   // after each finished game. The bot plays the rung the game started on.
@@ -83,58 +68,11 @@ export function GameScreen({ settings, storage, feedback, onBack, online, share,
   const [moment, setMoment] = useState<Moment | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
 
-  const seat: Seat = role === 'guest' ? 'p2' : 'p1'
-  const friendPresent = online ? online.friendPresent : true
-  const connection = online?.connection
-
-  // Incoming room messages, from either side. A guest's hello means its screen is up and may have
-  // missed the snapshot sent on its arrival, so the host answers with the current state.
-  const latest = useRef(state)
-  latest.current = state
-  useEffect(() => {
-    if (!connection) return
-    return connection.onMessage((message) => {
-      if (message.type === 'hello') {
-        if (role === 'host') connection.send({ type: 'state', state: snapshotOf(latest.current) })
-        return
-      }
-      dispatch({ type: 'ROOM_MESSAGE', message })
-    })
-  }, [connection, role])
-
-  // The guest announces itself once its screen is listening.
-  useEffect(() => {
-    if (role === 'guest' && connection) connection.send({ type: 'hello' })
-  }, [role, connection])
-
-  // The host shares its state after every change and whenever the friend (re)joins.
-  useEffect(() => {
-    if (role !== 'host' || !connection || !friendPresent) return
-    connection.send({ type: 'state', state: snapshotOf(state) })
-  }, [role, connection, friendPresent, state])
-
-  // The friend came back: drop the waiting notice.
-  useEffect(() => {
-    if (friendPresent) setWaiting(false)
-  }, [friendPresent])
-
-  const play = (index: number) => {
-    if (role === 'guest') connection?.send({ type: 'move', index })
-    else dispatch({ type: 'MOVE', index })
-  }
-  const newGame = () => {
-    setMoment(null)
-    if (role === 'guest') connection?.send({ type: 'new-game' })
-    else dispatch({ type: 'NEW_GAME' })
-  }
-
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
   const isBotTurn = botSymbol !== null && state.status === 'playing' && nextPlayer(state.board) === botSymbol
-  // Your opponent's symbol, whose win sounds like a loss: the bot, or your friend online.
-  const opponentSymbol = botSymbol ?? (online ? symbolOf(state, seat === 'p1' ? 'p2' : 'p1') : null)
-  // Confetti when you beat the bot or your friend. Two players sharing a phone get none.
+  // Confetti when you beat the bot. Two players sharing a phone get none.
   const youWon =
-    settings.mode !== 'pvp' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === seat
+    settings.mode === 'bot' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === 'p1'
 
   // Bot reply, delayed so it feels like a turn rather than an instant reaction.
   useEffect(() => {
@@ -147,59 +85,56 @@ export function GameScreen({ settings, storage, feedback, onBack, online, share,
 
   // Sound and haptics for the start of each game and every new mark, yours and theirs alike.
   useEffect(() => {
-    const event = feedbackForChange(previousBoard.current, state.board, opponentSymbol)
+    const event = feedbackForChange(previousBoard.current, state.board, botSymbol)
     previousBoard.current = state.board
     if (event) feedback.play(event)
-  }, [state.board, opponentSymbol, feedback])
+  }, [state.board, botSymbol, feedback])
 
-  // Record each finished game exactly once. The ref guards StrictMode's double effect run.
+  // Record each finished bot game exactly once and move the ladder. Two players sharing a phone
+  // leave no history. The ref guards StrictMode's double effect run.
   useEffect(() => {
-    if (state.status === 'playing' || state.recorded) return
+    if (settings.mode !== 'bot' || !ladder || state.status === 'playing' || state.recorded) return
     if (recordedBoard.current === state.board) return
     recordedBoard.current = state.board
     const outcome: Outcome = state.status === 'draw' ? 'draw' : (state.winner as Outcome)
     const now = Date.now()
-    const band = ladder && gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
+    // The band the game was labelled with: what was picked for the first game, the real band after.
+    const band = gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
     try {
       saveGame(storage, {
         id: newEntryId(),
         timestamp: now,
         mode: settings.mode,
-        difficulty: settings.mode === 'bot' ? band : null,
+        difficulty: band,
         outcome,
-        p1Symbol: online ? symbolOf(state, seat) : state.p1Symbol,
-        ...(ladder ? { rung } : {}),
+        p1Symbol: state.p1Symbol,
+        rung,
       })
     } catch {
       // Storage unavailable (private mode, quota). History is best-effort.
     }
-    if (ladder) {
-      const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
-      const next = advance(ladder, result, now)
-      const what = momentAfter(ladder, next, result)
-      saveLadder(storage, next)
-      saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
-      setLadder(next)
-      setGamesPlayed((n) => n + 1)
-      setMoment(what)
-      if (what === 'top-held') setCardOpen(true)
-      if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
-    }
+    const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
+    const next = advance(ladder, result, now)
+    const what = momentAfter(ladder, next, result)
+    saveLadder(storage, next)
+    saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
+    setLadder(next)
+    setGamesPlayed((n) => n + 1)
+    setMoment(what)
+    if (what === 'top-held') setCardOpen(true)
+    if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, online, seat, ladder, rung, gamesPlayed, feedback])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, ladder, rung, gamesPlayed, feedback])
 
   const finished = state.status !== 'playing'
-  const myTurn = online ? canSeatMove(state, seat) : true
-  const friendLeft = online !== undefined && !friendPresent
   // The chip says what you picked for the first game, then the band the rung is really in.
   const shownBand = ladder && gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
-  const badge =
-    settings.mode === 'bot'
-      ? `Bot · ${DIFFICULTY_LABEL[shownBand]}`
-      : settings.mode === 'online'
-        ? `Online · ${online?.code ?? ''}`
-        : 'Two player'
+  const badge = settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[shownBand]}` : 'Two player'
   const note = finished && moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
+  const newGame = () => {
+    setMoment(null)
+    dispatch({ type: 'NEW_GAME' })
+  }
 
   return (
     <section className="flex flex-1 flex-col gap-7">
@@ -212,43 +147,16 @@ export function GameScreen({ settings, storage, feedback, onBack, online, share,
         </span>
       </header>
 
-      <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} youSeat={online ? seat : undefined} />
+      <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} />
 
       <div className="my-auto flex flex-col gap-5 pb-6">
-        {friendLeft && !waiting && (
-          <div
-            role="alert"
-            className="rise-in flex flex-col items-center gap-4 rounded-[18px] bg-muted/70 p-5 text-center dark:bg-muted/50"
-          >
-            <p className="text-lg font-semibold">Your friend left</p>
-            <div className="flex w-full gap-2">
-              {role === 'host' && (
-                <Button
-                  variant="outline"
-                  className="min-h-12 flex-1 rounded-[16px] text-base"
-                  onClick={() => setWaiting(true)}
-                >
-                  Wait
-                </Button>
-              )}
-              <Button className="min-h-12 flex-1 rounded-[16px] text-base font-medium" onClick={onBack}>
-                Back
-              </Button>
-            </div>
-          </div>
-        )}
-        <StatusBar
-          state={state}
-          youSeat={online ? seat : undefined}
-          message={friendLeft && waiting ? 'Waiting for your friend…' : undefined}
-          note={note}
-        />
+        <StatusBar state={state} note={note} />
         <div className="relative">
           <Board
             board={state.board}
             winningLine={state.winningLine}
-            disabled={finished || isBotTurn || !myTurn || friendLeft}
-            onSelect={play}
+            disabled={finished || isBotTurn}
+            onSelect={(index) => dispatch({ type: 'MOVE', index })}
           />
           {(youWon || cardOpen) && <Celebration />}
           {cardOpen && <TopCard share={share} siteUrl={siteUrl} onClose={() => setCardOpen(false)} />}

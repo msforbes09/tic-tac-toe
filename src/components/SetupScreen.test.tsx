@@ -67,13 +67,6 @@ describe('SetupScreen', () => {
 })
 
 describe('SetupScreen online', () => {
-  const online = (over: Partial<{ available: boolean; onCreate: () => void; onJoin: (c: string) => void }> = {}) => ({
-    available: true,
-    onCreate: vi.fn(),
-    onJoin: vi.fn(),
-    ...over,
-  })
-
   it('shows Online disabled with a hint when not set up', () => {
     render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
     const item = screen.getByRole('button', { name: /online/i })
@@ -81,43 +74,34 @@ describe('SetupScreen online', () => {
     expect(screen.getByText('Not set up')).toBeInTheDocument()
   })
 
-  it('replaces difficulty, symbol and Start with Create room and Join', () => {
-    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={online()} />)
+  it('replaces difficulty, symbol and Start with the online panel', () => {
+    render(
+      <SetupScreen
+        onStart={() => {}}
+        onOpenHistory={() => {}}
+        online={{ available: true, panel: <div data-testid="panel">rooms here</div> }}
+      />,
+    )
+    expect(screen.queryByTestId('panel')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /online/i }))
+    expect(screen.getByTestId('panel')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /hard/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: /your symbol/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /create room/i })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /room code/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^join$/i })).toBeDisabled()
   })
 
-  it('creates a room', () => {
-    const o = online()
-    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={o} />)
+  it('tells the app when the mode changes', () => {
+    const onModeChange = vi.fn()
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={{ available: true, panel: null }} onModeChange={onModeChange} />)
     fireEvent.click(screen.getByRole('button', { name: /online/i }))
-    fireEvent.click(screen.getByRole('button', { name: /create room/i }))
-    expect(o.onCreate).toHaveBeenCalledTimes(1)
-  })
-
-  it('joins with a normalized code, by button or Enter', () => {
-    const o = online()
-    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={o} />)
-    fireEvent.click(screen.getByRole('button', { name: /online/i }))
-    const input = screen.getByRole('textbox', { name: /room code/i })
-    fireEvent.change(input, { target: { value: 'ab2' } })
-    expect(screen.getByRole('button', { name: /^join$/i })).toBeDisabled()
-    fireEvent.change(input, { target: { value: ' ab2c ' } })
-    fireEvent.click(screen.getByRole('button', { name: /^join$/i }))
-    expect(o.onJoin).toHaveBeenCalledWith('AB2C')
-    fireEvent.keyDown(input, { key: 'Enter' })
-    expect(o.onJoin).toHaveBeenCalledTimes(2)
+    expect(onModeChange).toHaveBeenLastCalledWith('online')
+    fireEvent.click(screen.getByRole('button', { name: /two player/i }))
+    expect(onModeChange).toHaveBeenLastCalledWith('pvp')
   })
 
   it('keeps the offline Start button for the other modes', () => {
-    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={online()} />)
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={{ available: true, panel: null }} />)
     expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /create room/i })).not.toBeInTheDocument()
   })
 })
 

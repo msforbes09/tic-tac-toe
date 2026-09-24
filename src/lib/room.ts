@@ -1,22 +1,26 @@
 import type { Board, GameStatus, Player, Score, WinLine } from './types'
 
-export const ROOM_CODE_LENGTH = 4
-/** No 0/O or 1/I/L, so a code read aloud or typed from a photo is unambiguous. */
+/** No 0/O or 1/I/L, so an id read aloud or typed from a photo is unambiguous. */
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+export const ROOM_CODE_LENGTH = 4
+const ROOM_ID_MIN = 4
+const ROOM_ID_MAX = 8
 
-export function createRoomCode(random: () => number = Math.random): string {
-  let code = ''
-  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
+export function createId(length: number, random: () => number = Math.random): string {
+  let id = ''
+  for (let i = 0; i < length; i++) {
     const at = Math.min(ROOM_CODE_ALPHABET.length - 1, Math.floor(random() * ROOM_CODE_ALPHABET.length))
-    code += ROOM_CODE_ALPHABET[at]
+    id += ROOM_CODE_ALPHABET[at]
   }
-  return code
+  return id
 }
 
-/** The code as typed or pasted: case-insensitive, whitespace ignored. Null when it cannot be a room code. */
+export const createRoomCode = (random: () => number = Math.random): string => createId(ROOM_CODE_LENGTH, random)
+
+/** An id as typed or pasted: case-insensitive, whitespace ignored. Null when it cannot be one. */
 export function normalizeRoomCode(input: string): string | null {
   const code = input.replace(/\s+/g, '').toUpperCase()
-  if (code.length !== ROOM_CODE_LENGTH) return null
+  if (code.length < ROOM_ID_MIN || code.length > ROOM_ID_MAX) return null
   for (const ch of code) if (!ROOM_CODE_ALPHABET.includes(ch)) return null
   return code
 }
@@ -45,6 +49,17 @@ export function withoutRoomParam(url: string): string {
   return u.toString()
 }
 
+// ---- Channels ---------------------------------------------------------------------------------
+
+export const LOBBY_CHANNEL = 'ttt-lobby'
+/** An unanswered challenge is withdrawn after this long. */
+export const CHALLENGE_TIMEOUT_MS = 30_000
+export const roomChannel = (roomId: string): string => `ttt-room:${roomId}`
+export const gameChannel = (gameId: string): string => `ttt-game:${gameId}`
+
+// ---- Shared shapes -----------------------------------------------------------------------------
+
+/** The fields of one game the referee shares with everyone else. */
 export type Snapshot = {
   board: Board
   p1Symbol: Player
@@ -54,22 +69,59 @@ export type Snapshot = {
   winningLine: WinLine | null
 }
 
+export type SeriesPlayer = { deviceId: string; nickname: string }
+
+export type SeriesResult = {
+  gameId: string
+  roomId: string
+  /** Who issued and who accepted the challenge; the challenger is shown on the left. */
+  challengerId: string
+  challengedId: string
+  winner: SeriesPlayer
+  loser: SeriesPlayer
+  winnerScore: number
+  loserScore: number
+  games: number
+  reason: 'decided' | 'resigned' | 'left'
+  endedAt: number
+}
+
+export type MemberStatus = 'idle' | 'playing' | 'watching'
+export type RoomPresence = { deviceId: string; nickname: string; status: MemberStatus; gameId: string | null }
+export type LobbyPresence = { roomId: string; nickname: string }
+export type GameRole = 'referee' | 'player' | 'watcher'
+export type GamePresence = { deviceId: string; role: GameRole }
+
+/** Room channel broadcast. */
+export type RoomEvent =
+  | { type: 'challenge'; gameId: string; from: SeriesPlayer; to: string }
+  | { type: 'accept'; gameId: string; from: string; to: string }
+  | { type: 'decline'; gameId: string; from: string }
+  | { type: 'cancel'; gameId: string; from: string }
+  | { type: 'series-ended'; result: SeriesResult }
+  | { type: 'room-deleted' }
+
 /**
- * Guest → host: `move`, `new-game` (requests) and `hello` (my screen is up, send me the state).
- * Host → guest: `state` (the truth).
+ * Game channel broadcast. Players → referee: `move`, `next-game`, `resign`, `hello`.
+ * Referee → all: `state` (a series snapshot, validated by the series module).
  */
-export type RoomMessage =
-  | { type: 'move'; index: number }
-  | { type: 'new-game' }
-  | { type: 'hello' }
-  | { type: 'state'; state: Snapshot }
+export type GameMessage =
+  | { type: 'move'; index: number; from: string }
+  | { type: 'next-game'; from: string }
+  | { type: 'resign'; from: string }
+  | { type: 'hello'; from: string }
+  | { type: 'state'; state: unknown }
+
+// ---- Validation: anything off the wire that is not exactly one of our shapes is dropped --------
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isCellIndex = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 8
 const isPlayer = (v: unknown): v is Player => v === 'X' || v === 'O'
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
+const isString = (v: unknown): v is string => typeof v === 'string'
+const isPlayerRef = (v: unknown): v is SeriesPlayer => isObject(v) && isString(v.deviceId) && isString(v.nickname)
 
-function isSnapshot(v: unknown): v is Snapshot {
+export function isGameSnapshot(v: unknown): v is Snapshot {
   if (!isObject(v)) return false
   const board = v.board
   if (!Array.isArray(board) || board.length !== 9 || !board.every((c) => c === null || isPlayer(c))) return false
@@ -82,47 +134,93 @@ function isSnapshot(v: unknown): v is Snapshot {
   return isObject(score) && isCount(score.p1) && isCount(score.p2) && isCount(score.draws)
 }
 
-/** Anything off the wire that is not exactly one of our messages is dropped. */
-export function isRoomMessage(value: unknown): value is RoomMessage {
-  if (!isObject(value)) return false
-  switch (value.type) {
-    case 'move':
-      return isCellIndex(value.index)
-    case 'new-game':
-    case 'hello':
+export function isSeriesResult(v: unknown): v is SeriesResult {
+  if (!isObject(v)) return false
+  return (
+    isString(v.gameId) &&
+    isString(v.roomId) &&
+    isString(v.challengerId) &&
+    isString(v.challengedId) &&
+    isPlayerRef(v.winner) &&
+    isPlayerRef(v.loser) &&
+    isCount(v.winnerScore) &&
+    isCount(v.loserScore) &&
+    isCount(v.games) &&
+    (v.reason === 'decided' || v.reason === 'resigned' || v.reason === 'left') &&
+    typeof v.endedAt === 'number'
+  )
+}
+
+export function isRoomEvent(v: unknown): v is RoomEvent {
+  if (!isObject(v)) return false
+  switch (v.type) {
+    case 'challenge':
+      return isString(v.gameId) && isPlayerRef(v.from) && isString(v.to)
+    case 'accept':
+      return isString(v.gameId) && isString(v.from) && isString(v.to)
+    case 'decline':
+    case 'cancel':
+      return isString(v.gameId) && isString(v.from)
+    case 'series-ended':
+      return isSeriesResult(v.result)
+    case 'room-deleted':
       return true
-    case 'state':
-      return isSnapshot(value.state)
     default:
       return false
   }
 }
 
-export type Role = 'host' | 'guest'
-
-export type Member = { id: string; role: Role; joinedAt: number }
-export type LobbyState = 'waiting' | 'playing' | 'full'
-
-const byArrival = (a: Member, b: Member) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-
-/**
- * What the lobby shows this member. The host plays as soon as a guest is present. The first guest to
- * arrive plays; any later guest finds the room full. A guest with no host waits (an empty room and a
- * wrong code look the same without a server).
- */
-export function lobbyState(members: Member[], selfId: string): LobbyState {
-  const self = members.find((m) => m.id === selfId)
-  const hostPresent = members.some((m) => m.role === 'host')
-  const guests = members.filter((m) => m.role === 'guest').sort(byArrival)
-  if (!self) return 'waiting'
-  if (self.role === 'host') return guests.length > 0 ? 'playing' : 'waiting'
-  if (!hostPresent) return 'waiting'
-  return guests[0].id === selfId ? 'playing' : 'full'
+export function isGameMessage(v: unknown): v is GameMessage {
+  if (!isObject(v)) return false
+  switch (v.type) {
+    case 'move':
+      return isCellIndex(v.index) && isString(v.from)
+    case 'next-game':
+    case 'resign':
+    case 'hello':
+      return isString(v.from)
+    case 'state':
+      return 'state' in v
+    default:
+      return false
+  }
 }
+
+export function isRoomPresence(v: unknown): v is RoomPresence {
+  if (!isObject(v)) return false
+  return (
+    isString(v.deviceId) &&
+    isString(v.nickname) &&
+    (v.status === 'idle' || v.status === 'playing' || v.status === 'watching') &&
+    (v.gameId === null || isString(v.gameId))
+  )
+}
+
+export function isGamePresence(v: unknown): v is GamePresence {
+  return isObject(v) && isString(v.deviceId) && (v.role === 'referee' || v.role === 'player' || v.role === 'watcher')
+}
+
+export function isLobbyPresence(v: unknown): v is LobbyPresence {
+  return isObject(v) && isString(v.roomId) && isString(v.nickname)
+}
+
+/** Games in progress: playing members grouped by game, only complete pairs, in the order first seen. */
+export function pairsInProgress(members: RoomPresence[]): { gameId: string; players: SeriesPlayer[] }[] {
+  const groups = new Map<string, SeriesPlayer[]>()
+  for (const m of members) {
+    if (m.status !== 'playing' || m.gameId === null) continue
+    const list = groups.get(m.gameId) ?? []
+    list.push({ deviceId: m.deviceId, nickname: m.nickname })
+    groups.set(m.gameId, list)
+  }
+  return Array.from(groups, ([gameId, players]) => ({ gameId, players })).filter((g) => g.players.length === 2)
+}
+
+// ---- Config -----------------------------------------------------------------------------------
 
 export type SupabaseConfig = { url: string; anonKey: string }
 
-/** Both values, or null when online play is not set up. The anon key is public by design. */
+/** Both values, or null when online play is not set up. The publishable key is public by design. */
 export function readSupabaseConfig(env: Record<string, unknown>): SupabaseConfig | null {
   const url = env.VITE_SUPABASE_URL
   const anonKey = env.VITE_SUPABASE_ANON_KEY

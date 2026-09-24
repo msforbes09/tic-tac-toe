@@ -34,3 +34,8 @@ import { afterEach } from 'vitest'
 afterEach(() => {
   cleanup()
 })
+
+// Tests must never reach a real Supabase project, whatever the developer's .env says.
+const env = import.meta.env as Record<string, unknown>
+env.VITE_SUPABASE_URL = ''
+env.VITE_SUPABASE_ANON_KEY = ''

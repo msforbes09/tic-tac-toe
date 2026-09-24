@@ -1,5 +1,8 @@
 # Online play with friends — Design Spec
 
+> **Superseded on 2026-09-24** by `2026-09-24-rooms-and-challenges-design.md`.
+> The transport and referee model here survive; the join-by-code flow does not.
+
 Date: 2026-09-24
 Branch: `feat/online-play`
 
