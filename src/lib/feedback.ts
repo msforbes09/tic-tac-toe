@@ -7,6 +7,8 @@ export type FeedbackEvent =
   | { kind: 'draw' }
   | { kind: 'lose' }
   | { kind: 'start' }
+  | { kind: 'challenge' }
+  | { kind: 'accepted' }
   /** The opening splash: plays with no user gesture, so implementations may have to drop it. */
   | { kind: 'splash' }
 

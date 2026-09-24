@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RoomScreen } from './RoomScreen'
-import type { Feedback } from '@/lib/feedback'
+import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { HistoryStorage } from '@/lib/history'
 import { createFakeRealtime, type FakeRealtime, type OpenChannel } from '@/lib/realtime'
 import { CHALLENGE_TIMEOUT_MS, LOBBY_CHANNEL, roomChannel } from '@/lib/room'
@@ -13,13 +13,14 @@ const cat = { deviceId: 'c', nickname: 'Cat' }
 const room: RoomRecord = { id: 'R1', name: 'Sly Diagonal', creatorId: 'a', createdAt: 1 }
 const hash = async (t: string) => `h:${t}`
 const storage: HistoryStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
-const feedback: Feedback = { play: () => {} }
 const flush = () => act(async () => {})
 
 let nextId = 0
 
 function mount(rt: FakeRealtime, dir: RoomDirectory, self: typeof alice, ownerToken: string | null = null) {
   const onLeave = vi.fn()
+  const played: FeedbackEvent[] = []
+  const feedback: Feedback = { play: (e) => void played.push(e) }
   const view = render(
     <div data-testid={self.deviceId}>
       <RoomScreen
@@ -38,7 +39,7 @@ function mount(rt: FakeRealtime, dir: RoomDirectory, self: typeof alice, ownerTo
   const el = () => screen.getByTestId(self.deviceId)
   const buttons = () => Array.from(el().querySelectorAll('button'))
   const button = (text: RegExp) => buttons().find((b) => text.test(b.textContent ?? ''))
-  return { el, button, onLeave, unmount: () => view.unmount() }
+  return { el, button, onLeave, played, unmount: () => view.unmount() }
 }
 
 async function setup(withCat = false) {
@@ -145,10 +146,47 @@ describe('RoomScreen challenges', () => {
     fireEvent.click(a.button(/back to room/i)!)
     fireEvent.click(b.button(/back to room/i)!)
     await flush()
-    expect(a.el()).toHaveTextContent('Bob resigned to Alice at 0–0')
-    expect(b.el()).toHaveTextContent('Bob resigned to Alice at 0–0')
+    const row = a.el().querySelector('[data-testid="result-row"]')!
+    expect(row).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
+    expect(row).toHaveTextContent('Bob resigned')
+    expect(row.querySelector('[data-winner="true"]')).toHaveTextContent('Alice')
+    expect(b.el().querySelector('[data-testid="result-row"]')).toHaveTextContent(/Alice\s*0\s*–\s*0\s*Bob/)
     expect(a.el()).toHaveTextContent('Idle')
     expect(a.button(/^challenge$/i)).not.toBeDisabled()
+  })
+})
+
+describe('RoomScreen challenge sounds and disconnects', () => {
+  it('plays a chime for the challenged player and a cue for the challenger on accept', async () => {
+    const { a, b } = await setup()
+    fireEvent.click(a.button(/^challenge$/i)!)
+    await flush()
+    expect(b.played).toContainEqual({ kind: 'challenge' })
+    expect(a.played).not.toContainEqual({ kind: 'challenge' })
+    fireEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+    await flush()
+    expect(a.played).toContainEqual({ kind: 'accepted' })
+  })
+
+  it('closes a pending challenge when the challenged player disconnects', async () => {
+    const { a, b } = await setup()
+    fireEvent.click(a.button(/^challenge$/i)!)
+    await flush()
+    expect(a.el()).toHaveTextContent('Waiting for Bob…')
+    b.unmount()
+    await flush()
+    expect(a.el()).not.toHaveTextContent('Waiting for Bob…')
+    expect(a.el()).toHaveTextContent('Bob left before answering')
+  })
+
+  it('closes the challenge sheet when the challenger disconnects', async () => {
+    const { a } = await setup()
+    fireEvent.click(a.button(/^challenge$/i)!)
+    await flush()
+    expect(screen.getByText('Alice challenges you')).toBeInTheDocument()
+    a.unmount()
+    await flush()
+    expect(screen.queryByText('Alice challenges you')).not.toBeInTheDocument()
   })
 })
 
@@ -181,6 +219,7 @@ describe('RoomScreen timeouts and deletion', () => {
   it('an incoming challenge that is never cancelled still expires on the target', async () => {
     const { rt, b } = await setup()
     const raw = await rt.open(roomChannel('R1'), 'z')
+    raw.track({ deviceId: 'z', nickname: 'Zed', status: 'idle', gameId: null })
     raw.send({ type: 'challenge', gameId: 'gz', from: { deviceId: 'z', nickname: 'Zed' }, to: 'b' })
     await flush()
     expect(screen.getByText('Zed challenges you')).toBeInTheDocument()
@@ -232,7 +271,7 @@ describe('RoomScreen stability', () => {
       open,
       directory: dir,
       storage,
-      feedback,
+      feedback: { play: () => {} },
       onLeave: () => {},
     })
     const view = render(<RoomScreen {...props()} />)

@@ -50,9 +50,10 @@ export function GameScreen({ settings, storage, feedback, onBack }: GameScreenPr
     if (event) feedback.play(event)
   }, [state.board, botSymbol, feedback])
 
-  // Record each finished game exactly once. The ref guards StrictMode's double effect run.
+  // Record each finished bot game exactly once. Two players sharing a phone leave no history.
+  // The ref guards StrictMode's double effect run.
   useEffect(() => {
-    if (state.status === 'playing' || state.recorded) return
+    if (settings.mode !== 'bot' || state.status === 'playing' || state.recorded) return
     if (recordedBoard.current === state.board) return
     recordedBoard.current = state.board
     const outcome: Outcome = state.status === 'draw' ? 'draw' : (state.winner as Outcome)

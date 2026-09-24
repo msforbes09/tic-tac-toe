@@ -4,6 +4,7 @@ import { newEntryId } from './history'
 export const DEVICE_KEY = 'tic-tac-toe:device'
 export const NICKNAME_KEY = 'tic-tac-toe:nickname'
 export const OWNED_KEY = 'tic-tac-toe:rooms-owned'
+export const PLAYER_TOKEN_KEY = 'tic-tac-toe:player-token'
 
 const read = (storage: HistoryStorage, key: string): string | null => {
   try {
@@ -29,10 +30,23 @@ export function loadDeviceId(storage: HistoryStorage): string {
   return id
 }
 
-/** Trimmed, single-spaced, 2–20 characters. Null when it cannot be a nickname. */
+export const NICKNAME_MIN = 2
+export const NICKNAME_MAX = 12
+
+/** What a nickname may hold while it is being typed: letters, digits, single spaces; capped. */
+export function sanitizeNicknameInput(input: string): string {
+  return input
+    .replace(/[^A-Za-z0-9 ]+/g, '')
+    .replace(/ {2,}/g, ' ')
+    .replace(/^ +/, '')
+    .slice(0, NICKNAME_MAX)
+}
+
+/** Letters, digits and single spaces, trimmed, 2–12 characters. Null when it cannot be a nickname. */
 export function normalizeNickname(input: string): string | null {
-  const name = input.trim().replace(/\s+/g, ' ')
-  return name.length >= 2 && name.length <= 20 ? name : null
+  const name = sanitizeNicknameInput(input.trim().replace(/\s+/g, ' ')).trim()
+  if (name.length < NICKNAME_MIN || name.length > NICKNAME_MAX) return null
+  return /^[A-Za-z0-9]+( [A-Za-z0-9]+)*$/.test(name) && name === input.trim().replace(/\s+/g, ' ') ? name : null
 }
 
 export const loadNickname = (storage: HistoryStorage): string | null => read(storage, NICKNAME_KEY)
@@ -55,6 +69,15 @@ export function removeOwnedRoom(storage: HistoryStorage, roomId: string): void {
   const rest = { ...loadOwnedRooms(storage) }
   delete rest[roomId]
   write(storage, OWNED_KEY, JSON.stringify(rest))
+}
+
+/** The secret that lets only this device rename its player row. Made once. */
+export function loadPlayerToken(storage: HistoryStorage): string {
+  const saved = read(storage, PLAYER_TOKEN_KEY)
+  if (saved && saved.length >= 16) return saved
+  const token = newToken()
+  write(storage, PLAYER_TOKEN_KEY, token)
+  return token
 }
 
 export const newToken = (): string => `${newEntryId()}${newEntryId()}`.replace(/-/g, '')

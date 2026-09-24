@@ -15,10 +15,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
-import { newEntryId, saveGame, type HistoryStorage } from '@/lib/history'
+import type { HistoryStorage } from '@/lib/history'
 import type { Connection, OpenChannel } from '@/lib/realtime'
 import { gameChannel, isGameMessage, isGamePresence, type GamePresence, type SeriesPlayer, type SeriesResult } from '@/lib/room'
-import type { Board as BoardModel, Outcome } from '@/lib/types'
+import type { Board as BoardModel } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { onlineReducer, resolveRole, type SeriesRole } from '@/state/online'
 import { canSeatMove, seatOf, symbolOf } from '@/state/reducer'
@@ -69,7 +69,7 @@ function resultCopy(result: SeriesResult, self: string): { title: string; subtit
  * truth and broadcasts it; players send requests; watchers only receive. Presence drives the
  * grace period and the referee handover.
  */
-export function SeriesScreen({ self, role: initialRole, initial, open, storage, feedback, onExit, onResult, addResult, now = Date.now }: SeriesScreenProps) {
+export function SeriesScreen({ self, role: initialRole, initial, open, feedback, onExit, onResult, addResult, now = Date.now }: SeriesScreenProps) {
   const [role, setRole] = useState<SeriesRole>(initialRole)
   const roleRef = useRef(role)
   roleRef.current = role
@@ -81,7 +81,6 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
   const [confirmResign, setConfirmResign] = useState(false)
   const [tieShown, setTieShown] = useState(false)
   const [showTie, setShowTie] = useState(false)
-  const recordedBoard = useRef<BoardModel | null>(null)
   const previousBoard = useRef<BoardModel | null>(null)
   const resultHandled = useRef(false)
   // True once this device holds the referee's truth: referees always, others after their first snapshot.
@@ -171,27 +170,6 @@ export function SeriesScreen({ self, role: initialRole, initial, open, storage, 
     previousBoard.current = state.game.board
     if (event) feedback.play(event)
   }, [state.game.board, opponentSymbol, feedback])
-
-  // Players record each finished game once; watchers record nothing.
-  useEffect(() => {
-    if (!isPlayer || !mySide || state.game.status === 'playing' || state.game.recorded) return
-    if (recordedBoard.current === state.game.board) return
-    recordedBoard.current = state.game.board
-    const outcome: Outcome = state.game.status === 'draw' ? 'draw' : (state.game.winner as Outcome)
-    try {
-      saveGame(storage, {
-        id: newEntryId(),
-        timestamp: now(),
-        mode: 'online',
-        difficulty: null,
-        outcome,
-        p1Symbol: symbolOf(state.game, seatOfSide(mySide)),
-      })
-    } catch {
-      // History is best-effort.
-    }
-    dispatch({ type: 'RECORDED' })
-  }, [isPlayer, mySide, state.game, storage, now])
 
   // The referee persists the result once and tells the room.
   useEffect(() => {

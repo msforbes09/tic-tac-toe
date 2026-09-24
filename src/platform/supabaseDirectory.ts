@@ -1,5 +1,5 @@
 import type { SeriesResult } from '@/lib/room'
-import type { RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
+import type { PlayerRecord, RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
 
 type Response<T> = { data: T; error: { message: string } | null }
 
@@ -8,6 +8,7 @@ export type QueryLike = PromiseLike<Response<unknown>> & {
   select(columns: string): QueryLike
   order(column: string, options: { ascending: boolean }): QueryLike
   eq(column: string, value: string): QueryLike
+  or(filters: string): QueryLike
   insert(row: Record<string, unknown>): QueryLike
   upsert(row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }): QueryLike
   single(): QueryLike
@@ -19,6 +20,7 @@ export type ChangesChannelLike = {
 export type DirectoryClientLike = {
   from(table: 'rooms' | 'results'): QueryLike
   rpc(fn: 'delete_room', args: { room_id: string; token: string }): Promise<Response<unknown>>
+  rpc(fn: 'upsert_player', args: { p_id: string; p_token: string; p_nickname: string }): Promise<Response<unknown>>
   channel(name: string): ChangesChannelLike
   removeChannel(channel: ChangesChannelLike): Promise<unknown>
 }
@@ -27,6 +29,8 @@ type RoomRow = { id: string; name: string; creator_id: string; created_at: strin
 type ResultRow = {
   id: string
   room_id: string
+  challenger_id: string
+  challenged_id: string
   winner_id: string
   winner_name: string
   loser_id: string
@@ -42,6 +46,8 @@ const roomFromRow = (r: RoomRow): RoomRecord => ({ id: r.id, name: r.name, creat
 const resultFromRow = (r: ResultRow): SeriesResult => ({
   gameId: r.id,
   roomId: r.room_id,
+  challengerId: r.challenger_id,
+  challengedId: r.challenged_id,
   winner: { deviceId: r.winner_id, nickname: r.winner_name },
   loser: { deviceId: r.loser_id, nickname: r.loser_name },
   winnerScore: r.winner_score,
@@ -53,6 +59,8 @@ const resultFromRow = (r: ResultRow): SeriesResult => ({
 const rowFromResult = (r: SeriesResult): ResultRow => ({
   id: r.gameId,
   room_id: r.roomId,
+  challenger_id: r.challengerId,
+  challenged_id: r.challengedId,
   winner_id: r.winner.deviceId,
   winner_name: r.winner.nickname,
   loser_id: r.loser.deviceId,
@@ -102,9 +110,27 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
     }
   }
 
+  const listMyResults = async (playerId: string): Promise<SeriesResult[]> => {
+    const rows = await unwrap<ResultRow[]>(
+      client
+        .from('results')
+        .select('*')
+        .or(`winner_id.eq.${playerId},loser_id.eq.${playerId}`)
+        .order('ended_at', { ascending: false }),
+    )
+    return rows.map(resultFromRow)
+  }
+
   return {
     listRooms,
     onRoomsChange: (handler) => watch('rooms', undefined, listRooms, handler),
+    async savePlayer(player: PlayerRecord, token: string) {
+      const { error } = await client.rpc('upsert_player', { p_id: player.id, p_token: token, p_nickname: player.nickname })
+      if (error) throw new Error(error.message)
+    },
+    listMyResults,
+    // postgres_changes filters take one column, so my-results watches the whole table and refetches.
+    onMyResultsChange: (playerId, handler) => watch('results', undefined, () => listMyResults(playerId), handler),
     async createRoom(room) {
       const row = await unwrap<RoomRow>(
         client
