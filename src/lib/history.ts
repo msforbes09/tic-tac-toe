@@ -8,6 +8,8 @@ export type HistoryEntry = {
   outcome: Outcome
   /** The symbol player one (you, against the bot) played. Older entries lack it and were X. */
   p1Symbol?: Player
+  /** The bot's rung on the ladder (1..30) for bot games. Older entries lack it. */
+  rung?: number
 }
 
 export type HistoryStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -29,7 +31,8 @@ function isEntry(value: unknown): value is HistoryEntry {
     MODES.includes(v.mode as Mode) &&
     (v.difficulty === null || DIFFICULTIES.includes(v.difficulty as Difficulty)) &&
     OUTCOMES.includes(v.outcome as Outcome) &&
-    (v.p1Symbol === undefined || SYMBOLS.includes(v.p1Symbol as Player))
+    (v.p1Symbol === undefined || SYMBOLS.includes(v.p1Symbol as Player)) &&
+    (v.rung === undefined || (Number.isInteger(v.rung) && (v.rung as number) >= 1 && (v.rung as number) <= 30))
   )
 }
 

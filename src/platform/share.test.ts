@@ -9,6 +9,19 @@ describe('share link', () => {
     expect(result).toBe('shared')
   })
 
+  it('passes text alongside the link to the share sheet', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    await createShareLink({ share })('https://x.test/', 'I held the bot to a draw.')
+    expect(share).toHaveBeenCalledWith({ url: 'https://x.test/', text: 'I held the bot to a draw.' })
+  })
+
+  it('copies the text and the link together when there is no share sheet', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const result = await createShareLink({ clipboard: { writeText } })('https://x.test/', 'Brag.')
+    expect(writeText).toHaveBeenCalledWith('Brag. https://x.test/')
+    expect(result).toBe('copied')
+  })
+
   it('treats a dismissed share sheet as shared (nothing to report)', async () => {
     const share = vi.fn().mockRejectedValue(new DOMException('dismissed', 'AbortError'))
     expect(await createShareLink({ share })('https://x.test/?room=AB2C')).toBe('shared')
