@@ -26,6 +26,12 @@ npm run dev
 - `npm run test:watch` — tests in watch mode
 - `npm run build` — typecheck and production build
 
+## Install it
+
+On a phone, open the live site and use Add to Home Screen. It runs full screen
+and works offline after the first visit. On a keyboard, the arrow keys move
+around the board and Enter places a mark.
+
 ## How it's put together
 
 - `src/lib/game.ts` — pure board rules
