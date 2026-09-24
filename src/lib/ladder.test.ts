@@ -1,3 +1,4 @@
+import { newerLadder } from './ladder'
 import { describe, expect, it } from 'vitest'
 import {
   EMPTY_LADDER,
@@ -144,7 +145,7 @@ describe('ladder storage', () => {
 
   it('round-trips a saved ladder', () => {
     const storage = fakeStorage()
-    const ladder: Ladder = { rung: 17, streak: -2, topHeldAt: 1700000000000, topHeldCount: 3 }
+    const ladder: Ladder = { rung: 17, streak: -2, topHeldAt: 1700000000000, topHeldCount: 3, updatedAt: 0 }
     saveLadder(storage, ladder)
     expect(loadLadder(storage)).toEqual(ladder)
   })
@@ -161,5 +162,24 @@ describe('ladder storage', () => {
     }
     expect(loadLadder(broken)).toEqual(EMPTY_LADDER)
     expect(() => saveLadder(broken, at(1))).not.toThrow()
+  })
+})
+
+describe('ladder timestamps', () => {
+  it('stamps updatedAt when the ladder moves and reads legacy data as 0', () => {
+    const moved = advance(EMPTY_LADDER, 'win', 777)
+    expect(moved.updatedAt).toBe(777)
+    const storage = { getItem: () => JSON.stringify({ rung: 5, streak: 1 }), setItem: () => {}, removeItem: () => {} }
+    expect(loadLadder(storage).updatedAt).toBe(0)
+    expect(EMPTY_LADDER.updatedAt).toBe(0)
+  })
+
+  it('prefers the newer copy, local on ties or when the cloud has none', () => {
+    const local = { ...EMPTY_LADDER, rung: 7, updatedAt: 100 }
+    const cloud = { ...EMPTY_LADDER, rung: 12, updatedAt: 200 }
+    expect(newerLadder(local, cloud)).toBe(cloud)
+    expect(newerLadder(local, { ...cloud, updatedAt: 100 })).toBe(local)
+    expect(newerLadder(local, { ...cloud, updatedAt: 50 })).toBe(local)
+    expect(newerLadder(local, null)).toBe(local)
   })
 })

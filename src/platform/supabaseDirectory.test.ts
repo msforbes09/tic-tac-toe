@@ -10,7 +10,7 @@ function fakeClient(responses: Response[]) {
   const changeHandlers: (() => void)[] = []
   const from = (table: string) => {
     const b: Record<string, unknown> = {}
-    for (const op of ['select', 'order', 'eq', 'or', 'insert', 'upsert', 'single']) {
+    for (const op of ['select', 'order', 'eq', 'or', 'insert', 'upsert', 'single', 'limit', 'maybeSingle']) {
       b[op] = (...args: unknown[]) => {
         calls.push([table, op, ...args])
         return b
@@ -144,5 +144,49 @@ describe('createSupabaseDirectory', () => {
       ['results', 'or', 'winner_id.eq.a,loser_id.eq.a'],
       ['results', 'order', 'ended_at', { ascending: false }],
     ])
+  })
+
+  it('upserts game rows by id and lists them by player and mode', async () => {
+    const f = fakeClient([
+      { data: null, error: null },
+      { data: [{ id: 'g1', player_id: 'dev', mode: 'bot', difficulty: 'hard', rung: 9, outcome: 'won', symbol: 'X', played_at: '2026-09-25T10:00:00.000Z' }], error: null },
+    ])
+    const dir = createSupabaseDirectory(f.client)
+    await dir.addGames([{ id: 'g1', playerId: 'dev', mode: 'bot', difficulty: 'hard', rung: 9, outcome: 'won', symbol: 'X', playedAt: Date.parse('2026-09-25T10:00:00.000Z') }])
+    expect(f.calls[0]).toEqual([
+      'games',
+      'upsert',
+      [{ id: 'g1', player_id: 'dev', mode: 'bot', difficulty: 'hard', rung: 9, outcome: 'won', symbol: 'X', played_at: '2026-09-25T10:00:00.000Z' }],
+      { onConflict: 'id', ignoreDuplicates: true },
+    ])
+    const rows = await dir.listGames('dev', 'bot', 50)
+    expect(rows).toEqual([{ id: 'g1', playerId: 'dev', mode: 'bot', difficulty: 'hard', rung: 9, outcome: 'won', symbol: 'X', playedAt: Date.parse('2026-09-25T10:00:00.000Z') }])
+    expect(f.calls.slice(1)).toEqual([
+      ['games', 'select', '*'],
+      ['games', 'eq', 'player_id', 'dev'],
+      ['games', 'eq', 'mode', 'bot'],
+      ['games', 'order', 'played_at', { ascending: false }],
+      ['games', 'limit', 50],
+    ])
+  })
+
+  it('loads a ladder row and saves one through save_ladder', async () => {
+    const f = fakeClient([
+      { data: { player_id: 'dev', rung: 12, streak: 2, top_held_at: null, top_held_count: 0, updated_at: '2026-09-25T10:00:00.000Z' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const dir = createSupabaseDirectory(f.client)
+    expect(await dir.loadLadder('dev')).toEqual({ playerId: 'dev', rung: 12, streak: 2, topHeldAt: null, topHeldCount: 0, updatedAt: Date.parse('2026-09-25T10:00:00.000Z') })
+    expect(f.calls).toEqual([
+      ['ladders', 'select', '*'],
+      ['ladders', 'eq', 'player_id', 'dev'],
+      ['ladders', 'maybeSingle'],
+    ])
+    expect(await dir.loadLadder('nobody')).toBeNull()
+    await dir.saveLadder('dev', 'tok', { rung: 13, streak: 3, topHeldAt: 5000, topHeldCount: 1, updatedAt: 6000 })
+    expect(f.client.rpc).toHaveBeenCalledWith('save_ladder', {
+      p_id: 'dev', p_token: 'tok', p_rung: 13, p_streak: 3, p_top_held_at: new Date(5000).toISOString(), p_top_held_count: 1, p_updated_at: new Date(6000).toISOString(),
+    })
   })
 })

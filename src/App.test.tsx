@@ -6,6 +6,8 @@ import type { InstallPlatform } from '@/platform/install'
 import { createFakeRealtime } from '@/lib/realtime'
 import { createFakeDirectory } from '@/lib/roomDirectory'
 import { NICKNAME_KEY, OWNED_KEY } from '@/lib/identity'
+import { STORAGE_KEY } from '@/lib/history'
+import { LADDER_KEY } from '@/lib/ladder'
 import { KNOCK_DELAY_MS } from '@/lib/knock'
 
 describe('App', () => {
@@ -43,7 +45,7 @@ describe('App', () => {
   it('opens the history sheet', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /history/i }))
-    expect(screen.getByText(/no bot games yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no two-player games yet/i)).toBeInTheDocument()
   })
 })
 
@@ -267,9 +269,85 @@ describe('App online rooms', () => {
         winnerScore: 6, loserScore: 2, games: 8, reason: 'decided', endedAt: 5,
       })
     })
+    pickOnline()
     fireEvent.click(screen.getByRole('button', { name: /history/i }))
     await flush()
     expect(screen.getByText('You lost to Zed')).toBeInTheDocument()
+  })
+
+  it('History follows the selected mode', async () => {
+    const { deps } = online()
+    render(<App deps={deps} />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    fireEvent.click(screen.getByRole('button', { name: /history/i }))
+    await flush()
+    expect(screen.getByRole('heading', { name: 'Bot history' })).toBeInTheDocument()
+  })
+
+  it('pushes unsynced local games to the cloud on launch and marks them', async () => {
+    const { deps, dir } = online()
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        { id: 'old1', timestamp: 1, mode: 'bot', difficulty: 'easy', outcome: 'X', p1Symbol: 'X', rung: 2 },
+        { id: 'old2', timestamp: 2, mode: 'pvp', difficulty: null, outcome: 'draw', p1Symbol: 'X', synced: true },
+        { id: 'legacy', timestamp: 3, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' },
+      ]),
+    )
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
+    expect((await dir.listGames(me, 'bot')).map((g) => g.id)).toEqual(['old1'])
+    expect(await dir.listGames(me, 'pvp')).toEqual([])
+    expect(await dir.listGames(me, 'online')).toEqual([])
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]') as { id: string; synced?: boolean }[]
+    expect(stored.find((e) => e.id === 'old1')?.synced).toBe(true)
+    expect(stored.find((e) => e.id === 'legacy')?.synced).toBe(true)
+  })
+
+  it('pushes a game to the cloud as soon as it is recorded', async () => {
+    const { deps, dir } = online()
+    render(<App deps={deps} />)
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(screen.getByRole('button', { name: new RegExp(`^Cell ${n},`) }))
+    await flush()
+    const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
+    const rows = await dir.listGames(me, 'pvp')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ mode: 'pvp', outcome: 'won', symbol: 'X' })
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]') as { synced?: boolean }[]
+    expect(stored[0].synced).toBe(true)
+  })
+
+  it('adopts a newer cloud ladder on launch and ignores an older one', async () => {
+    const { deps, dir } = online()
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 7, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 100 }))
+    const first = render(<App deps={deps} />)
+    await flush()
+    const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
+    const token = window.localStorage.getItem('tic-tac-toe:player-token') ?? ''
+    first.unmount()
+    await dir.saveLadder(me, token, { rung: 12, streak: 2, topHeldAt: null, topHeldCount: 0, updatedAt: 200 })
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    expect(JSON.parse(window.localStorage.getItem(LADDER_KEY) ?? '{}').rung).toBe(12)
+  })
+
+  it('does not adopt an older cloud ladder', async () => {
+    const { deps, dir } = online()
+    const seed = render(<App deps={deps} />)
+    await flush()
+    const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
+    const token = window.localStorage.getItem('tic-tac-toe:player-token') ?? ''
+    seed.unmount()
+    await dir.saveLadder(me, token, { rung: 3, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 50 })
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 20, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 500 }))
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    expect(JSON.parse(window.localStorage.getItem(LADDER_KEY) ?? '{}').rung).toBe(20)
   })
 
   it('creates a room, enters it as owner, and remembers the owner token', async () => {
