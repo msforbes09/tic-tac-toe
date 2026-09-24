@@ -42,9 +42,9 @@ import {
 } from '@/lib/room'
 import type { RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
 import { DevDialog } from '@/components/DevDialog'
-import { STORAGE_KEY as HISTORY_KEY } from '@/lib/history'
+import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry } from '@/lib/history'
 import { KNOCK, KNOCK_DELAY_MS, knockStep, loadDevMode, saveDevMode, type KnockEvent } from '@/lib/knock'
-import { LADDER_KEY, loadLadder, saveLadder } from '@/lib/ladder'
+import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
@@ -119,6 +119,47 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     if (!services || !nickname) return
     services.directory.savePlayer({ id: deviceId, nickname }, playerToken).catch(() => {})
   }, [services, nickname, deviceId, playerToken])
+
+  // Games finished offline reach the cloud on the next launch; the newer ladder copy wins.
+  useEffect(() => {
+    if (!services) return
+    const { directory } = services
+    // Online games were once written locally too; those rows belong to `results`, so just retire them.
+    const unsynced = unsyncedEntries(storage)
+    const legacy = unsynced.filter((e) => e.mode === 'online')
+    if (legacy.length > 0) markSynced(storage, legacy.map((e) => e.id))
+    const pending = unsynced.filter((e) => e.mode !== 'online')
+    if (pending.length > 0) {
+      directory
+        .addGames(pending.map((e) => gameRowFromEntry(e, deviceId)))
+        .then(() => markSynced(storage, pending.map((e) => e.id)))
+        .catch(() => {})
+    }
+    directory
+      .loadLadder(deviceId)
+      .then((cloud) => {
+        const local = loadLadder(storage)
+        const winner = newerLadder(local, cloud)
+        if (winner !== local) {
+          const { playerId: _id, ...ladder } = winner as typeof winner & { playerId?: string }
+          saveLadder(storage, ladder)
+        } else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
+      })
+      .catch(() => {})
+  }, [services, deviceId, playerToken])
+
+  // Each finished two-player or bot game goes straight to the cloud, along with the moved ladder.
+  const onRecorded = useCallback(
+    (entry: HistoryEntry, ladder: Ladder | null) => {
+      if (!services) return
+      services.directory
+        .addGames([gameRowFromEntry(entry, deviceId)])
+        .then(() => markSynced(storage, [entry.id]))
+        .catch(() => {})
+      if (ladder) services.directory.saveLadder(deviceId, playerToken, ladder).catch(() => {})
+    },
+    [services, deviceId, playerToken],
+  )
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -159,6 +200,12 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   })
   // Setup opens on the last offline mode, except straight after a room link or after leaving a room.
   const [initialMode, setInitialMode] = useState<Mode | null>(pendingRoomId && services ? 'online' : null)
+  // The mode currently picked on setup; History shows that mode's games.
+  const [setupMode, setSetupMode] = useState<Mode>(() => {
+    if (pendingRoomId && services) return 'online'
+    const saved = loadSetup(storage).mode
+    return saved === 'online' && !services ? 'pvp' : saved
+  })
   const [notice, setNotice] = useState<string | null>(null)
   const [rooms, setRooms] = useState<RoomRecord[] | null>(null)
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -287,6 +334,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           dev={devMode}
           onOpenDev={() => setDevDialog('panel')}
           onKnock={knock}
+          onRecorded={onRecorded}
         />
       )}
       {screen.kind === 'room' && services && self && (
@@ -311,6 +359,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
             setScreen({ kind: 'game', settings: next })
           }}
           onOpenHistory={() => setHistoryOpen(true)}
+          onModeChange={setSetupMode}
           dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
           onKnock={knock}
           online={{
@@ -348,6 +397,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         storage={storage}
+        mode={setupMode}
+        cloud={services ? { deviceId, directory: services.directory } : undefined}
         online={services && nickname ? { deviceId, directory: services.directory } : undefined}
         share={share}
         siteUrl={siteUrl}

@@ -1,3 +1,5 @@
+import type { GameRow } from './history'
+import { EMPTY_LADDER } from './ladder'
 import { describe, expect, it, vi } from 'vitest'
 import { createFakeDirectory } from './roomDirectory'
 import type { SeriesResult } from './room'
@@ -87,5 +89,29 @@ describe('fake room directory', () => {
     expect((await dir.listMyResults('a')).map((r) => r.gameId)).toEqual(['g2', 'g1'])
     expect(await dir.listMyResults('q')).toEqual([])
     expect(seen).toHaveBeenCalledTimes(3)
+  })
+
+  it('stores games once by id and lists a player\'s games by mode, newest first, capped', async () => {
+    const dir = createFakeDirectory(hash)
+    const row = (id: string, playedAt: number, mode: GameRow['mode'] = 'bot'): GameRow => ({
+      id, playerId: 'dev', mode, difficulty: mode === 'bot' ? 'hard' : null, rung: mode === 'bot' ? 9 : null, outcome: 'won', symbol: 'X', playedAt,
+    })
+    await dir.addGames([row('g1', 1), row('g2', 2), row('g3', 3, 'pvp')])
+    await dir.addGames([row('g1', 1)])
+    expect((await dir.listGames('dev', 'bot')).map((g) => g.id)).toEqual(['g2', 'g1'])
+    expect((await dir.listGames('dev', 'pvp')).map((g) => g.id)).toEqual(['g3'])
+    expect((await dir.listGames('dev', 'bot', 1)).map((g) => g.id)).toEqual(['g2'])
+    expect(await dir.listGames('other', 'bot')).toEqual([])
+  })
+
+  it('saves a ladder per player behind the token and loads it back', async () => {
+    const dir = createFakeDirectory(hash)
+    expect(await dir.loadLadder('dev')).toBeNull()
+    await dir.saveLadder('dev', 't', { ...EMPTY_LADDER, rung: 12, updatedAt: 100 })
+    expect(await dir.loadLadder('dev')).toEqual({ playerId: 'dev', ...EMPTY_LADDER, rung: 12, updatedAt: 100 })
+    await dir.saveLadder('dev', 't', { ...EMPTY_LADDER, rung: 13, updatedAt: 200 })
+    expect((await dir.loadLadder('dev'))?.rung).toBe(13)
+    await expect(dir.saveLadder('dev', 'wrong', { ...EMPTY_LADDER, rung: 1, updatedAt: 300 })).rejects.toThrow()
+    expect((await dir.loadLadder('dev'))?.rung).toBe(13)
   })
 })

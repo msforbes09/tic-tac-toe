@@ -1,3 +1,4 @@
+import { gameRowFromEntry, markSynced, unsyncedEntries } from './history'
 import { describe, expect, it } from 'vitest'
 import {
   MAX_ENTRIES,
@@ -163,5 +164,46 @@ describe('botStats', () => {
       medium: { wins: 0, losses: 0, draws: 0 },
       hard: { wins: 0, losses: 0, draws: 0 },
     })
+  })
+})
+
+describe('cloud sync helpers', () => {
+  const base = { id: 'e1', timestamp: 5, mode: 'bot' as const, difficulty: 'hard' as const, outcome: 'X' as const, p1Symbol: 'O' as const, rung: 12 }
+
+  it('turns a local entry into a game row from Player 1\'s side', () => {
+    expect(gameRowFromEntry(base, 'dev')).toEqual({
+      id: 'e1', playerId: 'dev', mode: 'bot', difficulty: 'hard', rung: 12, outcome: 'lost', symbol: 'O', playedAt: 5,
+    })
+    expect(gameRowFromEntry({ ...base, outcome: 'O' }, 'dev').outcome).toBe('won')
+    expect(gameRowFromEntry({ ...base, outcome: 'draw' }, 'dev').outcome).toBe('draw')
+    const pvp = gameRowFromEntry({ id: 'e2', timestamp: 6, mode: 'pvp', difficulty: null, outcome: 'X' }, 'dev')
+    expect(pvp).toMatchObject({ mode: 'pvp', difficulty: null, rung: null, outcome: 'won', symbol: 'X' })
+  })
+
+  it('keeps the synced flag, lists what is unsent, and marks ids as sent', () => {
+    const storage = fakeStorage()
+    saveGame(storage, { ...base, id: 'a' })
+    saveGame(storage, { ...base, id: 'b', synced: true })
+    saveGame(storage, { ...base, id: 'c' })
+    expect(unsyncedEntries(storage).map((e) => e.id)).toEqual(['a', 'c'])
+    markSynced(storage, ['a', 'c'])
+    expect(unsyncedEntries(storage)).toEqual([])
+    expect(loadHistory(storage).every((e) => e.synced)).toBe(true)
+  })
+
+  it('rejects a non-boolean synced flag and tolerates broken storage', () => {
+    const storage = fakeStorage({ [STORAGE_KEY]: JSON.stringify([{ ...base, synced: 'yes' }]) })
+    expect(loadHistory(storage)).toEqual([])
+    const broken: HistoryStorage = {
+      getItem: () => {
+        throw new Error('denied')
+      },
+      setItem: () => {
+        throw new Error('denied')
+      },
+      removeItem: () => {},
+    }
+    expect(unsyncedEntries(broken)).toEqual([])
+    expect(() => markSynced(broken, ['a'])).not.toThrow()
   })
 })

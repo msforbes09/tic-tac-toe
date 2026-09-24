@@ -10,6 +10,20 @@ export type HistoryEntry = {
   p1Symbol?: Player
   /** The bot's rung on the ladder (1..30) for bot games. Older entries lack it. */
   rung?: number
+  /** True once the entry reached the cloud. Missing means not yet. */
+  synced?: boolean
+}
+
+/** One finished game as the cloud stores it, from Player 1's side (you against the bot). */
+export type GameRow = {
+  id: string
+  playerId: string
+  mode: Mode
+  difficulty: Difficulty | null
+  rung: number | null
+  outcome: 'won' | 'lost' | 'draw'
+  symbol: Player
+  playedAt: number
 }
 
 export type HistoryStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -32,7 +46,8 @@ function isEntry(value: unknown): value is HistoryEntry {
     (v.difficulty === null || DIFFICULTIES.includes(v.difficulty as Difficulty)) &&
     OUTCOMES.includes(v.outcome as Outcome) &&
     (v.p1Symbol === undefined || SYMBOLS.includes(v.p1Symbol as Player)) &&
-    (v.rung === undefined || (Number.isInteger(v.rung) && (v.rung as number) >= 1 && (v.rung as number) <= 30))
+    (v.rung === undefined || (Number.isInteger(v.rung) && (v.rung as number) >= 1 && (v.rung as number) <= 30)) &&
+    (v.synced === undefined || typeof v.synced === 'boolean')
   )
 }
 
@@ -83,4 +98,39 @@ export function botStats(entries: HistoryEntry[]): Record<Difficulty, BotRecord>
     else record.losses++
   }
   return stats
+}
+
+export function gameRowFromEntry(entry: HistoryEntry, playerId: string): GameRow {
+  const seat = winnerSeat(entry)
+  return {
+    id: entry.id,
+    playerId,
+    mode: entry.mode,
+    difficulty: entry.difficulty,
+    rung: entry.rung ?? null,
+    outcome: seat === null ? 'draw' : seat === 'p1' ? 'won' : 'lost',
+    symbol: entry.p1Symbol ?? 'X',
+    playedAt: entry.timestamp,
+  }
+}
+
+/** Entries not yet in the cloud, oldest first, so a flush replays them in order. */
+export function unsyncedEntries(storage: HistoryStorage): HistoryEntry[] {
+  try {
+    return loadHistory(storage)
+      .filter((e) => !e.synced)
+      .reverse()
+  } catch {
+    return []
+  }
+}
+
+export function markSynced(storage: HistoryStorage, ids: string[]): void {
+  try {
+    const set = new Set(ids)
+    const list = loadHistory(storage).map((e) => (set.has(e.id) ? { ...e, synced: true } : e))
+    storage.setItem(STORAGE_KEY, JSON.stringify(list))
+  } catch {
+    // Best-effort; the next flush tries again.
+  }
 }

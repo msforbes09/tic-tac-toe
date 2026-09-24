@@ -1,7 +1,11 @@
+import type { GameRow } from './history'
+import type { Ladder } from './ladder'
 import type { SeriesResult } from './room'
+import type { Mode } from './types'
 
 export type RoomRecord = { id: string; name: string; creatorId: string; createdAt: number }
 export type PlayerRecord = { id: string; nickname: string }
+export type CloudLadder = Ladder & { playerId: string }
 
 /** Persistent rooms and series results. Newest first everywhere. */
 export type RoomDirectory = {
@@ -20,6 +24,13 @@ export type RoomDirectory = {
   /** Every series this player won or lost, across rooms, newest first. */
   listMyResults(playerId: string): Promise<SeriesResult[]>
   onMyResultsChange(playerId: string, handler: (results: SeriesResult[]) => void): () => void
+  /** Finished two-player and bot games. Idempotent by id, so an offline backlog can be replayed. */
+  addGames(rows: GameRow[]): Promise<void>
+  /** A player's games in one mode, newest first, at most `limit` (default 50). */
+  listGames(playerId: string, mode: Mode, limit?: number): Promise<GameRow[]>
+  loadLadder(playerId: string): Promise<CloudLadder | null>
+  /** Insert or update the player's ladder; the token must match the one it was created with. */
+  saveLadder(playerId: string, token: string, ladder: Ladder): Promise<void>
 }
 
 type StoredRoom = RoomRecord & { ownerHash: string }
@@ -34,6 +45,8 @@ export function createFakeDirectory(
   const resultHandlers = new Map<string, Set<(results: SeriesResult[]) => void>>()
   const myHandlers = new Map<string, Set<(results: SeriesResult[]) => void>>()
   const players: (PlayerRecord & { tokenHash: string })[] = []
+  const games: GameRow[] = []
+  const ladders = new Map<string, { ladder: Ladder; tokenHash: string }>()
   let clock = 1
 
   const publicRooms = (): RoomRecord[] =>
@@ -72,6 +85,25 @@ export function createFakeDirectory(
     },
     async listMyResults(playerId) {
       return mine(playerId)
+    },
+    async addGames(rows) {
+      for (const row of rows) if (!games.some((g) => g.id === row.id)) games.push({ ...row })
+    },
+    async listGames(playerId, mode, limit = 50) {
+      return games
+        .filter((g) => g.playerId === playerId && g.mode === mode)
+        .sort((a, b) => b.playedAt - a.playedAt)
+        .slice(0, limit)
+    },
+    async loadLadder(playerId) {
+      const entry = ladders.get(playerId)
+      return entry ? { playerId, ...entry.ladder } : null
+    },
+    async saveLadder(playerId, token, ladder) {
+      const tokenHash = await hash(token)
+      const existing = ladders.get(playerId)
+      if (existing && existing.tokenHash !== tokenHash) throw new Error('ladder token does not match')
+      ladders.set(playerId, { ladder: { ...ladder }, tokenHash })
     },
     onMyResultsChange(playerId, handler) {
       const set = myHandlers.get(playerId) ?? new Set()

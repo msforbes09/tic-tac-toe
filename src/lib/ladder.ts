@@ -24,10 +24,12 @@ export type Ladder = {
   topHeldAt: number | null
   /** How many draws at rung 30 so far. */
   topHeldCount: number
+  /** When the ladder last moved; 0 for data saved before the cloud copy existed. */
+  updatedAt: number
 }
 
 export const LADDER_KEY = 'tic-tac-toe:ladder'
-export const EMPTY_LADDER: Ladder = { rung: null, streak: 0, topHeldAt: null, topHeldCount: 0 }
+export const EMPTY_LADDER: Ladder = { rung: null, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 0 }
 
 const clamp = (rung: number) => Math.min(TOP_RUNG, Math.max(1, rung))
 const bandIndex = (rung: number) => Math.min(BANDS.length - 1, Math.floor((clamp(rung) - 1) / BAND_SIZE))
@@ -58,16 +60,22 @@ export function advance(ladder: Ladder, result: GameResult, now: number): Ladder
       streak: 0,
       topHeldAt: held ? (ladder.topHeldAt ?? now) : ladder.topHeldAt,
       topHeldCount: held ? ladder.topHeldCount + 1 : ladder.topHeldCount,
+      updatedAt: now,
     }
   }
   if (result === 'win') {
     const streak = ladder.streak > 0 ? ladder.streak + 1 : 1
-    return { ...ladder, rung: clamp(rung + (streak >= HOT_STREAK ? 2 : 1)), streak }
+    return { ...ladder, rung: clamp(rung + (streak >= HOT_STREAK ? 2 : 1)), streak, updatedAt: now }
   }
   const streak = ladder.streak < 0 ? ladder.streak - 1 : -1
   let next = clamp(rung - (streak <= -HOT_STREAK ? 2 : 1))
   if (bandOf(next) !== bandOf(rung) && -streak < DEMOTION_LOSSES) next = bandBottom(bandOf(rung))
-  return { ...ladder, rung: next, streak }
+  return { ...ladder, rung: next, streak, updatedAt: now }
+}
+
+/** The copy that moved last wins; the local one on a tie or when the cloud has nothing. */
+export function newerLadder(local: Ladder, cloud: Ladder | null): Ladder {
+  return cloud && cloud.updatedAt > local.updatedAt ? cloud : local
 }
 
 /**
@@ -106,6 +114,7 @@ export function loadLadder(storage: HistoryStorage): Ladder {
       streak: Number.isInteger(v.streak) ? (v.streak as number) : 0,
       topHeldAt: isTime(v.topHeldAt) ? v.topHeldAt : null,
       topHeldCount: isCount(v.topHeldCount) ? v.topHeldCount : 0,
+      updatedAt: isTime(v.updatedAt) ? v.updatedAt : 0,
     }
   } catch {
     return EMPTY_LADDER
