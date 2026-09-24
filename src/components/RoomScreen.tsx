@@ -86,7 +86,8 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
     (notice?: string) => {
       if (left.current) return
       left.current = true
-      onLeave(notice)
+      if (notice === undefined) onLeave()
+      else onLeave(notice)
     },
     [onLeave],
   )
