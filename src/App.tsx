@@ -121,7 +121,11 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   useEffect(() => {
     if (!services) return
     const { directory } = services
-    const pending = unsyncedEntries(storage)
+    // Online games were once written locally too; those rows belong to `results`, so just retire them.
+    const unsynced = unsyncedEntries(storage)
+    const legacy = unsynced.filter((e) => e.mode === 'online')
+    if (legacy.length > 0) markSynced(storage, legacy.map((e) => e.id))
+    const pending = unsynced.filter((e) => e.mode !== 'online')
     if (pending.length > 0) {
       directory
         .addGames(pending.map((e) => gameRowFromEntry(e, deviceId)))
@@ -133,7 +137,10 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
       .then((cloud) => {
         const local = loadLadder(storage)
         const winner = newerLadder(local, cloud)
-        if (winner !== local) saveLadder(storage, winner)
+        if (winner !== local) {
+          const { playerId: _id, ...ladder } = winner as typeof winner & { playerId?: string }
+          saveLadder(storage, ladder)
+        }
         else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
       })
       .catch(() => {})
@@ -162,7 +169,11 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   // Setup opens on the last offline mode, except straight after a room link or after leaving a room.
   const [initialMode, setInitialMode] = useState<Mode | null>(pendingRoomId && services ? 'online' : null)
   // The mode currently picked on setup; History shows that mode's games.
-  const [setupMode, setSetupMode] = useState<Mode>(() => (pendingRoomId && services ? 'online' : loadSetup(storage).mode))
+  const [setupMode, setSetupMode] = useState<Mode>(() => {
+    if (pendingRoomId && services) return 'online'
+    const saved = loadSetup(storage).mode
+    return saved === 'online' && !services ? 'pvp' : saved
+  })
   const [notice, setNotice] = useState<string | null>(null)
   const [rooms, setRooms] = useState<RoomRecord[] | null>(null)
   const [counts, setCounts] = useState<Record<string, number>>({})

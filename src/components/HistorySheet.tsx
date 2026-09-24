@@ -32,8 +32,8 @@ const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
 
 /** Games shown per page; View more reveals another page. */
 export const PAGE_SIZE = 10
-/** How many rows the cloud is asked for. */
-export const CLOUD_LIMIT = 50
+/** How many rows the cloud is asked for: enough for the record table to be a lifetime record for anyone realistic. */
+export const CLOUD_LIMIT = 500
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
@@ -198,25 +198,31 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [series, setSeries] = useState<SeriesResult[] | null>(null)
 
-  // Two-player and bot games: the cloud when it answers, the local list otherwise.
+  // Two-player and bot games: the local list right away, then the cloud rows merged in by id so a
+  // game that has not been pushed yet (just finished, or played offline) never disappears.
+  const cloudId = cloud?.deviceId
+  const cloudDir = cloud?.directory
   useEffect(() => {
     if (!open) return
     const local = safeLoad(storage, mode).map(fromEntry)
     setGames(local)
     setLadder(loadLadder(storage))
     setVisible(PAGE_SIZE)
-    if (mode === 'online' || !cloud) return
+    if (mode === 'online' || !cloudId || !cloudDir) return
     let live = true
-    cloud.directory
-      .listGames(cloud.deviceId, mode, CLOUD_LIMIT)
+    cloudDir
+      .listGames(cloudId, mode, CLOUD_LIMIT)
       .then((rows) => {
-        if (live) setGames(rows.map(fromRow))
+        if (!live) return
+        const byId = new Map(local.map((g) => [g.id, g]))
+        for (const row of rows) byId.set(row.id, fromRow(row))
+        setGames([...byId.values()].sort((a, b) => b.at - a.at))
       })
       .catch(() => {})
     return () => {
       live = false
     }
-  }, [open, storage, mode, cloud])
+  }, [open, storage, mode, cloudId, cloudDir])
 
   const deviceId = online?.deviceId
   const directory = online?.directory

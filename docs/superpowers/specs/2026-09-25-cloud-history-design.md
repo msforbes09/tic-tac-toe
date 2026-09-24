@@ -10,8 +10,8 @@ Agreed with the owner in conversation. Amends `2026-09-25-adaptive-bot-design.md
 ## Goal
 
 Every finished game is logged: two-player and bot games to the `games` table,
-online series to `results` as today. The bot's ladder follows the player across
-devices. The History button is always shown and opens the section for the mode
+online series to `results` as today. The bot's ladder is mirrored to the cloud as
+a backup of this device's copy. The History button is always shown and opens the section for the mode
 selected on setup. Everything keeps working offline.
 
 ## Storage (Supabase)
@@ -42,7 +42,10 @@ selected on setup. Everything keeps working offline.
 - The ladder (`tic-tac-toe:ladder`) gains `updatedAt`. After each bot game the
   ladder is saved locally then pushed with `save_ladder`. On launch the cloud
   ladder is fetched; when its `updatedAt` is newer than the local one it
-  replaces the local copy. Last write wins.
+  replaces the local copy. Newest write wins, and the function refuses older
+  writes. Identity is per device (device id and token live beside the ladder),
+  so this is a backup, not cross-device sync: a second phone is a second player
+  until an identity-transfer feature exists.
 - Online series are unchanged: the referee writes `results`.
 
 ## History sheet

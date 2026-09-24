@@ -150,7 +150,7 @@ describe('HistorySheet cloud rows', () => {
     return dir
   }
 
-  it('prefers the cloud rows for the player and mode over the local list', async () => {
+  it('shows the cloud rows for the player and mode alongside local ones, newest first', async () => {
     const dir = await cloudDir([
       { id: 'c1', playerId: 'me', mode: 'bot', difficulty: 'easy', rung: 3, outcome: 'won', symbol: 'X', playedAt: Date.UTC(2026, 8, 25) },
       { id: 'c2', playerId: 'me', mode: 'bot', difficulty: 'hard', rung: 25, outcome: 'lost', symbol: 'O', playedAt: Date.UTC(2026, 8, 24) },
@@ -160,13 +160,54 @@ describe('HistorySheet cloud rows', () => {
     render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} cloud={{ deviceId: 'me', directory: dir }} />)
     await act(async () => {})
     const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(2)
+    expect(rows).toHaveLength(3)
     expect(rows[0]).toHaveTextContent('You won')
     expect(rows[0]).toHaveTextContent('Easy')
     expect(rows[1]).toHaveTextContent('You lost')
+    expect(rows[2]).toHaveTextContent('Draw')
     expect(screen.getByRole('row', { name: 'Easy 1 0 0' })).toBeInTheDocument()
+    expect(screen.getByRole('row', { name: 'Medium 0 0 1' })).toBeInTheDocument()
     expect(screen.getByRole('row', { name: 'Hard 0 1 0' })).toBeInTheDocument()
-    expect(screen.queryByText('Draw')).not.toBeInTheDocument()
+    expect(screen.queryByText(/you/i, { selector: 'li' })).toBeNull()
+  })
+
+  it('merges local games the cloud does not have yet, newest first', async () => {
+    const dir = await cloudDir([
+      { id: 'c1', playerId: 'me', mode: 'bot', difficulty: 'easy', rung: 3, outcome: 'won', symbol: 'X', playedAt: Date.UTC(2026, 8, 24) },
+    ])
+    const storage = fakeStorage([
+      entry({ id: 'c1', mode: 'bot', outcome: 'X', difficulty: 'easy', timestamp: Date.UTC(2026, 8, 24), synced: true }),
+      entry({ id: 'fresh', mode: 'bot', outcome: 'draw', difficulty: 'medium', timestamp: Date.UTC(2026, 8, 25) }),
+    ])
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} cloud={{ deviceId: 'me', directory: dir }} />)
+    await act(async () => {})
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('Draw')
+    expect(rows[1]).toHaveTextContent('You won')
+  })
+
+  it('does not refetch or reset paging when the parent re-renders with a fresh cloud object', async () => {
+    const dir = await cloudDir(
+      Array.from({ length: 15 }, (_, i) => ({
+        id: `c${i}`, playerId: 'me', mode: 'bot' as const, difficulty: 'easy' as const, rung: 3, outcome: 'won' as const, symbol: 'X' as const, playedAt: i,
+      })),
+    )
+    let calls = 0
+    const original = dir.listGames
+    dir.listGames = (...args) => {
+      calls++
+      return original(...args)
+    }
+    const storage = fakeStorage()
+    const view = render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} cloud={{ deviceId: 'me', directory: dir }} />)
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: /view more/i }))
+    expect(screen.getAllByRole('listitem')).toHaveLength(15)
+    view.rerender(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} cloud={{ deviceId: 'me', directory: dir }} />)
+    await act(async () => {})
+    expect(screen.getAllByRole('listitem')).toHaveLength(15)
+    expect(calls).toBe(1)
   })
 
   it('falls back to the local list when the cloud cannot be read', async () => {

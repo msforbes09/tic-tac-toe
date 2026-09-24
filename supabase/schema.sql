@@ -177,7 +177,8 @@ begin
         top_held_at = excluded.top_held_at,
         top_held_count = excluded.top_held_count,
         updated_at = excluded.updated_at
-    where public.ladders.token_hash = excluded.token_hash;
+    where public.ladders.token_hash = excluded.token_hash
+      and excluded.updated_at >= public.ladders.updated_at;
 end
 $$;
 grant execute on function public.save_ladder(text, text, int, int, timestamptz, int, timestamptz) to anon, authenticated;

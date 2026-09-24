@@ -198,6 +198,7 @@ describe('App online rooms', () => {
       JSON.stringify([
         { id: 'old1', timestamp: 1, mode: 'bot', difficulty: 'easy', outcome: 'X', p1Symbol: 'X', rung: 2 },
         { id: 'old2', timestamp: 2, mode: 'pvp', difficulty: null, outcome: 'draw', p1Symbol: 'X', synced: true },
+        { id: 'legacy', timestamp: 3, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' },
       ]),
     )
     render(<App deps={deps} />)
@@ -206,8 +207,10 @@ describe('App online rooms', () => {
     const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
     expect((await dir.listGames(me, 'bot')).map((g) => g.id)).toEqual(['old1'])
     expect(await dir.listGames(me, 'pvp')).toEqual([])
+    expect(await dir.listGames(me, 'online')).toEqual([])
     const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]') as { id: string; synced?: boolean }[]
     expect(stored.find((e) => e.id === 'old1')?.synced).toBe(true)
+    expect(stored.find((e) => e.id === 'legacy')?.synced).toBe(true)
   })
 
   it('pushes a game to the cloud as soon as it is recorded', async () => {
