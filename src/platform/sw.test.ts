@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 type Handler = (event: unknown) => void
 
 /** Runs public/sw.js against fake `self`, `caches`, and `fetch`, and returns handles to poke it. */
-function loadWorker(network: (url: string) => Response) {
+function loadWorker(network: (url: string, init?: RequestInit) => Response) {
   const handlers: Record<string, Handler> = {}
   const store = new Map<string, Response>()
   const cache = {
@@ -24,7 +24,7 @@ function loadWorker(network: (url: string) => Response) {
     skipWaiting: () => {},
     clients: { claim: () => {} },
   }
-  const fetch = vi.fn(async (req: Request) => network(req.url))
+  const fetch = vi.fn(async (req: Request, init?: RequestInit) => network(req.url, init))
   const code = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8')
   new Function('self', 'caches', 'fetch', code)(self, caches, fetch)
 
@@ -69,5 +69,14 @@ describe('service worker asset caching', () => {
   it('uses a fresh cache name so installs replace the poisoned v1 cache', () => {
     const code = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8')
     expect(code).not.toMatch(/tic-tac-toe-v1'/)
+  })
+
+  it("refetches past the browser's HTTP cache when an asset comes back as HTML", async () => {
+    // The first, cache-allowed fetch returns a poisoned HTML entry; the bypassing refetch gets the script.
+    const { request, fetch } = loadWorker((_url, init) => (init?.cache === 'reload' ? js() : html()))
+    const res = await request('/assets/index-abc.js')
+    expect(res.headers.get('content-type')).toContain('javascript')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect((fetch.mock.calls[1] as unknown[])[1]).toEqual({ cache: 'reload' })
   })
 })

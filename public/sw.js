@@ -41,7 +41,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached && !isHtml(cached)) return cached
-      return fetch(request).then((response) => {
+      // A browser that fetched an asset during a deploy may hold that HTML in its HTTP cache as
+      // immutable; refetch past the cache once before giving up.
+      const fromNetwork = fetch(request).then((response) =>
+        isHtml(response) ? fetch(request, { cache: 'reload' }) : response,
+      )
+      return fromNetwork.then((response) => {
         if (response.ok && !isHtml(response)) {
           const copy = response.clone()
           caches.open(CACHE).then((cache) => cache.put(request, copy))
