@@ -43,6 +43,7 @@ function outcomeLabel(e: HistoryEntry): string {
   const seat = winnerSeat(e)
   if (seat === null) return 'Draw'
   if (e.mode === 'pvp') return seat === 'p1' ? 'Player 1 wins' : 'Player 2 wins'
+  if (e.mode === 'online') return seat === 'p1' ? 'You win' : 'Friend wins'
   return seat === 'p1' ? 'You win' : 'Bot wins'
 }
 
@@ -78,6 +79,7 @@ function BotRecordTable({ entries }: { entries: HistoryEntry[] }) {
 
 function modeLabel(e: HistoryEntry): string {
   if (e.mode === 'pvp') return 'Two player'
+  if (e.mode === 'online') return 'Online'
   const d = e.difficulty ?? 'medium'
   return `Bot · ${d.charAt(0).toUpperCase()}${d.slice(1)}`
 }

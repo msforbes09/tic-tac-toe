@@ -122,4 +122,16 @@ describe('HistorySheet', () => {
     expect(onOpenChange).toHaveBeenCalled()
     expect(onOpenChange.mock.calls[0][0]).toBe(false)
   })
+
+  it('labels online games from your point of view', () => {
+    const storage = fakeStorage([
+      { id: 'a', timestamp: 1, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' },
+      { id: 'b', timestamp: 2, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'O' },
+    ])
+    render(<HistorySheet open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.getByText('You win')).toBeInTheDocument()
+    expect(screen.getByText('Friend wins')).toBeInTheDocument()
+    expect(screen.getAllByText('Online')).toHaveLength(2)
+    expect(screen.queryByRole('table', { name: /record against the bot/i })).not.toBeInTheDocument()
+  })
 })

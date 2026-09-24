@@ -4,6 +4,8 @@ import { BOT_DELAY_MS, GameScreen } from './GameScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { Settings } from '@/lib/types'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
+import { createFakeRoom } from '@/lib/roomConnection'
+import type { Snapshot } from '@/lib/room'
 
 function fakeStorage() {
   const map = new Map<string, string>()
@@ -260,5 +262,245 @@ describe('GameScreen versus bot', () => {
       fireEvent.click(screen.getByRole('button', { name: /new game/i }))
       expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
     })
+  })
+})
+
+const onlineSettings: Settings = { mode: 'online', difficulty: 'medium', p1Symbol: 'X' }
+
+const buttonIn = (root: HTMLElement, text: RegExp) =>
+  Array.from(root.querySelectorAll('button')).find((b) => text.test(b.textContent ?? ''))!
+
+/** Two GameScreens in one fake room; queries are scoped to each side. */
+function renderPair() {
+  const storage = { host: fakeStorage(), guest: fakeStorage() }
+  const room = createFakeRoom()
+  const hostConn = room.join('host', 'h')
+  const guestConn = room.join('guest', 'g')
+  const onBack = { host: vi.fn(), guest: vi.fn() }
+  const view = render(
+    <>
+      <div data-testid="host">
+        <GameScreen
+          settings={onlineSettings}
+          storage={storage.host}
+          feedback={recorder()}
+          onBack={onBack.host}
+          online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }}
+        />
+      </div>
+      <div data-testid="guest">
+        <GameScreen
+          settings={onlineSettings}
+          storage={storage.guest}
+          feedback={recorder()}
+          onBack={onBack.guest}
+          online={{ role: 'guest', code: 'AB2C', connection: guestConn, friendPresent: true }}
+        />
+      </div>
+    </>,
+  )
+  const within = (id: string) => screen.getByTestId(id)
+  const cellIn = (id: string, n: number) =>
+    Array.from(within(id).querySelectorAll('button')).find((b) => b.getAttribute('aria-label')?.startsWith(`Cell ${n},`))!
+  return { view, room, hostConn, guestConn, onBack, within, cellIn, storage }
+}
+
+const playXWins = (cellIn: (id: string, n: number) => HTMLButtonElement) => {
+  for (const [side, n] of [['host', 1], ['guest', 4], ['host', 2], ['guest', 5], ['host', 3]] as const) {
+    fireEvent.click(cellIn(side, n))
+  }
+}
+
+describe('GameScreen online', () => {
+  it('labels the header and the seats from each side', () => {
+    const { within } = renderPair()
+    expect(within('host')).toHaveTextContent('Online · AB2C')
+    expect(within('host')).toHaveTextContent('Your turn')
+    expect(within('guest')).toHaveTextContent("Friend's turn")
+  })
+
+  it('host moves show on both boards; guest taps go through the host', () => {
+    const { within, cellIn } = renderPair()
+    expect(cellIn('guest', 1)).toBeDisabled()
+    fireEvent.click(cellIn('host', 1))
+    expect(cellIn('host', 1)).toHaveAccessibleName('Cell 1, X')
+    expect(cellIn('guest', 1)).toHaveAccessibleName('Cell 1, X')
+    expect(within('guest')).toHaveTextContent('Your turn')
+    expect(cellIn('host', 2)).toBeDisabled()
+    fireEvent.click(cellIn('guest', 5))
+    expect(cellIn('host', 5)).toHaveAccessibleName('Cell 5, O')
+    expect(cellIn('guest', 5)).toHaveAccessibleName('Cell 5, O')
+  })
+
+  it('a stale guest move request is dropped by the host', () => {
+    const { guestConn, cellIn } = renderPair()
+    act(() => guestConn.send({ type: 'move', index: 4 }))
+    expect(cellIn('host', 4)).toHaveAccessibleName('Cell 4, empty')
+  })
+
+  it('either side can start a new game', () => {
+    const { within, cellIn } = renderPair()
+    fireEvent.click(cellIn('host', 1))
+    fireEvent.click(buttonIn(within('guest'), /new game/i))
+    expect(cellIn('host', 1)).toHaveAccessibleName('Cell 1, empty')
+    expect(cellIn('guest', 1)).toHaveAccessibleName('Cell 1, empty')
+  })
+
+  it('records the finished game once on each device with its own symbol', () => {
+    const { cellIn, storage } = renderPair()
+    playXWins(cellIn)
+    expect(storage.host.entries()).toEqual([
+      expect.objectContaining({ mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' }),
+    ])
+    expect(storage.guest.entries()).toEqual([
+      expect.objectContaining({ mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'O' }),
+    ])
+  })
+
+  it('does not record twice when the host resends the finished snapshot', () => {
+    const { cellIn, storage, hostConn } = renderPair()
+    playXWins(cellIn)
+    const finished: Snapshot = {
+      board: ['X', 'X', 'X', 'O', 'O', null, null, null, null],
+      p1Symbol: 'X',
+      score: { p1: 1, p2: 0, draws: 0 },
+      status: 'won',
+      winner: 'X',
+      winningLine: [0, 1, 2],
+    }
+    act(() => hostConn.send({ type: 'state', state: finished }))
+    expect(storage.guest.entries()).toHaveLength(1)
+  })
+
+  it('a guest who joins a finished game does not record it', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const hostStorage = fakeStorage()
+    const view = render(
+      <div data-testid="host">
+        <GameScreen
+          settings={onlineSettings}
+          storage={hostStorage}
+          feedback={recorder()}
+          onBack={() => {}}
+          online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }}
+        />
+      </div>,
+    )
+    const hostCell = (n: number) =>
+      Array.from(screen.getByTestId('host').querySelectorAll('button')).find((b) =>
+        b.getAttribute('aria-label')?.startsWith(`Cell ${n},`),
+      )!
+    const early = room.join('guest', 'early')
+    // The early guest plays O for the host to win against, then leaves.
+    for (const [who, n] of [['h', 1], ['g', 4], ['h', 2], ['g', 5], ['h', 3]] as const) {
+      if (who === 'h') fireEvent.click(hostCell(n))
+      else act(() => early.send({ type: 'move', index: n - 1 }))
+    }
+    expect(hostStorage.entries()).toHaveLength(1)
+    early.leave()
+    const lateConn = room.join('guest', 'late')
+    const lateStorage = fakeStorage()
+    view.rerender(
+      <>
+        <div data-testid="host">
+          <GameScreen
+            settings={onlineSettings}
+            storage={hostStorage}
+            feedback={recorder()}
+            onBack={() => {}}
+            online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }}
+          />
+        </div>
+        <div data-testid="guest">
+          <GameScreen
+            settings={onlineSettings}
+            storage={lateStorage}
+            feedback={recorder()}
+            onBack={() => {}}
+            online={{ role: 'guest', code: 'AB2C', connection: lateConn, friendPresent: true }}
+          />
+        </div>
+      </>,
+    )
+    expect(screen.getByTestId('guest')).toHaveTextContent('Friend wins!')
+    expect(lateStorage.entries()).toHaveLength(0)
+  })
+
+  it('the host sees Wait and Back when the guest leaves, and play resumes on return', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const base = { settings: onlineSettings, storage: fakeStorage(), feedback: recorder(), onBack: vi.fn() }
+    const online = (friendPresent: boolean) => ({ role: 'host' as const, code: 'AB2C', connection: hostConn, friendPresent })
+    const view = render(<GameScreen {...base} online={online(true)} />)
+    fireEvent.click(cell(1))
+    view.rerender(<GameScreen {...base} online={online(false)} />)
+    expect(screen.getByText('Your friend left')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^wait$/i }))
+    expect(screen.getByText('Waiting for your friend…')).toBeInTheDocument()
+    expect(cell(2)).toBeDisabled()
+    view.rerender(<GameScreen {...base} online={online(true)} />)
+    expect(screen.queryByText('Waiting for your friend…')).not.toBeInTheDocument()
+    expect(cell(1)).toHaveAccessibleName('Cell 1, X')
+    expect(screen.getByText("Friend's turn")).toBeInTheDocument()
+  })
+
+  it('the guest sees only Back when the host leaves', () => {
+    const room = createFakeRoom()
+    const guestConn = room.join('guest', 'g')
+    const onBack = vi.fn()
+    render(
+      <GameScreen
+        settings={onlineSettings}
+        storage={fakeStorage()}
+        feedback={recorder()}
+        onBack={onBack}
+        online={{ role: 'guest', code: 'AB2C', connection: guestConn, friendPresent: false }}
+      />,
+    )
+    expect(screen.getByText('Your friend left')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^wait$/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^back$/i }))
+    expect(onBack).toHaveBeenCalled()
+  })
+
+  it('a guest whose screen mounts late asks for and gets the host state', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const guestConn = room.join('guest', 'g')
+    const base = { settings: onlineSettings, storage: fakeStorage(), feedback: recorder(), onBack: () => {} }
+    const view = render(
+      <div data-testid="host">
+        <GameScreen {...base} online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }} />
+      </div>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^Cell 1,/ }))
+    view.rerender(
+      <>
+        <div data-testid="host">
+          <GameScreen {...base} online={{ role: 'host', code: 'AB2C', connection: hostConn, friendPresent: true }} />
+        </div>
+        <div data-testid="guest">
+          <GameScreen {...base} online={{ role: 'guest', code: 'AB2C', connection: guestConn, friendPresent: true }} />
+        </div>
+      </>,
+    )
+    const guestCell1 = Array.from(screen.getByTestId('guest').querySelectorAll('button')).find((b) =>
+      b.getAttribute('aria-label')?.startsWith('Cell 1,'),
+    )!
+    expect(guestCell1).toHaveAccessibleName('Cell 1, X')
+  })
+
+  it('the host sends its state to a friend who arrives', () => {
+    const room = createFakeRoom()
+    const hostConn = room.join('host', 'h')
+    const base = { settings: onlineSettings, storage: fakeStorage(), feedback: recorder(), onBack: () => {} }
+    const online = (friendPresent: boolean) => ({ role: 'host' as const, code: 'AB2C', connection: hostConn, friendPresent })
+    const view = render(<GameScreen {...base} online={online(false)} />)
+    const guestConn = room.join('guest', 'g')
+    const seen: unknown[] = []
+    guestConn.onMessage((m) => seen.push(m))
+    view.rerender(<GameScreen {...base} online={online(true)} />)
+    expect(seen).toEqual([expect.objectContaining({ type: 'state' })])
   })
 })

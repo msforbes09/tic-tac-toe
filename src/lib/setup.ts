@@ -27,7 +27,9 @@ export function loadSetup(storage: HistoryStorage): Settings {
   }
 }
 
+/** Remembers the setup for next time. Online is a one-off, so it is never remembered. */
 export function saveSetup(storage: HistoryStorage, settings: Settings): void {
+  if (settings.mode === 'online') return
   try {
     storage.setItem(SETUP_KEY, JSON.stringify(settings))
   } catch {

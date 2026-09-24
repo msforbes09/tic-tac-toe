@@ -149,4 +149,17 @@ describe('botStats', () => {
       hard: { wins: 0, losses: 1, draws: 0 },
     })
   })
+
+  it('accepts online entries and keeps them out of the bot record', () => {
+    const storage = fakeStorage()
+    saveGame(storage, { id: 'o1', timestamp: 1, mode: 'online', difficulty: null, outcome: 'X', p1Symbol: 'X' })
+    const entries = loadHistory(storage)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].mode).toBe('online')
+    expect(botStats(entries)).toEqual({
+      easy: { wins: 0, losses: 0, draws: 0 },
+      medium: { wins: 0, losses: 0, draws: 0 },
+      hard: { wins: 0, losses: 0, draws: 0 },
+    })
+  })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createGameState, gameReducer, type GameState } from './reducer'
+import { canSeatMove, createGameState, gameReducer, snapshotOf, type GameState } from './reducer'
 import type { Settings } from '@/lib/types'
+import type { Snapshot } from '@/lib/room'
 
 const settings: Settings = { mode: 'pvp', difficulty: 'medium', p1Symbol: 'X' }
 
@@ -134,5 +135,79 @@ describe('RECORDED', () => {
   it('flips recorded to true', () => {
     const s = gameReducer(createGameState(settings), { type: 'RECORDED' })
     expect(s.recorded).toBe(true)
+  })
+})
+
+describe('online sync', () => {
+  const online: Settings = { mode: 'online', difficulty: 'medium', p1Symbol: 'X' }
+
+  it('snapshotOf carries exactly the shared fields', () => {
+    const state = gameReducer(createGameState(online), { type: 'MOVE', index: 4 })
+    expect(snapshotOf(state)).toEqual({
+      board: [null, null, null, null, 'X', null, null, null, null],
+      p1Symbol: 'X',
+      score: { p1: 0, p2: 0, draws: 0 },
+      status: 'playing',
+      winner: null,
+      winningLine: null,
+    })
+    expect(snapshotOf(state)).not.toHaveProperty('settings')
+    expect(snapshotOf(state)).not.toHaveProperty('recorded')
+  })
+
+  it('SYNC replaces the shared fields and keeps settings', () => {
+    const host = gameReducer(createGameState(online), { type: 'MOVE', index: 0 })
+    const guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(host) })
+    expect(guest.board).toEqual(host.board)
+    expect(guest.settings).toEqual(online)
+    expect(guest.recorded).toBe(false)
+  })
+
+  it('SYNC of a changed board clears recorded; the same snapshot again keeps it', () => {
+    let host = createGameState(online)
+    for (const i of [0, 3, 1, 4, 2]) host = gameReducer(host, { type: 'MOVE', index: i })
+    expect(host.status).toBe('won')
+    const midGame = gameReducer(createGameState(online), { type: 'MOVE', index: 0 })
+    let guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(midGame) })
+    guest = gameReducer(guest, { type: 'SYNC', snapshot: snapshotOf(host) })
+    expect(guest.recorded).toBe(false)
+    guest = gameReducer(guest, { type: 'RECORDED' })
+    guest = gameReducer(guest, { type: 'SYNC', snapshot: snapshotOf(host) })
+    expect(guest.recorded).toBe(true)
+    const next = gameReducer(host, { type: 'NEW_GAME' })
+    guest = gameReducer(guest, { type: 'SYNC', snapshot: snapshotOf(next) })
+    expect(guest.recorded).toBe(false)
+    expect(guest.p1Symbol).toBe('X')
+  })
+
+  it('canSeatMove says whose turn it is and nothing when the game is over', () => {
+    let state = createGameState(online)
+    expect(canSeatMove(state, 'p1')).toBe(true)
+    expect(canSeatMove(state, 'p2')).toBe(false)
+    state = gameReducer(state, { type: 'MOVE', index: 0 })
+    expect(canSeatMove(state, 'p1')).toBe(false)
+    expect(canSeatMove(state, 'p2')).toBe(true)
+    for (const i of [3, 1, 4, 2]) state = gameReducer(state, { type: 'MOVE', index: i })
+    expect(canSeatMove(state, 'p1')).toBe(false)
+    expect(canSeatMove(state, 'p2')).toBe(false)
+  })
+
+  it('SYNC takes only the shared fields, whatever else came over the wire', () => {
+    const host = gameReducer(createGameState(online), { type: 'MOVE', index: 0 })
+    const wire = { ...snapshotOf(host), settings: { mode: 'bot', difficulty: 'zzz' }, recorded: true } as unknown as Snapshot
+    const guest = gameReducer(createGameState(online), { type: 'SYNC', snapshot: wire })
+    expect(guest.settings).toEqual(online)
+    expect(guest.recorded).toBe(false)
+    expect(Object.keys(guest).sort()).toEqual(Object.keys(createGameState(online)).sort())
+  })
+
+  it('a finished game synced onto an untouched board was not watched, so it counts as recorded', () => {
+    let host = createGameState(online)
+    for (const i of [0, 3, 1, 4, 2]) host = gameReducer(host, { type: 'MOVE', index: i })
+    const late = gameReducer(createGameState(online), { type: 'SYNC', snapshot: snapshotOf(host) })
+    expect(late.status).toBe('won')
+    expect(late.recorded).toBe(true)
+    const next = gameReducer(late, { type: 'SYNC', snapshot: snapshotOf(gameReducer(host, { type: 'NEW_GAME' })) })
+    expect(next.recorded).toBe(false)
   })
 })
