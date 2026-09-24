@@ -83,6 +83,9 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   latest.current = { activity, outgoing, incoming }
   const selfRef = useRef(self)
   selfRef.current = self
+  const feedbackRef = useRef(feedback)
+  feedbackRef.current = feedback
+  const [note, setNote] = useState<string | null>(null)
 
   const onLeaveRef = useRef(onLeave)
   onLeaveRef.current = onLeave
@@ -116,12 +119,16 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
             if (raw.to !== me.deviceId) return
             // Busy, already asked, or asking someone ourselves: decline so crossing challenges never both start.
             if (act.kind === 'series' || inc !== null || out !== null) c.send({ type: 'decline', gameId: raw.gameId, from: me.deviceId })
-            else setIncoming({ gameId: raw.gameId, player: raw.from })
+            else {
+              setIncoming({ gameId: raw.gameId, player: raw.from })
+              feedbackRef.current.play({ kind: 'challenge' })
+            }
             return
           case 'accept':
             if (raw.to !== me.deviceId) return
             if (out && out.gameId === raw.gameId && out.player.deviceId === raw.from && act.kind === 'idle') {
               setOutgoing(null)
+              feedbackRef.current.play({ kind: 'accepted' })
               setActivity({ kind: 'series', role: 'referee', state: startSeries(room.id, raw.gameId, me, out.player) })
             } else {
               // A late accept for a challenge we withdrew: tell them so they do not sit in an empty series.
@@ -190,6 +197,23 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
       }),
     [directory, room.id, leave],
   )
+
+  // A challenge to or from someone who has disconnected is closed. Presence is trusted only once
+  // it includes us, so a fresh connection does not clear anything before the first sync.
+  const presenceReady = members.some((m) => m.deviceId === self.deviceId)
+  useEffect(() => {
+    if (!presenceReady) return
+    if (outgoing && !members.some((m) => m.deviceId === outgoing.player.deviceId)) {
+      setOutgoing(null)
+      setNote(`${outgoing.player.nickname} left before answering`)
+    }
+    if (incoming && !members.some((m) => m.deviceId === incoming.player.deviceId)) setIncoming(null)
+  }, [members, presenceReady, outgoing, incoming])
+  useEffect(() => {
+    if (!note) return
+    const id = setTimeout(() => setNote(null), 4000)
+    return () => clearTimeout(id)
+  }, [note])
 
   // An incoming challenge nobody answers goes away on its own too.
   useEffect(() => {
@@ -322,6 +346,11 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
         )}
       </header>
 
+      {note && !outgoing && (
+        <p role="status" className="rise-in rounded-[14px] bg-muted/70 px-4 py-2.5 text-center text-sm text-muted-foreground dark:bg-muted/50">
+          {note}
+        </p>
+      )}
       {outgoing && (
         <div role="status" className="rise-in flex items-center justify-between gap-3 rounded-[18px] bg-muted/70 px-4 py-3 dark:bg-muted/50">
           <span className="status-thinking font-medium">Waiting for {outgoing.player.nickname}…</span>
