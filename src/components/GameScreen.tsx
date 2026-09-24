@@ -20,6 +20,7 @@ import {
   type Ladder,
   type Moment,
 } from '@/lib/ladder'
+import type { KnockEvent } from '@/lib/knock'
 import { saveSetup } from '@/lib/setup'
 import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
 import type { ShareLink } from '@/platform/share'
@@ -35,6 +36,11 @@ export type GameScreenProps = {
   /** For bragging from the top-of-the-pack card. */
   share?: ShareLink
   siteUrl?: string
+  /** Developer mode: the chip shows the rung and streak, and opens the developer panel. */
+  dev?: boolean
+  onOpenDev?: () => void
+  /** Reports board taps for the developer knock; returns true when the knock just completed. */
+  onKnock?: (event: KnockEvent) => boolean | void
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
@@ -44,7 +50,7 @@ const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
   top: () => "Top of the pack. Nobody's above you now.",
 }
 
-export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl }: GameScreenProps) {
+export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl, dev, onOpenDev, onKnock }: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
   // Null until the first board is seen, so the opening board plays the start cue.
@@ -93,7 +99,7 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
   // Record each finished bot game exactly once and move the ladder. Two players sharing a phone
   // leave no history. The ref guards StrictMode's double effect run.
   useEffect(() => {
-    if (settings.mode !== 'bot' || !ladder || state.status === 'playing' || state.recorded) return
+    if (settings.mode !== 'bot' || !ladder || state.status === 'playing' || state.recorded || state.voided) return
     if (recordedBoard.current === state.board) return
     recordedBoard.current = state.board
     const outcome: Outcome = state.status === 'draw' ? 'draw' : (state.winner as Outcome)
@@ -124,12 +130,20 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
     if (what === 'top-held') setCardOpen(true)
     if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, settings, storage, ladder, rung, gamesPlayed, feedback])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback])
 
   const finished = state.status !== 'playing'
   // The chip says what you picked for the first game, then the band the rung is really in.
   const shownBand = ladder && gamesPlayed > 0 ? bandOf(rung) : settings.difficulty
-  const badge = settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[shownBand]}` : 'Two player'
+  // Developer mode appends the rung and, when there is one, the streak.
+  const streak = ladder?.streak ?? 0
+  const devSuffix = dev && ladder ? ` · ${rung}${streak > 0 ? ` · +${streak}` : streak < 0 ? ` · −${-streak}` : ''}` : ''
+  const badge = settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[shownBand]}${devSuffix}` : 'Two player'
+  const chipOpensDev = Boolean(dev && settings.mode === 'bot' && onOpenDev)
+  // Every board tap feeds the knock; the tap that completes it stamps the cell and voids the game.
+  const tap = (index: number) => {
+    if (onKnock?.(`cell:${index}`) === true) dispatch({ type: 'OVERRIDE', index })
+  }
   const note = finished && moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
   const newGame = () => {
     setMoment(null)
@@ -142,21 +156,30 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
           ← Back
         </Button>
-        <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">
-          {badge}
-        </span>
+        {chipOpensDev ? (
+          <button
+            type="button"
+            onClick={onOpenDev}
+            className="rounded-full bg-muted px-3 py-1 font-sans text-[13px] font-medium text-muted-foreground"
+          >
+            {badge}
+          </button>
+        ) : (
+          <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">{badge}</span>
+        )}
       </header>
 
       <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} />
 
       <div className="my-auto flex flex-col gap-5 pb-6">
-        <StatusBar state={state} note={note} />
+        <StatusBar state={state} note={note} message={state.voided ? 'Game voided' : undefined} />
         <div className="relative">
           <Board
             board={state.board}
             winningLine={state.winningLine}
-            disabled={finished || isBotTurn}
+            disabled={finished || isBotTurn || state.voided}
             onSelect={(index) => dispatch({ type: 'MOVE', index })}
+            onTap={tap}
           />
           {(youWon || cardOpen) && <Celebration />}
           {cardOpen && <TopCard share={share} siteUrl={siteUrl} onClose={() => setCardOpen(false)} />}

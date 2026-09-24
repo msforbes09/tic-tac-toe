@@ -11,6 +11,8 @@ export type GameState = {
   winner: Player | null
   winningLine: WinLine | null
   recorded: boolean
+  /** Voided by the developer knock: no more moves, no result, nothing recorded. */
+  voided: boolean
   /** The symbol p1 plays this game. X always moves first; the seats trade X between games. */
   p1Symbol: Player
   /** Finished games since leaving setup. */
@@ -22,6 +24,8 @@ export type GameAction =
   | { type: 'NEW_GAME' }
   | { type: 'RECORDED' }
   | { type: 'SYNC'; snapshot: Snapshot }
+  /** The developer knock: stamp the mover on an occupied cell and void the game. */
+  | { type: 'OVERRIDE'; index: number }
 
 const other = (player: Player): Player => (player === 'X' ? 'O' : 'X')
 
@@ -37,6 +41,7 @@ function freshGame(settings: Settings, p1Symbol: Player, score: Score): GameStat
     winner: null,
     winningLine: null,
     recorded: false,
+    voided: false,
     p1Symbol,
     score,
   }
@@ -89,6 +94,7 @@ function nextP1Symbol(state: GameState): Player {
 function isLegalMove(state: GameState, index: number): boolean {
   return (
     state.status === 'playing' &&
+    !state.voided &&
     Number.isInteger(index) &&
     index >= 0 &&
     index <= 8 &&
@@ -111,6 +117,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, board, status: 'draw', score: { ...state.score, draws: state.score.draws + 1 } }
       }
       return { ...state, board }
+    }
+    case 'OVERRIDE': {
+      if (state.status !== 'playing' || state.voided || state.board[action.index] === undefined) return state
+      const board = [...state.board]
+      board[action.index] = nextPlayer(state.board)
+      return { ...state, board, voided: true }
     }
     case 'NEW_GAME':
       return freshGame(state.settings, nextP1Symbol(state), state.score)

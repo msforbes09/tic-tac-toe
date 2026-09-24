@@ -58,6 +58,24 @@ describe('MOVE', () => {
   })
 })
 
+describe('OVERRIDE (the developer knock)', () => {
+  it('stamps the mover on an occupied cell and voids the game: no winner, no more moves', () => {
+    const state = play(createGameState(settings), 0, 4, 8, 2)
+    const voided = gameReducer(state, { type: 'OVERRIDE', index: 4 })
+    expect(voided.board[4]).toBe('X')
+    expect(voided.voided).toBe(true)
+    expect(voided.status).toBe('playing')
+    expect(voided.winner).toBeNull()
+    expect(voided.score).toEqual(state.score)
+    expect(gameReducer(voided, { type: 'MOVE', index: 1 })).toBe(voided)
+  })
+
+  it('a new game clears the void', () => {
+    const voided = gameReducer(play(createGameState(settings), 0, 4), { type: 'OVERRIDE', index: 4 })
+    expect(gameReducer(voided, { type: 'NEW_GAME' }).voided).toBe(false)
+  })
+})
+
 describe('NEW_GAME', () => {
   it('resets the board and flags but keeps settings', () => {
     const botSettings: Settings = { mode: 'bot', difficulty: 'hard', p1Symbol: 'X' }
