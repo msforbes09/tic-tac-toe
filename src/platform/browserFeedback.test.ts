@@ -92,4 +92,29 @@ describe('createBrowserFeedback', () => {
     const feedback = createBrowserFeedback({ vibrate: undefined, createAudio: () => null })
     expect(() => feedback.play({ kind: 'win', player: 'X' })).not.toThrow()
   })
+
+  it('plays the O tone, the X tone, then the start cue for the splash, with no buzz', () => {
+    const audio = fakeAudio()
+    const vibrate = vi.fn(() => true)
+    createBrowserFeedback({ vibrate, createAudio: () => audio }).play({ kind: 'splash' })
+    expect(audio.tones).toEqual([520, 660, 523, 784])
+    expect(vibrate).not.toHaveBeenCalled()
+  })
+
+  it('drops the splash when audio is suspended (no gesture yet) instead of queueing it for the first tap', () => {
+    const audio = fakeAudio('suspended')
+    const feedback = createBrowserFeedback({ createAudio: () => audio })
+    feedback.play({ kind: 'splash' })
+    expect(audio.tones).toHaveLength(0)
+    feedback.play({ kind: 'move', player: 'X' })
+    expect(audio.tones).toHaveLength(1)
+  })
+
+  it('plays a short two-note cue and a light buzz when a game starts', () => {
+    const audio = fakeAudio()
+    const vibrate = vi.fn(() => true)
+    createBrowserFeedback({ vibrate, createAudio: () => audio }).play({ kind: 'start' })
+    expect(audio.tones).toHaveLength(2)
+    expect(vibrate).toHaveBeenCalledTimes(1)
+  })
 })

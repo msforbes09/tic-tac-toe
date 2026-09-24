@@ -67,9 +67,17 @@ The project's `pages.dev` address redirects to the real domain via
 `functions/_middleware.js`, so shared room links always carry one address.
 Preview deployments are not redirected.
 
+App icons come from `public/icon.svg` (geometry in `src/lib/logo.ts`). To
+regenerate the PNGs on macOS: `qlmanage -t -s 512` on the SVG for `icon-512.png`,
+`sips -z 192 192` for `icon-192.png`; drop the `rx` from the rect for the
+maskable and Apple touch icons (512 and 180).
+
 Link previews use `public/og-image.png`, drawn from `design/og-image.svg`.
-To regenerate it on macOS, wrap the SVG in a 1200×1200 canvas, render with
-`qlmanage -t -s 1200`, and crop to 1200×630 with `sips -c 630 1200`.
+It sets text in Fredoka and Nunito, which are not system fonts, so
+regenerate it with a browser rather than qlmanage: inline the SVG in an HTML
+page that declares both faces via `@font-face` from
+`node_modules/@fontsource-variable/{fredoka,nunito}/files/*-latin-wght-normal.woff2`,
+then screenshot it with headless Chrome at `--window-size=1200,630`.
 
 GitHub Actions runs the tests and build on every pull request but does not
 deploy.

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_ENTRIES,
   STORAGE_KEY,
-  clearHistory,
   botStats,
   loadHistory,
   newEntryId,
@@ -85,15 +84,6 @@ describe('saveGame', () => {
     expect(result).toHaveLength(MAX_ENTRIES)
     expect(result[0].id).toBe('newest')
     expect(result.at(-1)?.id).toBe(`e${MAX_ENTRIES - 2}`)
-  })
-})
-
-describe('clearHistory', () => {
-  it('removes the key', () => {
-    const storage = fakeStorage({ [STORAGE_KEY]: '[]', other: 'keep' })
-    clearHistory(storage)
-    expect(storage.dump()).toEqual({ other: 'keep' })
-    expect(loadHistory(storage)).toEqual([])
   })
 })
 

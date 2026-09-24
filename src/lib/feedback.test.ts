@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { feedbackForChange } from './feedback'
+import { createBoard, makeMove } from './game'
 import type { Board } from './types'
 
 const b = (s: string): Board => s.split('').map((c) => (c === '.' ? null : (c as 'X' | 'O')))
@@ -34,7 +35,21 @@ describe('feedbackForChange', () => {
     expect(feedbackForChange(board, board)).toBeNull()
   })
 
-  it('reports nothing when the board is reset for a new game', () => {
-    expect(feedbackForChange(b('XX.OO....'), b('.........'))).toBeNull()
+  it('reports a start when the board is reset for a new game', () => {
+    expect(feedbackForChange(b('XX.OO....'), b('.........'))).toEqual({ kind: 'start' })
+  })
+
+  it('marks the start of a game: first board, or a board wiped for a new game', () => {
+    const empty = createBoard()
+    expect(feedbackForChange(null, empty)).toEqual({ kind: 'start' })
+    const played = makeMove(makeMove(empty, 0, 'X'), 4, 'O')
+    expect(feedbackForChange(played, empty)).toEqual({ kind: 'start' })
+    expect(feedbackForChange(empty, empty)).toBeNull()
+  })
+
+  it("treats the opponent's win as a loss online too", () => {
+    const board = makeMove(makeMove(makeMove(makeMove(makeMove(createBoard(), 0, 'X'), 3, 'O'), 1, 'X'), 4, 'O'), 2, 'X')
+    const prev = makeMove(makeMove(makeMove(makeMove(createBoard(), 0, 'X'), 3, 'O'), 1, 'X'), 4, 'O')
+    expect(feedbackForChange(prev, board, 'X')).toEqual({ kind: 'lose' })
   })
 })

@@ -49,13 +49,10 @@ describe('HistorySheet', () => {
     expect(items[1]).toHaveTextContent(/player 1 wins/i)
   })
 
-  it('clears history after confirmation', () => {
+  it('offers no way to clear history', () => {
     const storage = fakeStorage([entry({ id: 'a' })])
     render(<HistorySheet open={true} onOpenChange={() => {}} storage={storage} />)
-    fireEvent.click(screen.getByRole('button', { name: /clear history/i }))
-    fireEvent.click(screen.getByRole('button', { name: /^clear$/i }))
-    expect(storage.has()).toBe(false)
-    expect(screen.getByText(/no games yet/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clear/i })).toBeNull()
   })
 
   it('labels wins by who played, whichever symbol they had', () => {

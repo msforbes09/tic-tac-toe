@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { createFakeRoom, type OpenRoom } from '@/lib/roomConnection'
+import { SPLASH_FADE_MS, SPLASH_HOLD_MS } from '@/components/Splash'
+import type { InstallPlatform } from '@/platform/install'
 
 describe('App', () => {
   beforeEach(() => {
@@ -56,7 +58,7 @@ describe('App online', () => {
   })
 
   it('disables Online when Supabase is not configured', () => {
-    render(<App />)
+    render(<App deps={{ openRoom: null }} />)
     expect(screen.getByRole('button', { name: /online/i })).toBeDisabled()
   })
 
@@ -106,5 +108,67 @@ describe('App online', () => {
     first.unmount()
     render(<App deps={deps(openRoom)} />)
     expect(screen.getByRole('button', { name: /two player/i })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('App splash', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('opens with the splash on every load and removes it after it plays', () => {
+    render(<App />)
+    expect(screen.getByRole('status', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(SPLASH_HOLD_MS + SPLASH_FADE_MS))
+    expect(screen.queryByRole('status', { name: /tic-tac-toe/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+  })
+})
+
+describe('App install nudge', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  const platform = (over: Partial<InstallPlatform> = {}) => {
+    const prompt = vi.fn<InstallPlatform['prompt']>().mockResolvedValue('accepted')
+    const p: InstallPlatform = {
+      standalone: false,
+      ios: false,
+      onPromptAvailable: (cb) => {
+        cb(true)
+        return () => {}
+      },
+      prompt,
+      ...over,
+    }
+    return { ...p, prompt }
+  }
+
+  it('shows Install when the browser can prompt, and installs on tap', async () => {
+    const p = platform()
+    render(<App deps={{ install: p }} />)
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }))
+    await act(async () => {})
+    expect(p.prompt).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the iPhone steps and remembers Not now across visits', () => {
+    const p = platform({ ios: true, onPromptAvailable: () => () => {} })
+    const first = render(<App deps={{ install: p }} />)
+    expect(screen.getByText(/share/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /not now/i }))
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+    first.unmount()
+    render(<App deps={{ install: p }} />)
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+  })
+
+  it('shows nothing when already installed', () => {
+    render(<App deps={{ install: platform({ standalone: true }) }} />)
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
   })
 })

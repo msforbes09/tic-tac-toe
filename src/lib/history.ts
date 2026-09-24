@@ -52,10 +52,6 @@ export function saveGame(storage: HistoryStorage, entry: HistoryEntry): HistoryE
   return list
 }
 
-export function clearHistory(storage: HistoryStorage): void {
-  storage.removeItem(STORAGE_KEY)
-}
-
 export function newEntryId(): string {
   const c = globalThis.crypto
   if (c && typeof c.randomUUID === 'function') return c.randomUUID()
