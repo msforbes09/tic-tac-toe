@@ -53,6 +53,7 @@
 }
 
 :root {
+    /* Light values stay defined for the tokens, but the app is dark only: index.html sets class="dark". */
     color-scheme: light;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
@@ -220,6 +221,68 @@ body {
 
   .rise-in {
     animation: rise-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* Opening splash: tiles pop in, marks draw, copy rises, then the sheet fades away. */
+.splash-tile {
+  animation: splash-tile-in 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--splash-delay, 0ms) both;
+}
+
+.splash-mark path,
+.splash-mark circle {
+  stroke-dasharray: var(--mark-len);
+  animation: mark-draw var(--mark-duration, 320ms) cubic-bezier(0.22, 1, 0.36, 1) var(--splash-delay, 0ms) both;
+}
+
+.splash-mark path {
+  --mark-len: 80;
+}
+
+.splash-mark path:nth-of-type(2) {
+  animation-delay: calc(var(--splash-delay, 0ms) + 110ms);
+}
+
+.splash-mark circle {
+  --mark-len: 189;
+  --mark-duration: 420ms;
+}
+
+.splash-rise {
+  animation: splash-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--splash-delay, 0ms) both;
+}
+
+.splash-leave {
+  animation: splash-out 360ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes splash-tile-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    transform: scale(1.03);
+    visibility: hidden;
   }
 }
 

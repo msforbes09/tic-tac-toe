@@ -9,6 +9,9 @@ import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
 export type OnlineSetup = { available: boolean; onCreate: () => void; onJoin: (code: string) => void }
 
+/** The install nudge: a one-tap prompt where the browser offers one, manual steps on iPhone. */
+export type InstallOffer = { kind: 'prompt' | 'ios-steps'; onInstall: () => void; onDismiss: () => void }
+
 const NO_ONLINE: OnlineSetup = { available: false, onCreate() {}, onJoin() {} }
 
 export type SetupScreenProps = {
@@ -18,6 +21,8 @@ export type SetupScreenProps = {
   onOpenHistory: () => void
   /** Online play, when Supabase is configured. */
   online?: OnlineSetup
+  /** Shown when the app can be added to the home screen and has not been dismissed lately. */
+  install?: InstallOffer
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
@@ -54,7 +59,13 @@ function Field({
   )
 }
 
-export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory, online = NO_ONLINE }: SetupScreenProps) {
+export function SetupScreen({
+  initial = DEFAULT_SETTINGS,
+  onStart,
+  onOpenHistory,
+  online = NO_ONLINE,
+  install,
+}: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
   const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
@@ -220,7 +231,37 @@ export function SetupScreen({ initial = DEFAULT_SETTINGS, onStart, onOpenHistory
         >
           History
         </Button>
+        {install && <InstallCard offer={install} />}
       </div>
     </section>
+  )
+}
+
+function InstallCard({ offer }: { offer: InstallOffer }) {
+  return (
+    <div className="rise-in mt-1 flex flex-col gap-3 rounded-[18px] bg-muted/70 p-4 dark:bg-muted/50">
+      <div className="flex flex-col gap-1">
+        <span className="text-[15px] font-semibold">Add to Home Screen</span>
+        <span className="text-sm text-muted-foreground">
+          {offer.kind === 'prompt'
+            ? 'Opens full screen like an app and works offline.'
+            : 'Tap Share, then add it to your Home Screen. It opens full screen and works offline.'}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        {offer.kind === 'prompt' && (
+          <Button className="min-h-11 flex-1 rounded-[14px] text-[15px] font-semibold" onClick={offer.onInstall}>
+            Install
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          className={cn('min-h-11 rounded-[14px] text-[15px]', offer.kind === 'prompt' ? 'px-4' : 'flex-1')}
+          onClick={offer.onDismiss}
+        >
+          Not now
+        </Button>
+      </div>
+    </div>
   )
 }

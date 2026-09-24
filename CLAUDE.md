@@ -34,7 +34,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Seats `p1` (you / Player 1) and `p2` (bot / Player 2) trade X between games: winner takes X, a draw swaps. The bot plays whichever side is to move.
 - lib/ and state/ never import React or touch the DOM.
 - TDD for all logic: failing test first, minimal code, refactor.
-- Mobile-first single column (max 420px) on every screen size.
+- Mobile-first single column (max 420px) on every screen size. Dark theme only: `<html class="dark">` in index.html; nothing follows the system setting.
 - Online: the host is seat `p1` and plays X in the first game; its `GameState` is the truth. Guests send `move` / `new-game` / `hello` requests and apply `state` snapshots via `SYNC`. History stores your own symbol as `p1Symbol`. Online is never the remembered setup mode.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.

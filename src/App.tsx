@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { GameScreen } from '@/components/GameScreen'
 import { HistorySheet } from '@/components/HistorySheet'
 import { OnlineGame } from '@/components/OnlineGame'
 import { SetupScreen } from '@/components/SetupScreen'
+import { Splash } from '@/components/Splash'
 import type { HistoryStorage } from '@/lib/history'
+import { installNudge, loadInstallDismissedAt, saveInstallDismissedAt } from '@/lib/install'
 import { createRoomCode, readSupabaseConfig, roomCodeFromUrl, withoutRoomParam, type Role } from '@/lib/room'
 import type { OpenRoom } from '@/lib/roomConnection'
 import { loadSetup, saveSetup } from '@/lib/setup'
 import type { Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
+import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
 import { shareLink, type ShareLink } from '@/platform/share'
 import { createSupabaseOpenRoom } from '@/platform/supabaseRoom'
 
@@ -27,6 +30,8 @@ function browserStorage(): HistoryStorage {
 
 const storage = browserStorage()
 const feedback = createBrowserFeedback()
+// Created at startup: beforeinstallprompt can fire before React mounts.
+const installPlatform = browserInstallPlatform()
 
 export type AppDeps = {
   /** Null when online play is not configured. */
@@ -35,6 +40,7 @@ export type AppDeps = {
   /** The page URL at load, for `?room=` links. */
   url?: string
   replaceUrl?: (url: string) => void
+  install?: InstallPlatform
 }
 
 function defaultOpenRoom(): OpenRoom | null {
@@ -60,6 +66,38 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   })
   const [historyOpen, setHistoryOpen] = useState(false)
   const toSetup = () => setScreen({ kind: 'setup' })
+
+  const [splash, setSplash] = useState(true)
+  const endSplash = useCallback(() => setSplash(false), [])
+
+  const install = deps.install ?? installPlatform
+  const [promptAvailable, setPromptAvailable] = useState(false)
+  const [installed, setInstalled] = useState(false)
+  const [dismissedAt, setDismissedAt] = useState(() => loadInstallDismissedAt(storage))
+  useEffect(() => install.onPromptAvailable(setPromptAvailable), [install])
+  const nudge = installNudge({
+    standalone: install.standalone || installed,
+    promptAvailable,
+    ios: install.ios,
+    dismissedAt,
+    now: Date.now(),
+  })
+  const installOffer =
+    nudge === 'hidden'
+      ? undefined
+      : {
+          kind: nudge,
+          onInstall: () => {
+            void install.prompt().then((outcome) => {
+              if (outcome === 'accepted') setInstalled(true)
+            })
+          },
+          onDismiss: () => {
+            const now = Date.now()
+            saveInstallDismissedAt(storage, now)
+            setDismissedAt(now)
+          },
+        }
 
   return (
     <AppShell>
@@ -91,8 +129,10 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
             onCreate: () => setScreen({ kind: 'online', role: 'host', code: createRoomCode() }),
             onJoin: (code) => setScreen({ kind: 'online', role: 'guest', code }),
           }}
+          install={installOffer}
         />
       )}
+      {splash && <Splash onDone={endSplash} />}
       <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
     </AppShell>
   )

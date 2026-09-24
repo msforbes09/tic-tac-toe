@@ -120,3 +120,32 @@ describe('SetupScreen online', () => {
     expect(screen.queryByRole('button', { name: /create room/i })).not.toBeInTheDocument()
   })
 })
+
+describe('SetupScreen install card', () => {
+  it('is absent by default', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+  })
+
+  it('offers a one-tap Install and Not now when the browser can prompt', () => {
+    const onInstall = vi.fn()
+    const onDismiss = vi.fn()
+    render(
+      <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'prompt', onInstall, onDismiss }} />,
+    )
+    expect(screen.getByText(/add to home screen/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }))
+    expect(onInstall).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: /not now/i }))
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
+
+  it('explains the Share steps on iPhone instead of an Install button', () => {
+    render(
+      <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'ios-steps', onInstall: () => {}, onDismiss: () => {} }} />,
+    )
+    expect(screen.getByText(/share/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^install$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /not now/i })).toBeInTheDocument()
+  })
+})
