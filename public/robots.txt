@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tic-tac-toe.iam4bs.dev/sitemap.xml

@@ -26,6 +26,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/components/OnlineGame.tsx`, `OnlineLobby.tsx` — connect → lobby → `GameScreen` with an online session.
 - `src/components/` — React UI. `ui/` is shadcn-generated; don't hand-edit.
 - `docs/superpowers/specs/` — design spec. Read before changing behaviour.
+- `design/og-image.svg` — source of the link-preview banner `public/og-image.png`. `index.html` carries the SEO / Open Graph tags; keep the live URL there in sync with the domain.
 
 ## Conventions
 

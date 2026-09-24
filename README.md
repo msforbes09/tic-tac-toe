@@ -67,6 +67,10 @@ The project's `pages.dev` address redirects to the real domain via
 `functions/_middleware.js`, so shared room links always carry one address.
 Preview deployments are not redirected.
 
+Link previews use `public/og-image.png`, drawn from `design/og-image.svg`.
+To regenerate it on macOS, wrap the SVG in a 1200×1200 canvas, render with
+`qlmanage -t -s 1200`, and crop to 1200×630 with `sips -c 630 1200`.
+
 GitHub Actions runs the tests and build on every pull request but does not
 deploy.
 
