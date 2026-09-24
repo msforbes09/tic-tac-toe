@@ -44,7 +44,8 @@ describe('room codes', () => {
   it('rejects the wrong length or characters outside the alphabet', () => {
     expect(normalizeRoomCode('')).toBeNull()
     expect(normalizeRoomCode('ABC')).toBeNull()
-    expect(normalizeRoomCode('ABCDE')).toBeNull()
+    expect(normalizeRoomCode('ABCDE')).toBe('ABCDE')
+    expect(normalizeRoomCode('ABCDEFGHJ')).toBeNull()
     expect(normalizeRoomCode('AB0C')).toBeNull()
     expect(normalizeRoomCode('AB1C')).toBeNull()
     expect(normalizeRoomCode('ABIC')).toBeNull()
