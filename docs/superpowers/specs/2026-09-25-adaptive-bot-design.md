@@ -20,9 +20,15 @@ they lose. The three visible levels stay; a hidden ladder does the work.
   Band middles are 5, 15, 25.
 - After each finished bot game: **win up one, loss down one, draw stays**.
   Clamped to 1..30. Two-player and online games never touch the ladder.
-- The rung is saved to `localStorage` under `tic-tac-toe:ladder` together with
-  the badge (below): `{ rung: number | null, topHeldAt: number | null }`.
-  Missing or invalid data reads as `{ rung: null, topHeldAt: null }`.
+- **Streaks.** From the third win in a row each win moves two rungs; likewise
+  from the third loss in a row. A draw breaks the streak.
+- **Sticky bands.** A loss only drops the rung into a lower band when it is
+  the third loss in a row; before that it stops at the band's bottom rung.
+  Any win that crosses up promotes at once.
+- Saved to `localStorage` under `tic-tac-toe:ladder`:
+  `{ rung: number | null, streak: number, topHeldAt: number | null, topHeldCount: number }`.
+  `streak` is consecutive wins (positive) or losses (negative). Missing or
+  invalid data reads as the empty ladder.
 - New players have no rung. Their **first bot game starts at the bottom** of the
   band they picked: 1, 11, or 21.
 
@@ -93,7 +99,9 @@ Computed as a pure function of (rung before, rung after, result, badge held):
   (the same burst as a win) and a card over the board:
   "That was the unbeatable bot." / "Holding it to a draw is as good as it
   gets." with **Share** and **Keep playing**. Sets `topHeldAt`. Shown once ever.
-  Later draws at 30 get nothing extra.
+  Every draw at 30 adds to `topHeldCount`, which the badge shows.
+- **Lost the top** — a loss at rung 30 (which drops to 29). The New game
+  button reads **Take it back** for that one game. No fanfare otherwise.
 
 Share opens the phone's share sheet with the text
 "I held the unbeatable tic-tac-toe bot to a draw. Your move." and the site URL,
@@ -106,8 +114,9 @@ moment.
 ## The badge
 
 While `topHeldAt` is set, the History sheet shows a badge above the bot record:
-**Top of the pack** with the date held, and its own Share button with the same
-text. Device-local, like all history.
+**Top of the pack** with the date first held and "Held N times" (or "Held
+once"), and its own Share button with the same text. Device-local, like all
+history.
 
 ## History
 
@@ -155,9 +164,15 @@ pounces" / "Unbeatable":
   called with the text; the badge shows in History with Share; setup shows the
   new descriptions and preselects the band.
 
-## Out of scope / deferred
+## Out of scope / deferred (TODO)
 
 - **Account-based badge.** When the rooms work lands its device identity and
   Supabase tables, the badge can live there and show beside a nickname.
 - **Level graph in History**, drawn from the stored rungs.
+- **Daily decay.** Each day without a bot game drops the rung by one.
+- **Achievements.** A small set beyond the top badge (first win at each
+  band, a ten-win streak, a hundred games, held the top ten times), each with
+  its own share line.
+- Seeding a new ladder from past history. Considered and declined: newcomers
+  and old hands alike start at the bottom of the band they pick.
 - Showing the rung on the chip. Deliberately hidden: the top is a surprise.
