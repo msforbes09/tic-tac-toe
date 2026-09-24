@@ -1,7 +1,8 @@
 # tic-tac-toe (React)
 
-Mobile-first browser tic-tac-toe. Two-player local, versus bot
-(easy / medium / hard), or online with a friend over Supabase Realtime.
+Mobile-first browser tic-tac-toe. Two-player local, versus an adaptive bot
+(easy / medium / hard as bands over a hidden 30-rung ladder), or online with a
+friend over Supabase Realtime.
 Finished games are saved to localStorage history.
 
 ## Stack
@@ -11,7 +12,8 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 ## Layout
 
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
-- `src/lib/bot.ts` — bot strategies. Depends only on game.ts. Fully tested.
+- `src/lib/bot.ts` — the bot, by rung: win / block / best-move chances over memoised minimax. Depends only on game.ts. Fully tested, including a simulation that pins the hard band.
+- `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (promotion, top, top held, lost top), storage. Fully tested.
 - `src/lib/history.ts` — history persistence over a Storage-like interface. Fully tested.
 - `src/lib/feedback.ts` — which sound/haptic a board change gets. Fully tested.
 - `src/platform/browserFeedback.ts` — Web Audio tones + Vibration API behind the `Feedback` interface. The only browser-API code outside components.
@@ -33,6 +35,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 
 - Board: `Cell[]` length 9, row-major. X always moves first.
 - Seats `p1` (you / Player 1) and `p2` (bot / Player 2) trade X between games: winner takes X, a draw swaps. The bot plays whichever side is to move.
+- Bot difficulty is a rung (1..30) resolved by `GameScreen` from the saved ladder and the picked band; the chip shows the picked band for the first game, then the band the rung is in. The rung is never shown. See `docs/superpowers/specs/2026-09-25-adaptive-bot-design.md`.
 - lib/ and state/ never import React or touch the DOM.
 - TDD for all logic: failing test first, minimal code, refactor.
 - Mobile-first single column (max 420px) on every screen size. Dark theme only: `<html class="dark">` in index.html; nothing follows the system setting.

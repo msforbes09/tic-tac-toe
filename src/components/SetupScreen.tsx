@@ -26,9 +26,9 @@ export type SetupScreenProps = {
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
-  { value: 'easy', label: 'Easy', hint: 'Makes mistakes' },
-  { value: 'medium', label: 'Medium', hint: 'Blocks and pounces' },
-  { value: 'hard', label: 'Hard', hint: 'Unbeatable' },
+  { value: 'easy', label: 'Easy', hint: 'Go on, warm up.' },
+  { value: 'medium', label: 'Medium', hint: 'Blocks. Bites back.' },
+  { value: 'hard', label: 'Hard', hint: "Bring your best. It won't matter." },
 ]
 
 const segmentItem =

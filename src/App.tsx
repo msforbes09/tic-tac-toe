@@ -55,6 +55,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const share = deps.share ?? shareLink
   const url = deps.url ?? window.location.href
   const replaceUrl = deps.replaceUrl ?? ((next: string) => window.history.replaceState(null, '', next))
+  // The bare site link, for bragging: whatever room code the page opened with is dropped.
+  const siteUrl = withoutRoomParam(url)
 
   const [screen, setScreen] = useState<Screen>(() => {
     const code = roomCodeFromUrl(url)
@@ -102,7 +104,14 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   return (
     <AppShell>
       {screen.kind === 'game' && (
-        <GameScreen settings={screen.settings} storage={storage} feedback={feedback} onBack={toSetup} />
+        <GameScreen
+          settings={screen.settings}
+          storage={storage}
+          feedback={feedback}
+          onBack={toSetup}
+          share={share}
+          siteUrl={siteUrl}
+        />
       )}
       {screen.kind === 'online' && openRoom && (
         <OnlineGame
@@ -133,7 +142,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         />
       )}
       {splash && <Splash onDone={endSplash} feedback={feedback} />}
-      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} />
+      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} storage={storage} share={share} siteUrl={siteUrl} />
     </AppShell>
   )
 }

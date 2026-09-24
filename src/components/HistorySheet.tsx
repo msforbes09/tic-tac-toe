@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Mark } from './Mark'
+import { TOP_SHARE_TEXT } from './TopCard'
 import { Button } from '@/components/ui/button'
+import { loadLadder, type Ladder } from '@/lib/ladder'
+import type { ShareLink } from '@/platform/share'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
@@ -17,6 +20,9 @@ export type HistorySheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   storage: HistoryStorage
+  /** For bragging from the top-of-the-pack badge. */
+  share?: ShareLink
+  siteUrl?: string
 }
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
@@ -80,6 +86,35 @@ function safeLoad(storage: HistoryStorage): HistoryEntry[] {
   }
 }
 
+/** The badge for holding rung 30 to a draw. Shown only once that has happened. */
+function TopBadge({ ladder, share, siteUrl }: { ladder: Ladder; share?: ShareLink; siteUrl?: string }) {
+  if (ladder.topHeldAt === null) return null
+  const times = ladder.topHeldCount === 1 ? 'Held once' : `Held ${ladder.topHeldCount} times`
+  return (
+    <div className="flex items-center gap-3 rounded-[18px] bg-player-o-soft px-4 py-3">
+      <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-player-o/20 text-player-o">
+        <Mark player="O" weight={15} className="size-5" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="font-heading text-[15px] font-medium">Top of the pack</span>
+        <span className="text-sm text-muted-foreground">
+          {times} · since {dayFormat.format(ladder.topHeldAt)}
+        </span>
+      </div>
+      {share && siteUrl && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-h-10 rounded-xl px-3 text-[14px]"
+          onClick={() => void share(siteUrl, TOP_SHARE_TEXT)}
+        >
+          Share
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
   if (outcome === 'draw') {
     return (
@@ -104,13 +139,15 @@ function OutcomeBadge({ outcome }: { outcome: HistoryEntry['outcome'] }) {
   )
 }
 
-export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps) {
+export function HistorySheet({ open, onOpenChange, storage, share, siteUrl }: HistorySheetProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
+  const [ladder, setLadder] = useState<Ladder | null>(null)
   const [visible, setVisible] = useState(PAGE_SIZE)
 
   useEffect(() => {
     if (!open) return
     setEntries(safeLoad(storage))
+    setLadder(loadLadder(storage))
     setVisible(PAGE_SIZE)
   }, [open, storage])
 
@@ -133,6 +170,8 @@ export function HistorySheet({ open, onOpenChange, storage }: HistorySheetProps)
               : `Your last ${entries.length === 1 ? 'game' : `${entries.length} games`}`}
           </SheetDescription>
         </SheetHeader>
+
+        {ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
 
         {hasBotGames && (
           <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
