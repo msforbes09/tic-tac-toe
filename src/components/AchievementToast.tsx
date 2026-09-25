@@ -24,7 +24,7 @@ export function AchievementToast({ queue, onDone, feedback }: { queue: Achieveme
     <div
       key={id}
       role="status"
-      aria-label={`Achievement unlocked: ${a.name}`}
+      aria-label={`Achievement unlocked: ${a.name}. ${a.description}`}
       onClick={onDone}
       className="toast-in fixed inset-x-0 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-[388px] cursor-pointer items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 shadow-lg"
       style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
@@ -33,6 +33,7 @@ export function AchievementToast({ queue, onDone, feedback }: { queue: Achieveme
       <span className="flex min-w-0 flex-col">
         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Achievement unlocked</span>
         <span className="truncate font-heading text-[15px] font-semibold">{a.name}</span>
+        <span className="line-clamp-2 text-[12.5px] text-muted-foreground">{a.description}</span>
       </span>
     </div>
   )
