@@ -57,6 +57,16 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.
 
+## Working principles
+
+Binding rules live in `.claude/rules/` and load automatically: `tdd.md` (Red → Green →
+Refactor → Ship), `ddd.md`, `yagni.md`, `dry.md`, plus path-scoped rules for `src/lib`,
+`src/state`, `src/components/ui`, and `supabase/`. Subagents in `.claude/agents/`
+(implementor, code-reviewer, debugger, security-auditor) are pinned to Opus. Hooks in
+`.claude/hooks/` format with Prettier, run the sibling test on every edit, and block
+`rm -rf`, force-push, pushes to `main`, and `.env` writes. `/commit` and the `release`
+skill cover the repo's git flow. `CLAUDE.local.md` is for personal notes and is gitignored.
+
 ## Releases
 
 Every PR that releases `develop` to `main` bumps `package.json` `version`: patch for fixes and
