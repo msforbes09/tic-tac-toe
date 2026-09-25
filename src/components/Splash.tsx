@@ -53,12 +53,8 @@ export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Fe
             Win three.
           </p>
         </div>
-        <p
-          data-testid="splash-footer"
-          className="splash-rise absolute bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground/70"
-          style={{ '--splash-delay': '1280ms' } as CSSProperties}
-        >
-          v{__APP_VERSION__} · © {COPYRIGHT_YEAR} Arnel Forbes
+        <p data-testid="splash-footer" className="absolute bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground/70">
+          v{__APP_VERSION__} · © {COPYRIGHT_YEAR} iam4bs
         </p>
       </div>
     </div>
