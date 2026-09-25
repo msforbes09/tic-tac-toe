@@ -197,8 +197,12 @@ function applyGame(p: Progress, e: GameEvent): Progress {
   return next
 }
 
-function applySeries(p: Progress, _e: SeriesEvent): Progress {
-  return p
+function applySeries(p: Progress, e: SeriesEvent): Progress {
+  const rooms = p.rooms.includes(e.roomId) ? p.rooms : [...p.rooms, e.roomId].slice(-MAX_ROOMS)
+  const opponents = { ...p.opponents, [e.opponentId]: (p.opponents[e.opponentId] ?? 0) + 1 }
+  const keys = Object.keys(opponents)
+  if (keys.length > MAX_OPPONENTS) delete opponents[keys[0]]
+  return { ...p, seriesPlayed: p.seriesPlayed + 1, seriesWon: p.seriesWon + (e.won ? 1 : 0), rooms, opponents }
 }
 
 function applyEvent(p: Progress, e: AchievementEvent): Progress {
@@ -281,6 +285,57 @@ export function record(state: AchievementState, event: AchievementEvent, now: nu
     unlocked.push('grand-master')
   }
   return { state: { ...state, progress, unlocks, updatedAt: now }, unlocked }
+}
+
+// ---- The badge ------------------------------------------------------------------------------------
+
+/** The highest tier unlocked, newest among equals; null when nothing is unlocked. */
+export function defaultBadge(unlocks: Unlocks): AchievementId | null {
+  let best: Achievement | null = null
+  for (const a of ACHIEVEMENTS) {
+    const at = unlocks[a.id]
+    if (at === undefined) continue
+    if (best === null) {
+      best = a
+      continue
+    }
+    const rank = TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(best.tier)
+    if (rank > 0 || (rank === 0 && at > (unlocks[best.id] as number))) best = a
+  }
+  return best?.id ?? null
+}
+
+/** What the player wears: their pick while it is unlocked, None when they chose it, else the default. */
+export function wornBadge(state: AchievementState): AchievementId | null {
+  if (state.badge === null) return null
+  if (state.badge !== undefined && state.unlocks[state.badge] !== undefined) return state.badge
+  return defaultBadge(state.unlocks)
+}
+
+// ---- Cloud merge ----------------------------------------------------------------------------------
+
+const sameState = (a: AchievementState, b: AchievementState) =>
+  a.updatedAt === b.updatedAt &&
+  a.badge === b.badge &&
+  JSON.stringify(a.unlocks) === JSON.stringify(b.unlocks) &&
+  JSON.stringify(a.progress) === JSON.stringify(b.progress)
+
+/**
+ * Local and cloud copies meet: unlocks are the union (earliest time wins), progress and badge come
+ * from whichever copy moved last. `localChanged` says the local copy should be saved, `cloudBehind`
+ * that the cloud should be pushed.
+ */
+export function merge(local: AchievementState, cloud: AchievementState | null): { state: AchievementState; localChanged: boolean; cloudBehind: boolean } {
+  if (!cloud) return { state: local, localChanged: false, cloudBehind: local.updatedAt > 0 }
+  const unlocks: Unlocks = { ...cloud.unlocks }
+  for (const [id, at] of Object.entries(local.unlocks) as [AchievementId, number][]) {
+    const c = unlocks[id]
+    if (c === undefined || at < c) unlocks[id] = at
+  }
+  const newer = cloud.updatedAt > local.updatedAt ? cloud : local
+  const state: AchievementState = { progress: newer.progress, unlocks, updatedAt: Math.max(local.updatedAt, cloud.updatedAt) }
+  if (newer.badge !== undefined) state.badge = newer.badge
+  return { state, localChanged: !sameState(state, local), cloudBehind: !sameState(state, cloud) }
 }
 
 // ---- Storage --------------------------------------------------------------------------------------

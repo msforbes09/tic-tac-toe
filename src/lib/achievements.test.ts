@@ -2,15 +2,20 @@ import { describe, expect, it } from 'vitest'
 import {
   ACHIEVEMENTS,
   ACHIEVEMENTS_KEY,
+  EMPTY_PROGRESS,
   EMPTY_STATE,
   achievementById,
+  defaultBadge,
   isAchievementId,
   loadAchievements,
+  merge,
   record,
   saveAchievements,
+  wornBadge,
   type AchievementEvent,
   type AchievementState,
   type GameEvent,
+  type SeriesEvent,
 } from './achievements'
 import type { HistoryStorage } from './history'
 import type { Board } from './types'
@@ -218,5 +223,92 @@ describe('record: board and clock', () => {
     const events = [1, 1, 2, 3, 4, 5, 6].map((d) => game({ finishedAt: day(d) }))
     expect(run(events).unlocked).not.toContain('week-warrior')
     expect(run([...events, game({ finishedAt: day(7) })]).unlocked).toContain('week-warrior')
+  })
+})
+
+const series = (over: Partial<SeriesEvent> = {}): AchievementEvent => ({
+  kind: 'series', won: true, mine: 6, theirs: 2, trailedBy3: false, tieBreak: false, roomId: 'r1', opponentId: 'o1', opponentBadge: null, ...over,
+})
+
+describe('record: series, rooms, watching', () => {
+  it('closer, clean sweep, comeback, tiebreaker, giant killer', () => {
+    expect(run([series()]).unlocked).toContain('closer')
+    expect(run([series({ won: false })]).unlocked).not.toContain('closer')
+    expect(run([series({ theirs: 0 })]).unlocked).toContain('clean-sweep')
+    expect(run([series({ theirs: 1 })]).unlocked).not.toContain('clean-sweep')
+    expect(run([series({ trailedBy3: true })]).unlocked).toContain('comeback-kid')
+    expect(run([series({ tieBreak: true })]).unlocked).toContain('tiebreaker')
+    expect(run([series({ opponentBadge: 'the-immovable' })]).unlocked).toContain('giant-killer')
+    expect(run([series({ won: false, opponentBadge: 'the-immovable' })]).unlocked).not.toContain('giant-killer')
+  })
+
+  it('frequent flyer over 3 rooms and old rivals over 3 series with one opponent', () => {
+    expect(run([series({ roomId: 'a' }), series({ roomId: 'b' }), series({ roomId: 'b' })]).unlocked).not.toContain('frequent-flyer')
+    expect(run([series({ roomId: 'a' }), series({ roomId: 'b' }), series({ roomId: 'c' })]).unlocked).toContain('frequent-flyer')
+    expect(run([series(), series(), series({ opponentId: 'o2' })]).unlocked).not.toContain('old-rivals')
+    expect(run([series(), series(), series()]).unlocked).toContain('old-rivals')
+  })
+
+  it('caps the opponent map at 50 by dropping the oldest', () => {
+    const { progress } = run(Array.from({ length: 51 }, (_, i) => series({ opponentId: String(i) }))).state
+    expect(Object.keys(progress.opponents)).toHaveLength(50)
+    expect(progress.opponents['0']).toBeUndefined()
+  })
+
+  it('landlord and front row', () => {
+    expect(run([{ kind: 'room-created' }]).unlocked).toContain('landlord')
+    expect(run([{ kind: 'watched' }]).unlocked).toContain('front-row')
+  })
+
+  it('grand master fires with the last of the others', () => {
+    const all = Object.fromEntries(ACHIEVEMENTS.filter((a) => a.id !== 'grand-master' && a.id !== 'landlord').map((a) => [a.id, 1]))
+    const { unlocked } = run([{ kind: 'room-created' }], { ...EMPTY_STATE, unlocks: all })
+    expect(unlocked).toEqual(['landlord', 'grand-master'])
+  })
+})
+
+describe('badge', () => {
+  it('defaults to the highest tier, newest among equals, and honours an explicit choice or None', () => {
+    const unlocks = { 'hello-bot': 1, 'high-five': 2, closer: 3, 'perfect-ten': 4, untouchable: 5 }
+    expect(defaultBadge(unlocks)).toBe('untouchable')
+    expect(defaultBadge({})).toBeNull()
+    expect(wornBadge({ ...EMPTY_STATE, unlocks })).toBe('untouchable')
+    expect(wornBadge({ ...EMPTY_STATE, unlocks, badge: 'closer' })).toBe('closer')
+    expect(wornBadge({ ...EMPTY_STATE, unlocks, badge: null })).toBeNull()
+    expect(wornBadge({ ...EMPTY_STATE, unlocks, badge: 'landlord' })).toBe('untouchable')
+  })
+})
+
+describe('merge', () => {
+  const local: AchievementState = { progress: { ...EMPTY_PROGRESS, botDraws: 2 }, unlocks: { 'hello-bot': 5, 'quick-draw': 7 }, badge: 'quick-draw', updatedAt: 10 }
+
+  it('keeps local when the cloud is empty and reports the cloud behind', () => {
+    expect(merge(local, null)).toEqual({ state: local, localChanged: false, cloudBehind: true })
+    expect(merge(EMPTY_STATE, null)).toEqual({ state: EMPTY_STATE, localChanged: false, cloudBehind: false })
+  })
+
+  it('unions unlocks keeping the earliest time and takes progress and badge from the newer copy', () => {
+    const cloud: AchievementState = { progress: { ...EMPTY_PROGRESS, botDraws: 5 }, unlocks: { 'hello-bot': 3, landlord: 9 }, badge: null, updatedAt: 20 }
+    const r = merge(local, cloud)
+    expect(r.state.unlocks).toEqual({ 'hello-bot': 3, 'quick-draw': 7, landlord: 9 })
+    expect(r.state.progress.botDraws).toBe(5)
+    expect(r.state.badge).toBeNull()
+    expect(r.state.updatedAt).toBe(20)
+    expect(r.localChanged).toBe(true)
+    expect(r.cloudBehind).toBe(true)
+  })
+
+  it('an older cloud copy still contributes unlocks the local one lacks', () => {
+    const cloud: AchievementState = { progress: EMPTY_PROGRESS, unlocks: { landlord: 1 }, updatedAt: 1 }
+    const r = merge(local, cloud)
+    expect(r.state.unlocks.landlord).toBe(1)
+    expect(r.state.progress.botDraws).toBe(2)
+    expect(r.state.badge).toBe('quick-draw')
+    expect(r.localChanged).toBe(true)
+    expect(r.cloudBehind).toBe(true)
+  })
+
+  it('identical copies change nothing', () => {
+    expect(merge(local, { ...local })).toEqual({ state: local, localChanged: false, cloudBehind: false })
   })
 })
