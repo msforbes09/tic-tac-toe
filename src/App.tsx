@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AchievementToast } from '@/components/AchievementToast'
+import { AchievementsSheet } from '@/components/AchievementsSheet'
 import { AppShell } from '@/components/AppShell'
+import { Celebration } from '@/components/Celebration'
 import { GameScreen } from '@/components/GameScreen'
 import { HistorySheet } from '@/components/HistorySheet'
 import { OnlinePanel } from '@/components/OnlinePanel'
@@ -16,6 +19,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  ACHIEVEMENTS_KEY,
+  EMPTY_STATE,
+  SHOW_HIDDEN_KEY,
+  loadAchievements,
+  merge,
+  record,
+  saveAchievements,
+  wornBadge,
+  type AchievementEvent,
+  type AchievementId,
+  type AchievementState,
+} from '@/lib/achievements'
 import type { HistoryStorage } from '@/lib/history'
 import {
   loadDeviceId,
@@ -40,7 +56,8 @@ import {
   withoutRoomParam,
   type LobbyPresence,
 } from '@/lib/room'
-import type { RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
+import { isRegistered, markRegistered, shouldWipe, wipeLocal } from '@/lib/reset'
+import type { PlayerRecord, RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
 import { DevDialog } from '@/components/DevDialog'
 import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry } from '@/lib/history'
 import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
@@ -111,40 +128,115 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [deviceId] = useState(() => loadDeviceId(storage))
   const [playerToken] = useState(() => loadPlayerToken(storage))
   const [nickname, setNickname] = useState<string | null>(() => loadNickname(storage))
+  // Airplane mode and the like: Online is shown disabled until the connection is back.
+  const connected = useNetworkOnline()
+
+  // Achievements: the local copy is the truth on the device and is pushed whenever there is a
+  // connection. The ref lets screens report events without waiting for a render.
+  const [achievements, setAchievements] = useState<AchievementState>(() => loadAchievements(storage))
+  const achievementsRef = useRef(achievements)
+  achievementsRef.current = achievements
+  const [toasts, setToasts] = useState<AchievementId[]>([])
+  const popToast = useCallback(() => setToasts((q) => q.slice(1)), [])
+  const pushAchievements = useCallback(
+    (state: AchievementState) => {
+      services?.directory.saveAchievements(deviceId, playerToken, state).catch(() => {})
+    },
+    [services, deviceId, playerToken],
+  )
+  const commitAchievements = useCallback(
+    (state: AchievementState) => {
+      achievementsRef.current = state
+      setAchievements(state)
+      saveAchievements(storage, state)
+      pushAchievements(state)
+    },
+    [pushAchievements],
+  )
+  const applyAchievement = useCallback(
+    (event: AchievementEvent) => {
+      const { state, unlocked } = record(achievementsRef.current, event, Date.now())
+      commitAchievements(state)
+      if (unlocked.length > 0) setToasts((q) => [...q, ...unlocked])
+    },
+    [commitAchievements],
+  )
+  const setBadge = (badge: AchievementId | null) => commitAchievements({ ...achievementsRef.current, badge, updatedAt: Date.now() })
 
   // Keep our player row current: created on the first nickname, touched on every visit after.
+  // Once it has been written, the device counts as registered: a missing row later means a wipe.
+  // The write waits for the wipe check below, so a wiped device is not quietly re-registered.
+  const [cloudChecked, setCloudChecked] = useState(false)
   useEffect(() => {
-    if (!services || !nickname) return
-    services.directory.savePlayer({ id: deviceId, nickname }, playerToken).catch(() => {})
-  }, [services, nickname, deviceId, playerToken])
-
-  // Games finished offline reach the cloud on the next launch; the newer ladder copy wins.
-  useEffect(() => {
-    if (!services) return
-    const { directory } = services
-    // Online games were once written locally too; those rows belong to `results`, so just retire them.
-    const unsynced = unsyncedEntries(storage)
-    const legacy = unsynced.filter((e) => e.mode === 'online')
-    if (legacy.length > 0) markSynced(storage, legacy.map((e) => e.id))
-    const pending = unsynced.filter((e) => e.mode !== 'online')
-    if (pending.length > 0) {
-      directory
-        .addGames(pending.map((e) => gameRowFromEntry(e, deviceId)))
-        .then(() => markSynced(storage, pending.map((e) => e.id)))
-        .catch(() => {})
-    }
-    directory
-      .loadLadder(deviceId)
-      .then((cloud) => {
-        const local = loadLadder(storage)
-        const winner = newerLadder(local, cloud)
-        if (winner !== local) {
-          const { playerId: _id, ...ladder } = winner as typeof winner & { playerId?: string }
-          saveLadder(storage, ladder)
-        } else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
-      })
+    if (!services || !nickname || !cloudChecked) return
+    services.directory
+      .savePlayer({ id: deviceId, nickname }, playerToken)
+      .then(() => markRegistered(storage))
       .catch(() => {})
-  }, [services, deviceId, playerToken])
+  }, [services, nickname, deviceId, playerToken, cloudChecked])
+
+  // On launch and whenever the connection returns: first the wipe check, then games finished
+  // offline reach the cloud, the newer ladder copy wins, and the achievements copies merge.
+  useEffect(() => {
+    if (!services || !connected) return
+    const { directory } = services
+    let cancelled = false
+    const sync = async () => {
+      let player: PlayerRecord | null
+      try {
+        player = await directory.loadPlayer(deviceId)
+      } catch {
+        // The cloud cannot be read, so nothing is wiped; the rest behaves as before the check existed.
+        if (!cancelled) setCloudChecked(true)
+        return
+      }
+      if (cancelled) return
+      if (shouldWipe(isRegistered(storage), player)) {
+        wipeLocal(storage)
+        setNickname(null)
+        achievementsRef.current = EMPTY_STATE
+        setAchievements(EMPTY_STATE)
+        setCloudChecked(true)
+        return // Nothing left to push; the next nickname registers the device again.
+      }
+      setCloudChecked(true)
+      // Online games were once written locally too; those rows belong to `results`, so just retire them.
+      const unsynced = unsyncedEntries(storage)
+      const legacy = unsynced.filter((e) => e.mode === 'online')
+      if (legacy.length > 0) markSynced(storage, legacy.map((e) => e.id))
+      const pending = unsynced.filter((e) => e.mode !== 'online')
+      if (pending.length > 0) {
+        directory
+          .addGames(pending.map((e) => gameRowFromEntry(e, deviceId)))
+          .then(() => markSynced(storage, pending.map((e) => e.id)))
+          .catch(() => {})
+      }
+      directory
+        .loadLadder(deviceId)
+        .then((cloud) => {
+          const local = loadLadder(storage)
+          const winner = newerLadder(local, cloud)
+          if (winner !== local) {
+            const { playerId: _id, ...ladder } = winner as typeof winner & { playerId?: string }
+            saveLadder(storage, ladder)
+          } else if (local.updatedAt > 0 && (!cloud || cloud.updatedAt < local.updatedAt)) return directory.saveLadder(deviceId, playerToken, local)
+        })
+        .catch(() => {})
+      const cloud = await directory.loadAchievements(deviceId).catch(() => null)
+      if (cancelled) return
+      const merged = merge(achievementsRef.current, cloud)
+      if (merged.localChanged) {
+        achievementsRef.current = merged.state
+        setAchievements(merged.state)
+        saveAchievements(storage, merged.state)
+      }
+      if (merged.cloudBehind) directory.saveAchievements(deviceId, playerToken, merged.state).catch(() => {})
+    }
+    void sync()
+    return () => {
+      cancelled = true
+    }
+  }, [services, deviceId, playerToken, connected])
 
   // Each finished two-player or bot game goes straight to the cloud, along with the moved ladder.
   const onRecorded = useCallback(
@@ -161,10 +253,9 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [achievementsOpen, setAchievementsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [tone, setTone] = useState(() => loadTone(storage))
-  // Airplane mode and the like: Online is shown disabled until the connection is back.
-  const connected = useNetworkOnline()
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
   // In memory only, so it ends with the session; the knock is ignored while it is already on.
@@ -200,15 +291,17 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     }, KNOCK_DELAY_MS)
     return () => clearTimeout(id)
   }, [knockPending])
-  // Developer reset: this device's games, ladder, and remembered setup, locally and in the cloud.
+  // Developer reset: this device's games, ladder, achievements, and remembered setup, locally and in the cloud.
   const resetGameData = () => {
-    for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY]) {
+    for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY, ACHIEVEMENTS_KEY, SHOW_HIDDEN_KEY]) {
       try {
         storage.removeItem(key)
       } catch {
         // Best-effort.
       }
     }
+    achievementsRef.current = EMPTY_STATE
+    setAchievements(EMPTY_STATE)
     services?.directory.resetPlayerData(deviceId, playerToken).catch(() => {})
   }
   const [pendingRoomId, setPendingRoomId] = useState<string | null>(() => {
@@ -314,6 +407,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     const token = newToken()
     const room = await services.directory.createRoom({ id, name, creatorId: deviceId, ownerHash: await hash(token) })
     saveOwnedRoom(storage, id, token)
+    applyAchievement({ kind: 'room-created' })
     setNotice(null)
     setScreen({ kind: 'room', room, ownerToken: token })
   }
@@ -341,6 +435,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
 
   return (
     <AppShell>
+      <AchievementToast queue={toasts} onDone={popToast} feedback={feedback} />
+      {toasts[0] === 'grand-master' && <Celebration />}
       {screen.kind === 'game' && (
         <GameScreen
           settings={screen.settings}
@@ -350,6 +446,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           dev={devMode}
           onKnock={knock}
           onRecorded={onRecorded}
+          onAchievement={applyAchievement}
           tone={tone}
         />
       )}
@@ -364,6 +461,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           storage={storage}
           feedback={feedback}
           onLeave={leaveRoom}
+          badge={wornBadge(achievements)}
+          onAchievement={applyAchievement}
         />
       )}
       {screen.kind === 'setup' && (
@@ -375,6 +474,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
             setScreen({ kind: 'game', settings: next })
           }}
           onOpenHistory={() => setHistoryOpen(true)}
+          onOpenAchievements={() => setAchievementsOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
           tone={tone}
           onModeChange={setSetupMode}
@@ -422,6 +522,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         onKnock={knock}
       />
 
+      <AchievementsSheet open={achievementsOpen} onOpenChange={setAchievementsOpen} state={achievements} storage={storage} />
+
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
@@ -436,6 +538,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           saveTone(storage, next)
           setTone(next)
         }}
+        badge={{ unlocks: achievements.unlocks, worn: wornBadge(achievements), onChange: setBadge }}
         // Developer tools, while developer mode is on. Each action lands on the setup screen.
         dev={
           devMode

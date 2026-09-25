@@ -8,6 +8,8 @@ import { createFakeDirectory } from '@/lib/roomDirectory'
 import { DEVICE_KEY, NICKNAME_KEY, OWNED_KEY, PLAYER_TOKEN_KEY } from '@/lib/identity'
 import { STORAGE_KEY } from '@/lib/history'
 import { LADDER_KEY } from '@/lib/ladder'
+import { ACHIEVEMENTS_KEY, EMPTY_STATE, loadAchievements, saveAchievements } from '@/lib/achievements'
+import { REGISTERED_KEY } from '@/lib/reset'
 import { KNOCK_DELAY_MS } from '@/lib/knock'
 
 describe('App', () => {
@@ -588,5 +590,129 @@ describe('App online rooms', () => {
     first.unmount()
     render(<App deps={deps} />)
     expect(screen.getByRole('button', { name: /two player/i })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('App achievements', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  const flush = () => act(async () => {})
+  const hash = async (t: string) => `h:${t}`
+  const online = () => {
+    const rt = createFakeRealtime()
+    const dir = createFakeDirectory(hash)
+    return { rt, dir, deps: { open: rt.open, directory: dir, hash } }
+  }
+  const me = () => window.localStorage.getItem(DEVICE_KEY) ?? ''
+  const token = () => window.localStorage.getItem(PLAYER_TOKEN_KEY) ?? ''
+  const playPvpWin = () => {
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(screen.getByRole('button', { name: new RegExp(`^Cell ${n},`) }))
+  }
+
+  it('unlocks Opening Move after the first two-player game, toasts it, saves locally, and pushes to the cloud', async () => {
+    const { deps, dir } = online()
+    render(<App deps={deps} />)
+    await flush()
+    playPvpWin()
+    expect(await screen.findByRole('status', { name: /achievement unlocked/i })).toHaveTextContent('Opening Move')
+    await flush()
+    expect(loadAchievements(window.localStorage).unlocks['opening-move']).toBeDefined()
+    const cloud = await dir.loadAchievements(me())
+    expect(cloud?.unlocks['opening-move']).toBeDefined()
+    expect(cloud?.progress.games.pvp).toBe(1)
+  })
+
+  it('toasts without a cloud, and still unlocks offline', async () => {
+    render(<App />)
+    playPvpWin()
+    expect(await screen.findByRole('status', { name: /achievement unlocked/i })).toHaveTextContent('Opening Move')
+    expect(loadAchievements(window.localStorage).unlocks['opening-move']).toBeDefined()
+  })
+
+  it('merges the cloud copy on launch and pushes when local has more', async () => {
+    const { deps, dir } = online()
+    const seed = render(<App deps={deps} />)
+    await flush()
+    const id = me()
+    const tok = token()
+    seed.unmount()
+    await dir.saveAchievements(id, tok, { ...EMPTY_STATE, unlocks: { landlord: 5 }, updatedAt: 5 })
+    saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 9 }, updatedAt: 9 })
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    expect(loadAchievements(window.localStorage).unlocks).toEqual({ landlord: 5, 'hello-bot': 9 })
+    expect((await dir.loadAchievements(id))?.unlocks).toEqual({ landlord: 5, 'hello-bot': 9 })
+  })
+
+  it('opens the Achievements sheet from setup', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Achievements' }))
+    expect(await screen.findByText('0 of 41 unlocked')).toBeInTheDocument()
+  })
+
+  it('wears a badge picked in Settings, saved locally and to the cloud', async () => {
+    const { deps, dir } = online()
+    saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 1, closer: 2 }, updatedAt: 3 })
+    render(<App deps={deps} />)
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('radio', { name: 'Hello, Bot' }))
+    await flush()
+    expect(loadAchievements(window.localStorage).badge).toBe('hello-bot')
+    expect((await dir.loadAchievements(me()))?.badge).toBe('hello-bot')
+  })
+
+  it('marks the device registered after the player row is saved', async () => {
+    const { deps } = online()
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={deps} />)
+    await flush()
+    expect(window.localStorage.getItem(REGISTERED_KEY)).toBe('1')
+  })
+
+  it('wipes local game data when the device had registered and its player row is gone, keeping its identity', async () => {
+    const { deps } = online()
+    window.localStorage.setItem(DEVICE_KEY, 'device-0002')
+    window.localStorage.setItem(PLAYER_TOKEN_KEY, 'token-0000000002')
+    window.localStorage.setItem(REGISTERED_KEY, '1')
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 1 }, updatedAt: 3 })
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    expect(window.localStorage.getItem(NICKNAME_KEY)).toBeNull()
+    expect(window.localStorage.getItem(LADDER_KEY)).toBeNull()
+    expect(window.localStorage.getItem(ACHIEVEMENTS_KEY)).toBeNull()
+    expect(window.localStorage.getItem(REGISTERED_KEY)).toBeNull()
+    expect(window.localStorage.getItem(DEVICE_KEY)).toBe('device-0002')
+    expect(window.localStorage.getItem(PLAYER_TOKEN_KEY)).toBe('token-0000000002')
+    fireEvent.click(screen.getByRole('button', { name: 'Achievements' }))
+    expect(await screen.findByText('0 of 41 unlocked')).toBeInTheDocument()
+  })
+
+  it('does not wipe a device that never registered', async () => {
+    const { deps } = online()
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 1 }, updatedAt: 3 })
+    render(<App deps={deps} />)
+    await flush()
+    await flush()
+    expect(JSON.parse(window.localStorage.getItem(LADDER_KEY) ?? '{}').rung).toBe(17)
+    expect(loadAchievements(window.localStorage).unlocks['hello-bot']).toBe(1)
+  })
+
+  it('reports creating a room as Landlord', async () => {
+    const { deps } = online()
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={deps} />)
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: /^online$/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /create/i }))
+    await flush()
+    expect(loadAchievements(window.localStorage).unlocks.landlord).toBeDefined()
   })
 })
