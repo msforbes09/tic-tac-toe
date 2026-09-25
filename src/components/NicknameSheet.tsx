@@ -10,7 +10,7 @@ export type NicknameSheetProps = {
   onSave: (name: string) => void
 }
 
-/** Shown the first time someone picks Online, and again from the pencil next to their name. */
+/** Shown the first time someone picks Online. Closing it keeps the prefilled name; Settings changes it later. */
 export function NicknameSheet({ open, initial, onSave }: NicknameSheetProps) {
   const [value, setValue] = useState(initial)
   useEffect(() => {
@@ -20,7 +20,7 @@ export function NicknameSheet({ open, initial, onSave }: NicknameSheetProps) {
   const save = () => onSave(normalizeNickname(value) ?? initial)
 
   return (
-    <Sheet open={open} onOpenChange={() => {}}>
+    <Sheet open={open} onOpenChange={(next) => !next && onSave(initial)}>
       <SheetContent
         side="bottom"
         className="mx-auto flex w-full max-w-[420px] flex-col gap-5 rounded-t-[28px] px-5 pt-5"

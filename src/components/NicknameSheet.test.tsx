@@ -37,4 +37,12 @@ describe('NicknameSheet', () => {
     expect(input).toHaveValue('Bob Cat99 ex')
     expect(input).toHaveAttribute('maxlength', '12')
   })
+
+  it('keeps the prefilled name when closed from the X, so Online can carry on', () => {
+    const onSave = vi.fn()
+    render(<NicknameSheet open initial="Sly Diagonal" onSave={onSave} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /nickname/i }), { target: { value: 'Bob' } })
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    expect(onSave).toHaveBeenCalledWith('Sly Diagonal')
+  })
 })

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { NicknameSheet } from './NicknameSheet'
 import { Button } from '@/components/ui/button'
 import type { RoomRecord } from '@/lib/roomDirectory'
@@ -22,19 +21,11 @@ const countLabel = (n: number | undefined) => (!n ? 'Empty' : n === 1 ? '1 in ro
 
 /** Under the mode toggle when Online is picked: who you are, Create room, and the live list of rooms. */
 export function OnlinePanel({ nickname, suggestedNickname, onSaveNickname, rooms, counts, ownedRoomId, onCreate, onEnter }: OnlinePanelProps) {
-  const [editing, setEditing] = useState(false)
-  const sheetOpen = nickname === null || editing
-
   return (
     <div className="rise-in flex flex-col gap-4">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-sm text-muted-foreground">
-          Playing as <span className="font-semibold text-foreground">{nickname ?? suggestedNickname}</span>
-        </span>
-        <Button variant="ghost" size="sm" aria-label="Edit nickname" className="min-h-9 rounded-lg px-2 text-sm" onClick={() => setEditing(true)}>
-          Edit
-        </Button>
-      </div>
+      <span className="px-1 text-sm text-muted-foreground">
+        Playing as <span className="font-semibold text-foreground">{nickname ?? suggestedNickname}</span>
+      </span>
 
       <Button size="lg" className="min-h-14 w-full rounded-[18px] text-base font-semibold" onClick={onCreate}>
         Create room
@@ -70,14 +61,7 @@ export function OnlinePanel({ nickname, suggestedNickname, onSaveNickname, rooms
         </ul>
       )}
 
-      <NicknameSheet
-        open={sheetOpen}
-        initial={nickname ?? suggestedNickname}
-        onSave={(name) => {
-          setEditing(false)
-          onSaveNickname(name)
-        }}
-      />
+      <NicknameSheet open={nickname === null} initial={nickname ?? suggestedNickname} onSave={onSaveNickname} />
     </div>
   )
 }
