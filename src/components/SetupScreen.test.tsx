@@ -199,4 +199,11 @@ describe('SetupScreen install card', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(onOpenSettings).toHaveBeenCalled()
   })
+
+  it('has an Achievements button that opens the sheet', () => {
+    const onOpenAchievements = vi.fn()
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onOpenAchievements={onOpenAchievements} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Achievements' }))
+    expect(onOpenAchievements).toHaveBeenCalled()
+  })
 })

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SeriesScreen } from './SeriesScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
@@ -31,7 +31,7 @@ function recorder() {
 
 const flush = () => act(async () => {})
 
-type Side = { el: () => HTMLElement; cell: (n: number) => HTMLButtonElement; button: (text: RegExp) => HTMLButtonElement; storage: ReturnType<typeof fakeStorage>; feedback: ReturnType<typeof recorder>; onExit: ReturnType<typeof vi.fn>; addResult: ReturnType<typeof vi.fn>; onResult: ReturnType<typeof vi.fn>; unmount: () => void }
+type Side = { el: () => HTMLElement; cell: (n: number) => HTMLButtonElement; button: (text: RegExp) => HTMLButtonElement; storage: ReturnType<typeof fakeStorage>; feedback: ReturnType<typeof recorder>; onExit: ReturnType<typeof vi.fn>; addResult: ReturnType<typeof vi.fn>; onResult: ReturnType<typeof vi.fn>; onAchievement: ReturnType<typeof vi.fn>; unmount: () => void }
 
 function mount(rt: FakeRealtime, self: typeof alice, role: SeriesRole, initial: SeriesState): Side {
   const storage = fakeStorage()
@@ -39,9 +39,10 @@ function mount(rt: FakeRealtime, self: typeof alice, role: SeriesRole, initial: 
   const onExit = vi.fn()
   const addResult = vi.fn(async () => {})
   const onResult = vi.fn()
+  const onAchievement = vi.fn()
   const view = render(
     <div data-testid={self.deviceId}>
-      <SeriesScreen self={self} role={role} initial={initial} open={rt.open} storage={storage} feedback={feedback} onExit={onExit} onResult={onResult} addResult={addResult} />
+      <SeriesScreen self={self} role={role} initial={initial} open={rt.open} storage={storage} feedback={feedback} onExit={onExit} onResult={onResult} addResult={addResult} onAchievement={onAchievement} />
     </div>,
   )
   const el = () => screen.getByTestId(self.deviceId)
@@ -55,6 +56,7 @@ function mount(rt: FakeRealtime, self: typeof alice, role: SeriesRole, initial: 
     onExit,
     addResult,
     onResult,
+    onAchievement,
     unmount: () => view.unmount(),
   }
 }
@@ -257,5 +259,66 @@ describe('SeriesScreen grace period', () => {
     expect(b.onExit).toHaveBeenCalledWith(null)
     expect(b.addResult).not.toHaveBeenCalled()
     expect(rt.membersOf(gameChannel('g')).find((m) => m.id === 'b')?.meta).toEqual({ deviceId: 'b', role: 'player' })
+  })
+})
+
+describe('SeriesScreen achievements', () => {
+  const at = (over: Partial<SeriesState>): SeriesState => {
+    const base = startSeries('r', 'g', alice, bob)
+    const gameNumber = over.gameNumber ?? base.gameNumber
+    return { ...base, ...over, game: createGameState({ mode: 'online', difficulty: 'medium', p1Symbol: firstMoveP1Symbol(gameNumber) }) }
+  }
+
+  it('players report each finished game from their side; the watcher reports nothing', async () => {
+    const { a, b, c } = await trio()
+    await bobWinsGame1(a, b)
+    expect(b.onAchievement).toHaveBeenCalledTimes(1)
+    expect(b.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'game', mode: 'online', result: 'win', symbol: 'X', opponentId: 'a', opponentBadge: null }))
+    expect(a.onAchievement).toHaveBeenCalledTimes(1)
+    expect(a.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'game', mode: 'online', result: 'loss', symbol: 'O', opponentId: 'b' }))
+    expect(c.onAchievement).not.toHaveBeenCalled()
+  })
+
+  it('reports the series when it is decided, with the score from each side and no tie break', async () => {
+    // Game 6 at 5–0: Alice (challenger, X in even games) wins the top row and the series.
+    const { a, b, c } = await trio(at({ gameNumber: 6, score: { challenger: 5, challenged: 0, draws: 0 } }))
+    for (const [side, n] of [[a, 1], [b, 4], [a, 2], [b, 5], [a, 3]] as const) {
+      fireEvent.click(side.cell(n))
+      await flush()
+    }
+    expect(a.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 6, theirs: 0, trailedBy3: false, tieBreak: false, decided: true, roomId: 'r', opponentId: 'b', opponentBadge: null }))
+    expect(b.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: false, mine: 0, theirs: 6 }))
+    expect(a.onAchievement.mock.calls.map((c) => c[0].kind)).toEqual(['game', 'series'])
+    expect(c.onAchievement).not.toHaveBeenCalled()
+  })
+
+  it('a resigned series is one series event and no game event, and remembers having trailed by 3', async () => {
+    const { a, b } = await trio(at({ gameNumber: 4, score: { challenger: 0, challenged: 3, draws: 0 } }))
+    fireEvent.click(b.button(/^resign$/i))
+    fireEvent.click(screen.getByRole('button', { name: /yes, resign/i }))
+    await flush()
+    expect(a.onAchievement).toHaveBeenCalledTimes(1)
+    expect(a.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 0, theirs: 3, trailedBy3: true, decided: false }))
+    expect(b.onAchievement).toHaveBeenCalledTimes(1)
+    expect(b.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'series', won: false, trailedBy3: false }))
+  })
+
+  it('a series decided in game 11 is a tie break', async () => {
+    // Game 11: Bob (challenged) is X. Bob wins the top row.
+    const { a, b } = await trio(at({ gameNumber: 11, score: { challenger: 5, challenged: 5, draws: 0 } }))
+    for (const [side, n] of [[b, 1], [a, 4], [b, 2], [a, 5], [b, 3]] as const) {
+      fireEvent.click(side.cell(n))
+      await flush()
+    }
+    expect(b.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: true, tieBreak: true }))
+  })
+
+  it('shows each player’s badge above their name and passes the opponent’s badge along', async () => {
+    const { a, b } = await trio(startSeries('r', 'g', { ...alice, badge: 'closer' }, { ...bob, badge: 'the-immovable' }))
+    expect(within(a.el()).getByRole('img', { name: 'Closer' })).toBeInTheDocument()
+    expect(within(a.el()).getByRole('img', { name: 'The Immovable' })).toBeInTheDocument()
+    await bobWinsGame1(a, b)
+    expect(a.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ opponentBadge: 'the-immovable' }))
+    expect(b.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ opponentBadge: 'closer' }))
   })
 })

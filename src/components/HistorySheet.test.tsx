@@ -268,28 +268,14 @@ describe('HistorySheet climb graph', () => {
   })
 })
 
-describe('HistorySheet badge', () => {
-  it('shows the top-of-the-pack badge once the top has been held, with a share', async () => {
-    const storage = fakeStorage([entry({ id: 'a' })])
-    storage.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: Date.UTC(2026, 8, 25, 12), topHeldCount: 3 }))
-    const share = vi.fn().mockResolvedValue('shared')
-    render(<HistorySheet mode="bot" open={true} onOpenChange={() => {}} storage={storage} share={share} siteUrl="https://ttt.test/" />)
-    expect(screen.getByText('Top of the pack')).toBeInTheDocument()
-    expect(screen.getByText(/Held 3 times/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
-    expect(share).toHaveBeenCalledWith('https://ttt.test/', 'I held the unbeatable tic-tac-toe bot to a draw. Your move.')
-  })
 
-  it('says Held once for a single draw at the top, and shows no badge before the top is held', () => {
-    const once = fakeStorage()
-    once.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: 1, topHeldCount: 1 }))
-    const view = render(<HistorySheet mode="bot" open={true} onOpenChange={() => {}} storage={once} />)
-    expect(screen.getByText(/Held once/)).toBeInTheDocument()
-    view.unmount()
-    const none = fakeStorage()
-    none.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: null, topHeldCount: 0 }))
-    render(<HistorySheet mode="bot" open={true} onOpenChange={() => {}} storage={none} />)
+describe('HistorySheet badge', () => {
+  it('shows no top-of-the-pack badge any more; achievements carry it', () => {
+    const storage = fakeStorage([entry({ id: 'a' })])
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: 1, topHeldCount: 3 }))
+    render(<HistorySheet mode="bot" open={true} onOpenChange={() => {}} storage={storage} />)
     expect(screen.queryByText('Top of the pack')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
   })
 })
 

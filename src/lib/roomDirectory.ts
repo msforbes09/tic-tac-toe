@@ -1,3 +1,4 @@
+import type { AchievementState } from './achievements'
 import type { GameRow } from './history'
 import type { Ladder } from './ladder'
 import type { SeriesResult } from './room'
@@ -21,6 +22,11 @@ export type RoomDirectory = {
   addResult(result: SeriesResult): Promise<void>
   /** Insert or rename this device's player; the token must match the one it was created with. */
   savePlayer(player: PlayerRecord, token: string): Promise<void>
+  /** This device's player row, or null when it has none (never registered, or the cloud was wiped). */
+  loadPlayer(playerId: string): Promise<PlayerRecord | null>
+  loadAchievements(playerId: string): Promise<AchievementState | null>
+  /** Insert or update the player's achievements; the token must match; an older updatedAt is ignored. */
+  saveAchievements(playerId: string, token: string, state: AchievementState): Promise<void>
   /** Every series this player won or lost, across rooms, newest first. */
   listMyResults(playerId: string): Promise<SeriesResult[]>
   onMyResultsChange(playerId: string, handler: (results: SeriesResult[]) => void): () => void
@@ -32,7 +38,7 @@ export type RoomDirectory = {
   /** Insert or update the player's ladder; the token must match the one it was created with. */
   saveLadder(playerId: string, token: string, ladder: Ladder): Promise<void>
   /**
-   * Developer reset: deletes the player's games and ladder when the token matches the ladder's
+   * Developer reset: deletes the player's games, ladder, and achievements when the token matches the ladder's
    * (or the player row's). Series results and rooms are shared with other players and stay.
    * True when the token matched and rows were removed.
    */
@@ -53,6 +59,7 @@ export function createFakeDirectory(
   const players: (PlayerRecord & { tokenHash: string })[] = []
   const games: GameRow[] = []
   const ladders = new Map<string, { ladder: Ladder; tokenHash: string }>()
+  const achievements = new Map<string, { state: AchievementState; tokenHash: string }>()
   let clock = 1
 
   const publicRooms = (): RoomRecord[] =>
@@ -89,6 +96,21 @@ export function createFakeDirectory(
         throw new Error('player token does not match')
       }
     },
+    async loadPlayer(playerId) {
+      const p = players.find((x) => x.id === playerId)
+      return p ? { id: p.id, nickname: p.nickname } : null
+    },
+    async loadAchievements(playerId) {
+      const entry = achievements.get(playerId)
+      return entry ? { ...entry.state } : null
+    },
+    async saveAchievements(playerId, token, state) {
+      const tokenHash = await hash(token)
+      const existing = achievements.get(playerId)
+      if (existing && existing.tokenHash !== tokenHash) throw new Error('achievements token does not match')
+      if (existing && existing.state.updatedAt > state.updatedAt) return
+      achievements.set(playerId, { state: { ...state }, tokenHash })
+    },
     async listMyResults(playerId) {
       return mine(playerId)
     },
@@ -113,12 +135,13 @@ export function createFakeDirectory(
     },
     async resetPlayerData(playerId, token) {
       const tokenHash = await hash(token)
-      const owner = ladders.get(playerId)?.tokenHash ?? players.find((p) => p.id === playerId)?.tokenHash
+      const owner = ladders.get(playerId)?.tokenHash ?? achievements.get(playerId)?.tokenHash ?? players.find((p) => p.id === playerId)?.tokenHash
       if (owner === undefined || owner !== tokenHash) return false
       const before = games.length
       for (let i = games.length - 1; i >= 0; i--) if (games[i].playerId === playerId) games.splice(i, 1)
       const hadLadder = ladders.delete(playerId)
-      return hadLadder || games.length < before
+      const hadAchievements = achievements.delete(playerId)
+      return hadLadder || hadAchievements || games.length < before
     },
     onMyResultsChange(playerId, handler) {
       const set = myHandlers.get(playerId) ?? new Set()

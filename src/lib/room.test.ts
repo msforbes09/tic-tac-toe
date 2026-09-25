@@ -196,3 +196,19 @@ describe('readSupabaseConfig', () => {
     expect(readSupabaseConfig({ VITE_SUPABASE_URL: 'https://p.supabase.co', VITE_SUPABASE_ANON_KEY: 42 })).toBeNull()
   })
 })
+
+describe('badge on shapes', () => {
+  const presence = { deviceId: 'd', nickname: 'n', status: 'idle', gameId: null }
+
+  it('accepts a missing or string badge on presence and rejects other types', () => {
+    expect(isRoomPresence(presence)).toBe(true)
+    expect(isRoomPresence({ ...presence, badge: 'the-immovable' })).toBe(true)
+    expect(isRoomPresence({ ...presence, badge: 123 })).toBe(false)
+  })
+
+  it('accepts a badge on series players in challenges and results, and rejects other types', () => {
+    const player = { deviceId: 'a', nickname: 'A', badge: 'closer' }
+    expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: player, to: 'b' })).toBe(true)
+    expect(isRoomEvent({ type: 'challenge', gameId: 'g', from: { ...player, badge: 5 }, to: 'b' })).toBe(false)
+  })
+})

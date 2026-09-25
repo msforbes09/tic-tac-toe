@@ -39,6 +39,9 @@ export const firstMoveP1Symbol = (gameNumber: number): Player => (gameNumber % 2
 
 const newGame = (gameNumber: number): GameState => createGameState({ ...ONLINE, p1Symbol: firstMoveP1Symbol(gameNumber) })
 
+/** The known fields of a player, badge included when there is one. */
+const playerRef = (p: SeriesPlayer): SeriesPlayer => (p.badge === undefined ? { deviceId: p.deviceId, nickname: p.nickname } : { deviceId: p.deviceId, nickname: p.nickname, badge: p.badge })
+
 export function startSeries(roomId: string, gameId: string, challenger: SeriesPlayer, challenged: SeriesPlayer): SeriesState {
   return {
     gameId,
@@ -137,8 +140,8 @@ export function seriesReducer(state: SeriesState, action: SeriesAction, now: num
       return {
         gameId,
         roomId,
-        challenger: { deviceId: challenger.deviceId, nickname: challenger.nickname },
-        challenged: { deviceId: challenged.deviceId, nickname: challenged.nickname },
+        challenger: playerRef(challenger),
+        challenged: playerRef(challenged),
         score: { challenger: score.challenger, challenged: score.challenged, draws: score.draws },
         gameNumber,
         result,
@@ -155,7 +158,8 @@ export function snapshotOfSeries(state: SeriesState): SeriesSnapshot {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
-const isPlayerRef = (v: unknown): v is SeriesPlayer => isObj(v) && typeof v.deviceId === 'string' && typeof v.nickname === 'string'
+const isPlayerRef = (v: unknown): v is SeriesPlayer =>
+  isObj(v) && typeof v.deviceId === 'string' && typeof v.nickname === 'string' && (v.badge === undefined || typeof v.badge === 'string')
 
 export function isSeriesSnapshot(v: unknown): v is SeriesSnapshot {
   if (!isObj(v)) return false

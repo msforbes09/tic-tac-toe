@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RoomScreen } from './RoomScreen'
+import type { AchievementId } from '@/lib/achievements'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { HistoryStorage } from '@/lib/history'
 import { createFakeRealtime, type FakeRealtime, type OpenChannel } from '@/lib/realtime'
@@ -17,8 +18,9 @@ const flush = () => act(async () => {})
 
 let nextId = 0
 
-function mount(rt: FakeRealtime, dir: RoomDirectory, self: typeof alice, ownerToken: string | null = null) {
+function mount(rt: FakeRealtime, dir: RoomDirectory, self: typeof alice, ownerToken: string | null = null, badge: AchievementId | null = null) {
   const onLeave = vi.fn()
+  const onAchievement = vi.fn()
   const played: FeedbackEvent[] = []
   const feedback: Feedback = { play: (e) => void played.push(e) }
   const view = render(
@@ -33,13 +35,15 @@ function mount(rt: FakeRealtime, dir: RoomDirectory, self: typeof alice, ownerTo
         feedback={feedback}
         onLeave={onLeave}
         newId={() => `g${++nextId}`}
+        badge={badge}
+        onAchievement={onAchievement}
       />
     </div>,
   )
   const el = () => screen.getByTestId(self.deviceId)
   const buttons = () => Array.from(el().querySelectorAll('button'))
   const button = (text: RegExp) => buttons().find((b) => text.test(b.textContent ?? ''))
-  return { el, button, onLeave, played, unmount: () => view.unmount() }
+  return { el, button, onLeave, onAchievement, played, unmount: () => view.unmount() }
 }
 
 async function setup(withCat = false) {
@@ -285,5 +289,36 @@ describe('RoomScreen stability', () => {
     view.rerender(<RoomScreen {...props()} />)
     await flush()
     expect(opens).toBe(calls)
+  })
+})
+
+describe('RoomScreen badges and achievements', () => {
+  it('tracks the badge in presence, shows it above the name, and carries it into the series for both players', async () => {
+    const rt = createFakeRealtime()
+    const dir = createFakeDirectory(hash)
+    await dir.createRoom({ id: room.id, name: room.name, creatorId: 'a', ownerHash: await hash('token-a') })
+    const a = mount(rt, dir, alice, 'token-a', 'closer')
+    const b = mount(rt, dir, bob, null, 'the-immovable')
+    await flush()
+    expect(rt.membersOf(roomChannel(room.id)).map((m) => m.meta)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ deviceId: 'a', badge: 'closer' }), expect.objectContaining({ deviceId: 'b', badge: 'the-immovable' })]),
+    )
+    expect(within(b.el()).getByRole('img', { name: 'Closer' })).toBeInTheDocument()
+    expect(within(a.el()).getByRole('img', { name: 'The Immovable' })).toBeInTheDocument()
+    await startSeries(a)
+    // The series bar on each side shows both badges: the challenge carried Alice's, the accept carried Bob's.
+    expect(within(a.el()).getByRole('img', { name: 'The Immovable' })).toBeInTheDocument()
+    expect(within(b.el()).getByRole('img', { name: 'Closer' })).toBeInTheDocument()
+    a.unmount()
+    b.unmount()
+  })
+
+  it('reports watching a series', async () => {
+    const { a, c } = await setup(true)
+    await startSeries(a)
+    fireEvent.click(within(c!.el()).getAllByRole('button', { name: /^watch$/i, hidden: true })[0])
+    await flush()
+    expect(c!.onAchievement).toHaveBeenCalledWith({ kind: 'watched' })
+    expect(a.onAchievement).not.toHaveBeenCalledWith({ kind: 'watched' })
   })
 })

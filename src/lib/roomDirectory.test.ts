@@ -1,4 +1,5 @@
 import type { GameRow } from './history'
+import { EMPTY_STATE } from './achievements'
 import { EMPTY_LADDER } from './ladder'
 import { describe, expect, it, vi } from 'vitest'
 import { createFakeDirectory } from './roomDirectory'
@@ -132,5 +133,25 @@ describe('fake room directory', () => {
     expect((await dir.loadLadder('dev'))?.rung).toBe(13)
     await expect(dir.saveLadder('dev', 'wrong', { ...EMPTY_LADDER, rung: 1, updatedAt: 300 })).rejects.toThrow()
     expect((await dir.loadLadder('dev'))?.rung).toBe(13)
+  })
+
+  it('loads a player by id, or null', async () => {
+    const dir = createFakeDirectory(hash)
+    expect(await dir.loadPlayer('d1')).toBeNull()
+    await dir.savePlayer({ id: 'd1', nickname: 'Ann' }, 't1')
+    expect(await dir.loadPlayer('d1')).toEqual({ id: 'd1', nickname: 'Ann' })
+  })
+
+  it('stores achievements per player behind the token, newest updatedAt wins, and reset removes them', async () => {
+    const dir = createFakeDirectory(hash)
+    const state = { ...EMPTY_STATE, unlocks: { 'hello-bot': 1 }, updatedAt: 5 }
+    expect(await dir.loadAchievements('d1')).toBeNull()
+    await dir.saveAchievements('d1', 't1', state)
+    expect(await dir.loadAchievements('d1')).toEqual(state)
+    await expect(dir.saveAchievements('d1', 'wrong', { ...state, updatedAt: 9 })).rejects.toThrow()
+    await dir.saveAchievements('d1', 't1', { ...state, updatedAt: 3 })
+    expect((await dir.loadAchievements('d1'))?.updatedAt).toBe(5)
+    expect(await dir.resetPlayerData('d1', 't1')).toBe(true)
+    expect(await dir.loadAchievements('d1')).toBeNull()
   })
 })

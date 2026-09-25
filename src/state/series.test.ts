@@ -213,4 +213,14 @@ describe('snapshots and status text', () => {
     const synced = seriesReducer(fresh(), { type: 'SYNC', snapshot: snap })
     expect(Object.keys(synced).sort()).toEqual(Object.keys(fresh()).sort())
   })
+
+  it('SYNC carries the players’ badges and drops anything else on them', () => {
+    const withBadges = startSeries('r', 'g', { ...alice, badge: 'closer' }, { ...bob, badge: 'the-immovable' })
+    const snap = snapshotOfSeries(withBadges)
+    ;(snap.challenger as unknown as Record<string, unknown>).extra = 'nope'
+    const synced = seriesReducer(fresh(), { type: 'SYNC', snapshot: snap })
+    expect(synced.challenger).toEqual({ deviceId: 'a', nickname: 'Alice', badge: 'closer' })
+    expect(synced.challenged).toEqual({ deviceId: 'b', nickname: 'Bob', badge: 'the-immovable' })
+    expect(seriesReducer(fresh(), { type: 'SYNC', snapshot: snapshotOfSeries(fresh()) }).challenger).toEqual({ deviceId: 'a', nickname: 'Alice' })
+  })
 })
