@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS_KEY, SHOW_HIDDEN_KEY } from './achievements'
+import { ACHIEVEMENTS_KEY } from './achievements'
 import { STORAGE_KEY as HISTORY_KEY, type HistoryStorage } from './history'
 import { NICKNAME_KEY, OWNED_KEY } from './identity'
 import { LADDER_KEY } from './ladder'
@@ -15,7 +15,7 @@ import { SETUP_KEY } from './setup'
 export const REGISTERED_KEY = 'tic-tac-toe:registered'
 
 /** Everything that is game data. The device id, the player token, and developer mode are not. */
-export const WIPE_KEYS = [HISTORY_KEY, LADDER_KEY, ACHIEVEMENTS_KEY, SETUP_KEY, NICKNAME_KEY, OWNED_KEY, SHOW_HIDDEN_KEY, REGISTERED_KEY]
+export const WIPE_KEYS = [HISTORY_KEY, LADDER_KEY, ACHIEVEMENTS_KEY, SETUP_KEY, NICKNAME_KEY, OWNED_KEY, REGISTERED_KEY]
 
 export const isRegistered = (storage: HistoryStorage): boolean => storage.getItem(REGISTERED_KEY) === '1'
 

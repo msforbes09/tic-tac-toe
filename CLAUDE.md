@@ -16,7 +16,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
 - `src/lib/bot.ts` — the bot, by rung: win / block / best-move chances over memoised minimax. Depends only on game.ts. Fully tested, including a simulation that pins the hard band.
 - `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (only lost-top still drives UI: the Take it back label), storage. Fully tested.
-- `src/lib/achievements.ts` — the 41-achievement catalogue, the flat `Progress` record, `record(state, event, now)` (one event in, new unlocks out), `defaultBadge` / `wornBadge`, `merge` (local + cloud), storage. Fully tested. `components/AchievementsSheet.tsx` lists them (hidden ones stay secret until unlocked or Show hidden), `AchievementToast.tsx` is the unlock toast, `AchievementBadge.tsx` the icon worn above a name.
+- `src/lib/achievements.ts` — the 41-achievement catalogue, the flat `Progress` record, `record(state, event, now)` (one event in, new unlocks out), `defaultBadge` / `wornBadge`, `merge` (local + cloud), storage. Fully tested. `listAchievements` orders and filters the sheet's rows. `components/AchievementsSheet.tsx` lists them (hidden ones stay secret until unlocked or tapped; sort and filter live in a popup), `AchievementToast.tsx` is the unlock toast, `AchievementBadge.tsx` the icon worn above a name.
 - `src/lib/reset.ts` — the full reset: a device that registered and finds no player row wipes its local game data (`WIPE_KEYS`) on launch. Fully tested.
 - `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones: `friendly` by default, `cocky` when the Aggressive bot switch is on. `src/lib/tone.ts` remembers the switch; `components/SettingsSheet.tsx` (gear on the setup screen) holds it and the nickname. Fully tested.
 - `src/lib/climb.ts` — the rung series for the History graph (`components/ClimbGraph.tsx`, a sparkline over three band lanes). Fully tested.
@@ -56,6 +56,16 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Achievements: screens emit `AchievementEvent`s (`game` from GameScreen and SeriesScreen players, `series` from SeriesScreen, `room-created` from App, `watched` from RoomScreen); `App` owns the state, saves locally on every event, pushes to `achievements` when it can, and merges the cloud copy on launch and on `online` after the wipe check. Streaks and the win-count achievements count bot and online games only. `SeriesPlayer` and `RoomPresence` carry an optional `badge`. See `docs/superpowers/specs/2026-09-26-achievements-design.md`.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.
+
+## Working principles
+
+Binding rules live in `.claude/rules/` and load automatically: `tdd.md` (Red → Green →
+Refactor → Ship), `ddd.md`, `yagni.md`, `dry.md`, plus path-scoped rules for `src/lib`,
+`src/state`, `src/components/ui`, and `supabase/`. Subagents in `.claude/agents/`
+(implementor, code-reviewer, debugger, security-auditor) are pinned to Opus. Hooks in
+`.claude/hooks/` format with Prettier, run the sibling test on every edit, and block
+`rm -rf`, force-push, pushes to `main`, and `.env` writes. `/commit` and the `release`
+skill cover the repo's git flow. `CLAUDE.local.md` is for personal notes and is gitignored.
 
 ## Releases
 

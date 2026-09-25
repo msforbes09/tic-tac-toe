@@ -22,7 +22,6 @@ import {
 import {
   ACHIEVEMENTS_KEY,
   EMPTY_STATE,
-  SHOW_HIDDEN_KEY,
   loadAchievements,
   merge,
   record,
@@ -297,7 +296,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   }, [knockPending])
   // Developer reset: this device's games, ladder, achievements, and remembered setup, locally and in the cloud.
   const resetGameData = () => {
-    for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY, ACHIEVEMENTS_KEY, SHOW_HIDDEN_KEY]) {
+    for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY, ACHIEVEMENTS_KEY]) {
       try {
         storage.removeItem(key)
       } catch {
@@ -485,6 +484,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           online={{
             available: services !== null && connected,
             reason: services !== null && !connected ? 'Offline' : undefined,
+            onCreate,
             panel: services && (
               <>
                 {notice && (
@@ -505,7 +505,6 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
                   rooms={rooms}
                   counts={counts}
                   ownedRoomId={ownedRoom?.id ?? null}
-                  onCreate={onCreate}
                   onEnter={enter}
                 />
               </>
@@ -524,7 +523,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         onKnock={knock}
       />
 
-      <AchievementsSheet open={achievementsOpen} onOpenChange={setAchievementsOpen} state={achievements} storage={storage} />
+      <AchievementsSheet open={achievementsOpen} onOpenChange={setAchievementsOpen} state={achievements} />
 
       <SettingsSheet
         open={settingsOpen}

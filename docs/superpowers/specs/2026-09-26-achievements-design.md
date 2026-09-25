@@ -12,8 +12,8 @@ before; promotion, reaching rung 30, and holding it to a draw are achievements n
 ## The catalogue
 
 Forty achievements plus Grand Master, forty-one in all. Tiers are bronze, silver, gold, platinum.
-"Hidden" ones show only their tier medal and the word Hidden until unlocked, unless
-"Show hidden" is on. Ids are stable kebab-case strings; names are display copy.
+"Hidden" ones show only their tier and the word Hidden until unlocked, unless the player
+taps the row to reveal them for the moment. Ids are stable kebab-case strings; names are display copy.
 
 Rules of counting:
 
@@ -155,7 +155,7 @@ type AchievementEvent =
   save and push only when needed.
 - `loadAchievements` / `saveAchievements` over `HistoryStorage` under
   `tic-tac-toe:achievements`, validated field by field like the ladder; bad data → `EMPTY_STATE`.
-- `ACHIEVEMENTS_KEY`, `SHOW_HIDDEN_KEY` (`tic-tac-toe:show-hidden`).
+- `ACHIEVEMENTS_KEY`.
 
 Events come from:
 
@@ -203,7 +203,7 @@ truncate public.rooms, public.results, public.players, public.games, public.ladd
 first successful `savePlayer`. On launch and on `online`, before any push, `App` calls
 `loadPlayer(deviceId)`. If the local registered flag is set and the cloud has no row,
 the cloud was wiped: the app clears history, ladder, achievements, remembered setup,
-nickname, owned rooms, the show-hidden flag, and the registered flag itself, resets the
+nickname, owned rooms, and the registered flag itself, resets the
 in-memory nickname and achievements, and lets the normal flow register again once a
 nickname is picked. Device id and player token stay. Developer mode stays. Devices
 that never registered are left alone (nothing of theirs is in the cloud). The
@@ -213,8 +213,8 @@ resolves; offline, the check is skipped and everything else proceeds as today.
 `lib/reset.ts`: `WIPE_KEYS`, `REGISTERED_KEY`, `shouldWipe(registered: boolean, player:
 PlayerRecord | null): boolean`, `wipeLocal(storage)`. Tested.
 
-The developer **Reset game data** additionally removes the local achievements and
-show-hidden keys; `reset_player_data` removes the cloud row. Registration and nickname
+The developer **Reset game data** additionally removes the local achievements
+key; `reset_player_data` removes the cloud row. Registration and nickname
 are untouched by it, as today.
 
 ## The toast
@@ -234,17 +234,34 @@ that only served them. "Take it back" after a loss at 30 stays and still uses
 
 ## The sheet
 
-`components/AchievementsSheet.tsx`, opened by a trophy button on setup beside History
-(aria-label "Achievements"). Same Sheet as History. Top: "N of 41 unlocked" and four
-tier counters (unlocked / total per tier, medal-coloured). A "Show hidden" switch,
-remembered locally. A two-column grid ordered by tier then catalogue order:
+`components/AchievementsSheet.tsx`, opened by a trophy icon button in the setup header
+(aria-label "Achievements", beside the History clock; the gear sits on the right). Same
+Sheet as History, without the close cross: Back closes it. Header: "N of 41 unlocked" and a
+Sort and filter button (`SlidersHorizontal`) that shows a dot while the view is off the
+default. Under it a summary strip: a ring with the percent unlocked and four tier trophies
+with unlocked / total, platinum first.
 
-- unlocked: icon in tier colour, name, condition, date (`dayFormat`).
-- locked and visible: dimmed icon, name, condition.
-- locked and hidden with the switch off: dimmed question mark, "Hidden", tier medal dot.
-- locked and hidden with the switch on: like locked and visible, plus a small "Hidden" tag.
+The list is one column of rows, each with the icon in a square tile, name, condition, a
+tier dot and a last line:
 
-No tap actions on tiles.
+- unlocked: icon in tier colour, date (`dayFormat`).
+- locked and visible: dimmed icon, "Locked".
+- locked and hidden: a padlocked trophy, "Hidden", "Description is hidden.", no date. The row
+  is a button; a tap reveals the name and condition for as long as the sheet stays open.
+  Nothing is remembered.
+
+`listAchievements(unlocks, view)` in `achievements.ts` owns the order. A `ListView` is
+`{ sort, show, tier }`, `DEFAULT_VIEW` is `recent` / `all` / `all`:
+
+- `recent` / `oldest`: earned ones by unlock time, then locked ones by tier (platinum down)
+  and catalogue order.
+- `tier`: platinum down, catalogue order within a tier, earned or not.
+- `show`: `all`, `earned`, `locked`. `tier`: one tier or `all`.
+
+The Sort and filter button opens a small bottom sheet with three segmented controls (Sort:
+Recent / Oldest / Tier; Show: All / Earned / Locked; Tier: All plus the four trophies), a
+Reset link back to the default, and Done. The view lives in component state and starts
+fresh each time the sheet opens. An empty result shows "Nothing here yet."
 
 ## The badge
 

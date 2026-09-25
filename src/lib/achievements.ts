@@ -1,67 +1,110 @@
-import { WIN_LINES } from './game'
-import type { HistoryStorage } from './history'
-import { TOP_RUNG } from './ladder'
-import type { Board, Difficulty, Mode, Player } from './types'
+import { WIN_LINES } from "./game"
+import type { HistoryStorage } from "./history"
+import { TOP_RUNG } from "./ladder"
+import type { Board, Difficulty, Mode, Player } from "./types"
 
 /**
  * PlayStation-style achievements: a catalogue, a flat progress record, and the rules that turn
  * one into unlocks. See docs/superpowers/specs/2026-09-26-achievements-design.md.
  */
-export type Tier = 'bronze' | 'silver' | 'gold' | 'platinum'
-export const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'platinum']
-export const TIER_COLOR: Record<Tier, string> = { bronze: '#cd7f32', silver: '#b8c0c8', gold: '#f2c14e', platinum: '#9fe3ff' }
+export type Tier = "bronze" | "silver" | "gold" | "platinum"
+export const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "platinum"]
+export const TIER_COLOR: Record<Tier, string> = {
+  bronze: "#cd7f32",
+  silver: "#b8c0c8",
+  gold: "#f2c14e",
+  platinum: "#9fe3ff",
+}
 
 // id, tier, name, condition, lucide icon, hidden until unlocked
 const CATALOGUE = [
-  ['opening-move', 'bronze', 'Opening Move', 'Play your first two-player game', 'Play', false],
-  ['hello-bot', 'bronze', 'Hello, Bot', 'Play your first bot game', 'Bot', false],
-  ['beat-the-machine', 'bronze', 'Beat the Machine', 'Beat the bot for the first time', 'Cpu', false],
-  ['easy-does-it', 'bronze', 'Easy Does It', 'Beat the bot on Easy', 'Leaf', false],
-  ['middle-ground', 'bronze', 'Middle Ground', 'Beat the bot on Medium', 'Scale', false],
-  ['hard-feelings', 'bronze', 'Hard Feelings', 'Beat the bot on Hard', 'Flame', false],
-  ['moving-up', 'bronze', 'Moving Up', 'Get promoted to a harder bot', 'TrendingUp', false],
-  ['going-live', 'bronze', 'Going Live', 'Play your first online game', 'Wifi', false],
-  ['front-row', 'bronze', 'Front Row', 'Watch a series', 'Eye', false],
-  ['landlord', 'bronze', 'Landlord', 'Create a room', 'DoorOpen', false],
-  ['quick-draw', 'bronze', 'Quick Draw', 'Draw against the bot', 'Equal', false],
-  ['regular', 'bronze', 'Regular', 'Play 10 games', 'Calendar', false],
-  ['night-owl', 'bronze', 'Night Owl', 'Finish a game between midnight and 4 am', 'Moon', true],
-  ['rough-night', 'bronze', 'Rough Night', 'Lose 5 games in a row', 'CloudRain', true],
-  ['early-bird', 'bronze', 'Early Bird', 'Finish a game between 5 and 7 am', 'Sunrise', true],
-  ['full-circle', 'bronze', 'Full Circle', 'Play all three modes', 'Orbit', true],
-  ['closer', 'silver', 'Closer', 'Win your first series', 'Flag', false],
-  ['high-five', 'silver', 'High Five', 'Win 5 games in a row', 'Hand', false],
-  ['unbroken', 'silver', 'Unbroken', 'Go 5 games without losing', 'Shield', false],
-  ['century', 'silver', 'Century', 'Play 100 bot games', 'Hash', false],
-  ['comeback-kid', 'silver', 'Comeback Kid', 'Win a series after trailing by 3', 'Undo2', true],
-  ['bounce-back', 'silver', 'Bounce Back', 'Win right after losing at the top', 'ArrowUpFromLine', true],
-  ['frequent-flyer', 'silver', 'Frequent Flyer', 'Play series in 3 different rooms', 'Plane', false],
-  ['fifty', 'silver', 'Fifty', 'Win 50 games against the bot or online', 'Medal', false],
-  ['fast-hands', 'silver', 'Fast Hands', 'Win in three moves', 'Zap', true],
-  ['sly-diagonal', 'silver', 'Sly Diagonal', 'Win on a diagonal 10 times', 'MoveDiagonal', true],
-  ['centre-stage', 'silver', 'Centre Stage', 'Win through the middle 10 times', 'Target', true],
-  ['stalemate', 'silver', 'Stalemate', 'Draw against the bot 10 times', 'Handshake', true],
-  ['old-rivals', 'silver', 'Old Rivals', 'Play 3 series against the same opponent', 'Users', true],
-  ['week-warrior', 'silver', 'Week Warrior', 'Play on 7 different days', 'CalendarDays', true],
-  ['perfect-ten', 'gold', 'Perfect Ten', 'Win 10 games in a row', 'Sparkles', false],
-  ['untouchable', 'gold', 'Untouchable', 'Go 10 games without losing', 'ShieldCheck', false],
-  ['clean-sweep', 'gold', 'Clean Sweep', 'Win a series 6–0', 'Brush', false],
-  ['top-of-the-pack', 'gold', 'Top of the Pack', 'Reach the top of the bot ladder', 'Mountain', false],
-  ['the-immovable', 'gold', 'The Immovable', 'Hold the unbeatable bot to a draw', 'Anchor', true],
-  ['marathon', 'gold', 'Marathon', 'Play 500 games', 'Footprints', false],
-  ['tiebreaker', 'gold', 'Tiebreaker', 'Win a series in the tie breaker', 'Swords', true],
-  ['two-hundred', 'gold', 'Two Hundred', 'Win 200 games against the bot or online', 'Crown', false],
-  ['giant-killer', 'gold', 'Giant Killer', 'Beat a player wearing The Immovable', 'Axe', true],
-  ['deep-end', 'gold', 'Deep End', 'Beat the bot near the top of the ladder', 'Waves', true],
-  ['grand-master', 'platinum', 'Grand Master', 'Unlock everything else', 'Gem', false],
+  ["opening-move", "bronze", "Opening Move", "Play your first two-player game", "Play", false],
+  ["hello-bot", "bronze", "Hello, Bot", "Play your first bot game", "Bot", false],
+  [
+    "beat-the-machine",
+    "bronze",
+    "Beat the Machine",
+    "Beat the bot for the first time",
+    "Cpu",
+    false,
+  ],
+  ["easy-does-it", "bronze", "Easy Does It", "Beat the bot on Easy", "Leaf", false],
+  ["middle-ground", "bronze", "Middle Ground", "Beat the bot on Medium", "Scale", false],
+  ["hard-feelings", "bronze", "Hard Feelings", "Beat the bot on Hard", "Flame", false],
+  ["moving-up", "bronze", "Moving Up", "Get promoted to a harder bot", "TrendingUp", false],
+  ["going-live", "bronze", "Going Live", "Play your first online game", "Wifi", false],
+  ["front-row", "bronze", "Front Row", "Watch a series", "Eye", false],
+  ["landlord", "bronze", "Landlord", "Create a room", "DoorOpen", false],
+  ["quick-draw", "bronze", "Quick Draw", "Draw against the bot", "Equal", false],
+  ["regular", "bronze", "Regular", "Play 10 games", "Calendar", false],
+  ["night-owl", "bronze", "Night Owl", "Finish a game between midnight and 4 am", "Moon", true],
+  ["rough-night", "bronze", "Rough Night", "Lose 5 games in a row", "CloudRain", true],
+  ["early-bird", "bronze", "Early Bird", "Finish a game between 5 and 7 am", "Sunrise", true],
+  ["full-circle", "bronze", "Full Circle", "Play all three modes", "Orbit", true],
+  ["closer", "silver", "Closer", "Win your first series", "Flag", false],
+  ["high-five", "silver", "High Five", "Win 5 games in a row", "Hand", false],
+  ["unbroken", "silver", "Unbroken", "Go 5 games without losing", "Shield", false],
+  ["century", "silver", "Century", "Play 100 bot games", "Hash", false],
+  ["comeback-kid", "silver", "Comeback Kid", "Win a series after trailing by 3", "Undo2", true],
+  [
+    "bounce-back",
+    "silver",
+    "Bounce Back",
+    "Win right after losing at the top",
+    "ArrowUpFromLine",
+    true,
+  ],
+  [
+    "frequent-flyer",
+    "silver",
+    "Frequent Flyer",
+    "Play series in 3 different rooms",
+    "Plane",
+    false,
+  ],
+  ["fifty", "silver", "Fifty", "Win 50 games against the bot or online", "Medal", false],
+  ["fast-hands", "silver", "Fast Hands", "Win in three moves", "Zap", true],
+  ["sly-diagonal", "silver", "Sly Diagonal", "Win on a diagonal 10 times", "MoveDiagonal", true],
+  ["centre-stage", "silver", "Centre Stage", "Win through the middle 10 times", "Target", true],
+  ["stalemate", "silver", "Stalemate", "Draw against the bot 10 times", "Handshake", true],
+  ["old-rivals", "silver", "Old Rivals", "Play 3 series against the same opponent", "Users", true],
+  ["week-warrior", "silver", "Week Warrior", "Play on 7 different days", "CalendarDays", true],
+  ["perfect-ten", "gold", "Perfect Ten", "Win 10 games in a row", "Sparkles", false],
+  ["untouchable", "gold", "Untouchable", "Go 10 games without losing", "ShieldCheck", false],
+  ["clean-sweep", "gold", "Clean Sweep", "Win a series 6–0", "Brush", false],
+  [
+    "top-of-the-pack",
+    "gold",
+    "Top of the Pack",
+    "Reach the top of the bot ladder",
+    "Mountain",
+    false,
+  ],
+  ["the-immovable", "gold", "The Immovable", "Hold the unbeatable bot to a draw", "Anchor", true],
+  ["marathon", "gold", "Marathon", "Play 500 games", "Footprints", false],
+  ["tiebreaker", "gold", "Tiebreaker", "Win a series in the tie breaker", "Swords", true],
+  ["two-hundred", "gold", "Two Hundred", "Win 200 games against the bot or online", "Crown", false],
+  ["giant-killer", "gold", "Giant Killer", "Beat a player wearing The Immovable", "Axe", true],
+  ["deep-end", "gold", "Deep End", "Beat the bot near the top of the ladder", "Waves", true],
+  ["grand-master", "platinum", "Grand Master", "Unlock everything else", "Gem", false],
 ] as const
 
 export type AchievementId = (typeof CATALOGUE)[number][0]
-export type Achievement = { id: AchievementId; tier: Tier; name: string; description: string; icon: string; hidden: boolean }
+export type Achievement = {
+  id: AchievementId
+  tier: Tier
+  name: string
+  description: string
+  icon: string
+  hidden: boolean
+}
 
-export const ACHIEVEMENTS: Achievement[] = CATALOGUE.map(([id, tier, name, description, icon, hidden]) => ({ id, tier, name, description, icon, hidden }))
+export const ACHIEVEMENTS: Achievement[] = CATALOGUE.map(
+  ([id, tier, name, description, icon, hidden]) => ({ id, tier, name, description, icon, hidden }),
+)
 const BY_ID = new Map<string, Achievement>(ACHIEVEMENTS.map((a) => [a.id, a]))
-export const isAchievementId = (v: unknown): v is AchievementId => typeof v === 'string' && BY_ID.has(v)
+export const isAchievementId = (v: unknown): v is AchievementId =>
+  typeof v === "string" && BY_ID.has(v)
 export const achievementById = (id: AchievementId): Achievement => BY_ID.get(id) as Achievement
 
 export type Progress = {
@@ -93,7 +136,12 @@ export type Progress = {
 
 export type Unlocks = Partial<Record<AchievementId, number>>
 /** `badge` undefined means "never chose": the default is worn. Null means None. */
-export type AchievementState = { progress: Progress; unlocks: Unlocks; badge?: AchievementId | null; updatedAt: number }
+export type AchievementState = {
+  progress: Progress
+  unlocks: Unlocks
+  badge?: AchievementId | null
+  updatedAt: number
+}
 
 export const EMPTY_PROGRESS: Progress = {
   games: { pvp: 0, bot: 0, online: 0 },
@@ -121,9 +169,9 @@ export const EMPTY_STATE: AchievementState = { progress: EMPTY_PROGRESS, unlocks
 // ---- Events and rules ---------------------------------------------------------------------------
 
 export type GameEvent = {
-  kind: 'game'
+  kind: "game"
   mode: Mode
-  result: 'win' | 'loss' | 'draw'
+  result: "win" | "loss" | "draw"
   board: Board
   /** The symbol this device (or Player 1) played. */
   symbol: Player
@@ -139,7 +187,7 @@ export type GameEvent = {
   lostAtTopBefore?: boolean
 }
 export type SeriesEvent = {
-  kind: 'series'
+  kind: "series"
   won: boolean
   mine: number
   theirs: number
@@ -153,7 +201,8 @@ export type SeriesEvent = {
   opponentId: string
   opponentBadge: AchievementId | null
 }
-export type AchievementEvent = GameEvent | SeriesEvent | { kind: 'room-created' } | { kind: 'watched' }
+export type AchievementEvent =
+  GameEvent | SeriesEvent | { kind: "room-created" } | { kind: "watched" }
 
 const DEEP_END_RUNG = 25
 const MAX_OPPONENTS = 50
@@ -161,30 +210,41 @@ const MAX_ROOMS = 10
 
 const localDay = (t: number) => {
   const d = new Date(t)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 const hour = (t: number) => new Date(t).getHours()
 const bandIndex = (rung: number) => Math.min(2, Math.floor((rung - 1) / 10))
-const winningLine = (board: Board, symbol: Player) => WIN_LINES.find((line) => line.every((i) => board[i] === symbol)) ?? null
+const winningLine = (board: Board, symbol: Player) =>
+  WIN_LINES.find((line) => line.every((i) => board[i] === symbol)) ?? null
 const marksOf = (board: Board, symbol: Player) => board.filter((c) => c === symbol).length
 const totalGames = (p: Progress) => p.games.pvp + p.games.bot + p.games.online
 const rankedWins = (p: Progress) => p.wins.bot + p.wins.online
 
 function applyGame(p: Progress, e: GameEvent): Progress {
-  const next: Progress = { ...p, games: { ...p.games, [e.mode]: p.games[e.mode] + 1 }, wins: { ...p.wins } }
-  if (e.result === 'win') next.wins[e.mode] += 1
-  if (e.mode !== 'pvp') {
-    next.winStreak = e.result === 'win' ? p.winStreak + 1 : 0
-    next.unbeatenStreak = e.result === 'loss' ? 0 : p.unbeatenStreak + 1
-    next.lossStreak = e.result === 'loss' ? p.lossStreak + 1 : 0
+  const next: Progress = {
+    ...p,
+    games: { ...p.games, [e.mode]: p.games[e.mode] + 1 },
+    wins: { ...p.wins },
   }
-  if (e.mode === 'bot') {
-    if (e.result === 'draw') next.botDraws = p.botDraws + 1
-    if (e.result === 'win' && e.band) next.botWinsByBand = { ...p.botWinsByBand, [e.band]: p.botWinsByBand[e.band] + 1 }
-    if (e.rungBefore !== undefined && e.rungAfter !== undefined && bandIndex(e.rungAfter) > bandIndex(e.rungBefore)) next.promotions = p.promotions + 1
-    next.lostAtTop = e.result === 'loss' && e.rungBefore === TOP_RUNG
+  if (e.result === "win") next.wins[e.mode] += 1
+  if (e.mode !== "pvp") {
+    next.winStreak = e.result === "win" ? p.winStreak + 1 : 0
+    next.unbeatenStreak = e.result === "loss" ? 0 : p.unbeatenStreak + 1
+    next.lossStreak = e.result === "loss" ? p.lossStreak + 1 : 0
   }
-  if (e.result === 'win') {
+  if (e.mode === "bot") {
+    if (e.result === "draw") next.botDraws = p.botDraws + 1
+    if (e.result === "win" && e.band)
+      next.botWinsByBand = { ...p.botWinsByBand, [e.band]: p.botWinsByBand[e.band] + 1 }
+    if (
+      e.rungBefore !== undefined &&
+      e.rungAfter !== undefined &&
+      bandIndex(e.rungAfter) > bandIndex(e.rungBefore)
+    )
+      next.promotions = p.promotions + 1
+    next.lostAtTop = e.result === "loss" && e.rungBefore === TOP_RUNG
+  }
+  if (e.result === "win") {
     const line = winningLine(e.board, e.symbol)
     if (line) {
       if (line.includes(4)) next.centreWins = p.centreWins + 1
@@ -204,89 +264,150 @@ function applySeries(p: Progress, e: SeriesEvent): Progress {
   const opponents = { ...p.opponents, [e.opponentId]: (p.opponents[e.opponentId] ?? 0) + 1 }
   const keys = Object.keys(opponents)
   if (keys.length > MAX_OPPONENTS) delete opponents[keys[0]]
-  return { ...p, seriesPlayed: p.seriesPlayed + 1, seriesWon: p.seriesWon + (e.won ? 1 : 0), rooms, opponents }
+  return {
+    ...p,
+    seriesPlayed: p.seriesPlayed + 1,
+    seriesWon: p.seriesWon + (e.won ? 1 : 0),
+    rooms,
+    opponents,
+  }
 }
 
 function applyEvent(p: Progress, e: AchievementEvent): Progress {
   switch (e.kind) {
-    case 'game':
+    case "game":
       return applyGame(p, e)
-    case 'series':
+    case "series":
       return applySeries(p, e)
-    case 'room-created':
+    case "room-created":
       return { ...p, roomsCreated: p.roomsCreated + 1 }
-    case 'watched':
+    case "watched":
       return { ...p, watched: true }
   }
 }
 
 type Rule = (p: Progress, e: AchievementEvent) => boolean
-const onGame = (test: (e: GameEvent) => boolean): Rule => (_p, e) => e.kind === 'game' && test(e)
-const onSeries = (test: (e: SeriesEvent) => boolean): Rule => (_p, e) => e.kind === 'series' && test(e)
+const onGame =
+  (test: (e: GameEvent) => boolean): Rule =>
+  (_p, e) =>
+    e.kind === "game" && test(e)
+const onSeries =
+  (test: (e: SeriesEvent) => boolean): Rule =>
+  (_p, e) =>
+    e.kind === "series" && test(e)
 
 /** Every achievement but Grand Master: does the progress after the event (and the event itself) earn it? */
-const RULES: Record<Exclude<AchievementId, 'grand-master'>, Rule> = {
-  'opening-move': (p) => p.games.pvp >= 1,
-  'hello-bot': (p) => p.games.bot >= 1,
-  'beat-the-machine': (p) => p.wins.bot >= 1,
-  'easy-does-it': (p) => p.botWinsByBand.easy >= 1,
-  'middle-ground': (p) => p.botWinsByBand.medium >= 1,
-  'hard-feelings': (p) => p.botWinsByBand.hard >= 1,
-  'moving-up': (p) => p.promotions >= 1,
-  'going-live': (p) => p.games.online >= 1,
-  'front-row': (p) => p.watched,
+const RULES: Record<Exclude<AchievementId, "grand-master">, Rule> = {
+  "opening-move": (p) => p.games.pvp >= 1,
+  "hello-bot": (p) => p.games.bot >= 1,
+  "beat-the-machine": (p) => p.wins.bot >= 1,
+  "easy-does-it": (p) => p.botWinsByBand.easy >= 1,
+  "middle-ground": (p) => p.botWinsByBand.medium >= 1,
+  "hard-feelings": (p) => p.botWinsByBand.hard >= 1,
+  "moving-up": (p) => p.promotions >= 1,
+  "going-live": (p) => p.games.online >= 1,
+  "front-row": (p) => p.watched,
   landlord: (p) => p.roomsCreated >= 1,
-  'quick-draw': (p) => p.botDraws >= 1,
+  "quick-draw": (p) => p.botDraws >= 1,
   regular: (p) => totalGames(p) >= 10,
-  'night-owl': onGame((e) => hour(e.finishedAt) < 4),
-  'rough-night': (p) => p.lossStreak >= 5,
-  'early-bird': onGame((e) => hour(e.finishedAt) >= 5 && hour(e.finishedAt) < 7),
-  'full-circle': (p) => p.games.pvp >= 1 && p.games.bot >= 1 && p.games.online >= 1,
+  "night-owl": onGame((e) => hour(e.finishedAt) < 4),
+  "rough-night": (p) => p.lossStreak >= 5,
+  "early-bird": onGame((e) => hour(e.finishedAt) >= 5 && hour(e.finishedAt) < 7),
+  "full-circle": (p) => p.games.pvp >= 1 && p.games.bot >= 1 && p.games.online >= 1,
   closer: (p) => p.seriesWon >= 1,
-  'high-five': (p) => p.winStreak >= 5,
+  "high-five": (p) => p.winStreak >= 5,
   unbroken: (p) => p.unbeatenStreak >= 5,
   century: (p) => p.games.bot >= 100,
-  'comeback-kid': onSeries((e) => e.won && e.decided && e.trailedBy3),
-  'bounce-back': onGame((e) => e.mode === 'bot' && e.result === 'win' && e.lostAtTopBefore === true),
-  'frequent-flyer': (p) => p.rooms.length >= 3,
+  "comeback-kid": onSeries((e) => e.won && e.decided && e.trailedBy3),
+  "bounce-back": onGame(
+    (e) => e.mode === "bot" && e.result === "win" && e.lostAtTopBefore === true,
+  ),
+  "frequent-flyer": (p) => p.rooms.length >= 3,
   fifty: (p) => rankedWins(p) >= 50,
-  'fast-hands': onGame((e) => e.result === 'win' && marksOf(e.board, e.symbol) === 3),
-  'sly-diagonal': (p) => p.diagonalWins >= 10,
-  'centre-stage': (p) => p.centreWins >= 10,
+  "fast-hands": onGame((e) => e.result === "win" && marksOf(e.board, e.symbol) === 3),
+  "sly-diagonal": (p) => p.diagonalWins >= 10,
+  "centre-stage": (p) => p.centreWins >= 10,
   stalemate: (p) => p.botDraws >= 10,
-  'old-rivals': (p) => Object.values(p.opponents).some((n) => n >= 3),
-  'week-warrior': (p) => p.days >= 7,
-  'perfect-ten': (p) => p.winStreak >= 10,
+  "old-rivals": (p) => Object.values(p.opponents).some((n) => n >= 3),
+  "week-warrior": (p) => p.days >= 7,
+  "perfect-ten": (p) => p.winStreak >= 10,
   untouchable: (p) => p.unbeatenStreak >= 10,
-  'clean-sweep': onSeries((e) => e.won && e.mine === 6 && e.theirs === 0),
-  'top-of-the-pack': onGame((e) => e.mode === 'bot' && e.rungAfter === TOP_RUNG && (e.rungBefore ?? TOP_RUNG) < TOP_RUNG),
-  'the-immovable': onGame((e) => e.mode === 'bot' && e.result === 'draw' && e.rungBefore === TOP_RUNG),
+  "clean-sweep": onSeries((e) => e.won && e.mine === 6 && e.theirs === 0),
+  "top-of-the-pack": onGame(
+    (e) => e.mode === "bot" && e.rungAfter === TOP_RUNG && (e.rungBefore ?? TOP_RUNG) < TOP_RUNG,
+  ),
+  "the-immovable": onGame(
+    (e) => e.mode === "bot" && e.result === "draw" && e.rungBefore === TOP_RUNG,
+  ),
   marathon: (p) => totalGames(p) >= 500,
   tiebreaker: onSeries((e) => e.won && e.decided && e.tieBreak),
-  'two-hundred': (p) => rankedWins(p) >= 200,
-  'giant-killer': onSeries((e) => e.won && e.opponentBadge === 'the-immovable'),
-  'deep-end': onGame((e) => e.mode === 'bot' && e.result === 'win' && (e.rungBefore ?? 0) >= DEEP_END_RUNG),
+  "two-hundred": (p) => rankedWins(p) >= 200,
+  "giant-killer": onSeries((e) => e.won && e.opponentBadge === "the-immovable"),
+  "deep-end": onGame(
+    (e) => e.mode === "bot" && e.result === "win" && (e.rungBefore ?? 0) >= DEEP_END_RUNG,
+  ),
 }
 
 /** Apply one event, then unlock whatever the new progress earns. Never unlocks twice; stamps `now`. */
-export function record(state: AchievementState, event: AchievementEvent, now: number): { state: AchievementState; unlocked: AchievementId[] } {
+export function record(
+  state: AchievementState,
+  event: AchievementEvent,
+  now: number,
+): { state: AchievementState; unlocked: AchievementId[] } {
   const before = state.progress
   const progress = applyEvent(before, event)
-  const seen: AchievementEvent = event.kind === 'game' ? { ...event, lostAtTopBefore: before.lostAtTop } : event
+  const seen: AchievementEvent =
+    event.kind === "game" ? { ...event, lostAtTopBefore: before.lostAtTop } : event
   const unlocks: Unlocks = { ...state.unlocks }
   const unlocked: AchievementId[] = []
   for (const a of ACHIEVEMENTS) {
-    if (a.id === 'grand-master' || unlocks[a.id] !== undefined) continue
+    if (a.id === "grand-master" || unlocks[a.id] !== undefined) continue
     if (RULES[a.id](progress, seen)) {
       unlocks[a.id] = now
       unlocked.push(a.id)
     }
   }
-  if (unlocks['grand-master'] === undefined && ACHIEVEMENTS.every((a) => a.id === 'grand-master' || unlocks[a.id] !== undefined)) {
-    unlocks['grand-master'] = now
-    unlocked.push('grand-master')
+  if (
+    unlocks["grand-master"] === undefined &&
+    ACHIEVEMENTS.every((a) => a.id === "grand-master" || unlocks[a.id] !== undefined)
+  ) {
+    unlocks["grand-master"] = now
+    unlocked.push("grand-master")
   }
   return { state: { ...state, progress, unlocks, updatedAt: now }, unlocked }
+}
+
+// ---- The sheet's list -----------------------------------------------------------------------------
+
+export type SortOrder = "recent" | "oldest" | "tier"
+export type ShowFilter = "all" | "earned" | "locked"
+/** How the sheet lists the catalogue: sort, earned / locked, and one tier or all. */
+export type ListView = { sort: SortOrder; show: ShowFilter; tier: Tier | "all" }
+export const DEFAULT_VIEW: ListView = { sort: "recent", show: "all", tier: "all" }
+
+/** Platinum first, then catalogue order. */
+const byTier = (a: Achievement, b: Achievement) =>
+  TIER_ORDER.indexOf(b.tier) - TIER_ORDER.indexOf(a.tier) ||
+  ACHIEVEMENTS.indexOf(a) - ACHIEVEMENTS.indexOf(b)
+
+/** The catalogue as the sheet shows it. Recent / oldest order the earned ones by date; locked ones follow, by tier. */
+export function listAchievements(unlocks: Unlocks, view: ListView): Achievement[] {
+  const at = (a: Achievement) => unlocks[a.id]
+  const kept = ACHIEVEMENTS.filter((a) => {
+    const earned = at(a) !== undefined
+    if (view.show === "earned" && !earned) return false
+    if (view.show === "locked" && earned) return false
+    return view.tier === "all" || a.tier === view.tier
+  })
+  if (view.sort === "tier") return kept.sort(byTier)
+  const sign = view.sort === "recent" ? -1 : 1
+  return kept.sort((a, b) => {
+    const ta = at(a)
+    const tb = at(b)
+    if (ta === undefined || tb === undefined)
+      return ta === tb ? byTier(a, b) : ta === undefined ? 1 : -1
+    return sign * (ta - tb) || byTier(a, b)
+  })
 }
 
 // ---- The badge ------------------------------------------------------------------------------------
@@ -327,7 +448,10 @@ const sameState = (a: AchievementState, b: AchievementState) =>
  * from whichever copy moved last. `localChanged` says the local copy should be saved, `cloudBehind`
  * that the cloud should be pushed.
  */
-export function merge(local: AchievementState, cloud: AchievementState | null): { state: AchievementState; localChanged: boolean; cloudBehind: boolean } {
+export function merge(
+  local: AchievementState,
+  cloud: AchievementState | null,
+): { state: AchievementState; localChanged: boolean; cloudBehind: boolean } {
   if (!cloud) return { state: local, localChanged: false, cloudBehind: local.updatedAt > 0 }
   const unlocks: Unlocks = { ...cloud.unlocks }
   for (const [id, at] of Object.entries(local.unlocks) as [AchievementId, number][]) {
@@ -335,18 +459,21 @@ export function merge(local: AchievementState, cloud: AchievementState | null): 
     if (c === undefined || at < c) unlocks[id] = at
   }
   const newer = cloud.updatedAt > local.updatedAt ? cloud : local
-  const state: AchievementState = { progress: newer.progress, unlocks, updatedAt: Math.max(local.updatedAt, cloud.updatedAt) }
+  const state: AchievementState = {
+    progress: newer.progress,
+    unlocks,
+    updatedAt: Math.max(local.updatedAt, cloud.updatedAt),
+  }
   if (newer.badge !== undefined) state.badge = newer.badge
   return { state, localChanged: !sameState(state, local), cloudBehind: !sameState(state, cloud) }
 }
 
 // ---- Storage --------------------------------------------------------------------------------------
 
-export const ACHIEVEMENTS_KEY = 'tic-tac-toe:achievements'
-export const SHOW_HIDDEN_KEY = 'tic-tac-toe:show-hidden'
+export const ACHIEVEMENTS_KEY = "tic-tac-toe:achievements"
 
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null
 const count = (v: unknown, fallback: number) => (isCount(v) ? v : fallback)
 const counts = <K extends string>(v: unknown, fallback: Record<K, number>): Record<K, number> => {
   const out = { ...fallback }
@@ -358,7 +485,8 @@ function readProgress(v: unknown): Progress {
   if (!isObj(v)) return EMPTY_PROGRESS
   const e = EMPTY_PROGRESS
   const opponents: Record<string, number> = {}
-  if (isObj(v.opponents)) for (const [k, n] of Object.entries(v.opponents)) if (isCount(n)) opponents[k] = n
+  if (isObj(v.opponents))
+    for (const [k, n] of Object.entries(v.opponents)) if (isCount(n)) opponents[k] = n
   return {
     games: counts(v.games, e.games),
     wins: counts(v.wins, e.wins),
@@ -370,10 +498,10 @@ function readProgress(v: unknown): Progress {
     winStreak: count(v.winStreak, 0),
     unbeatenStreak: count(v.unbeatenStreak, 0),
     lossStreak: count(v.lossStreak, 0),
-    rooms: Array.isArray(v.rooms) ? v.rooms.filter((r): r is string => typeof r === 'string') : [],
+    rooms: Array.isArray(v.rooms) ? v.rooms.filter((r): r is string => typeof r === "string") : [],
     opponents,
     days: count(v.days, 0),
-    lastDay: typeof v.lastDay === 'string' ? v.lastDay : null,
+    lastDay: typeof v.lastDay === "string" ? v.lastDay : null,
     diagonalWins: count(v.diagonalWins, 0),
     centreWins: count(v.centreWins, 0),
     lostAtTop: v.lostAtTop === true,
@@ -387,12 +515,13 @@ export function readAchievementState(v: unknown): AchievementState {
   if (!isObj(v)) return EMPTY_STATE
   const unlocks: Unlocks = {}
   if (isObj(v.unlocks)) {
-    for (const [k, t] of Object.entries(v.unlocks)) if (isAchievementId(k) && typeof t === 'number' && Number.isFinite(t)) unlocks[k] = t
+    for (const [k, t] of Object.entries(v.unlocks))
+      if (isAchievementId(k) && typeof t === "number" && Number.isFinite(t)) unlocks[k] = t
   }
   const state: AchievementState = {
     progress: readProgress(v.progress),
     unlocks,
-    updatedAt: typeof v.updatedAt === 'number' && Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
+    updatedAt: typeof v.updatedAt === "number" && Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
   }
   if (v.badge === null || isAchievementId(v.badge)) state.badge = v.badge
   return state
@@ -400,7 +529,7 @@ export function readAchievementState(v: unknown): AchievementState {
 
 export function loadAchievements(storage: HistoryStorage): AchievementState {
   try {
-    return readAchievementState(JSON.parse(storage.getItem(ACHIEVEMENTS_KEY) ?? 'null'))
+    return readAchievementState(JSON.parse(storage.getItem(ACHIEVEMENTS_KEY) ?? "null"))
   } catch {
     return EMPTY_STATE
   }

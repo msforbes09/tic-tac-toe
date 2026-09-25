@@ -39,7 +39,6 @@ describe('reset', () => {
         'tic-tac-toe:setup',
         'tic-tac-toe:nickname',
         'tic-tac-toe:rooms-owned',
-        'tic-tac-toe:show-hidden',
         'tic-tac-toe:registered',
       ]),
     )
