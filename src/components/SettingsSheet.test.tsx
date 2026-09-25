@@ -130,11 +130,13 @@ describe('SettingsSheet', () => {
     })
   })
 
-  it('closes from Done', () => {
+  it('closes from the floating Back; there is no Done and no cross', () => {
     const onOpenChange = vi.fn()
     render(<SettingsSheet {...base} onOpenChange={onOpenChange} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(onOpenChange.mock.calls[0][0]).toBe(false)
   })
 
   it('lets the player pick a badge from the unlocked ones or none', () => {

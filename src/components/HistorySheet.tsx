@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ClimbGraph } from './ClimbGraph'
+import { FloatingBack } from './FloatingBack'
 import { Mark } from './Mark'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { climbSeries } from '@/lib/climb'
 import { botStats, loadHistory, winnerSeat, type GameRow, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 import type { KnockEvent } from '@/lib/knock'
@@ -227,13 +228,14 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         // A tap moves no focus (the default would focus a button deep in the list and scroll to it);
         // keyboard users keep the default.
         initialFocus={(openType) => openType === 'keyboard'}
         className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
         // Inline height: the sheet's own `data-[side=bottom]:h-auto` would beat a class, and without a
         // definite height the list's scroll area grows with its content instead of scrolling.
-        style={{ height: '85dvh', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        style={{ height: '85dvh', paddingBottom: 'max(4.5rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="font-heading text-2xl font-semibold">{TITLE[mode]}</SheetTitle>
@@ -330,13 +332,7 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
           </div>
         </ScrollArea>
 
-        <SheetClose
-          render={
-            <Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" onClick={() => onKnock?.('history:back')} />
-          }
-        >
-          Back
-        </SheetClose>
+        <FloatingBack onClick={() => onKnock?.('history:back')} />
       </SheetContent>
     </Sheet>
   )

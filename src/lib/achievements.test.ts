@@ -3,6 +3,8 @@ import {
   ACHIEVEMENTS,
   ACHIEVEMENTS_KEY,
   DEFAULT_VIEW,
+  TIER_POINTS,
+  completion,
   listAchievements,
   type ListView,
   EMPTY_PROGRESS,
@@ -355,5 +357,15 @@ describe('listAchievements', () => {
     expect(ids({ tier: 'gold' })).toHaveLength(10)
     expect(ids({ tier: 'gold' })[0]).toBe('the-immovable')
     expect(ids({ show: 'earned', tier: 'platinum' })).toEqual([])
+  })
+})
+
+describe('completion', () => {
+  it('weighs tiers 1 / 2 / 3 / 4 and rounds the percent', () => {
+    expect(TIER_POINTS).toEqual({ bronze: 1, silver: 2, gold: 3, platinum: 4 })
+    expect(completion({})).toEqual({ earned: 0, total: 78, percent: 0 })
+    expect(completion({ 'hello-bot': 1, closer: 1, 'the-immovable': 1, 'grand-master': 1 })).toEqual({ earned: 10, total: 78, percent: 13 })
+    const all = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, 1]))
+    expect(completion(all).percent).toBe(100)
   })
 })

@@ -24,6 +24,7 @@ import {
 import type { KnockEvent } from '@/lib/knock'
 import { saveSetup } from '@/lib/setup'
 import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import { createGameState, gameReducer, seatOf, symbolOf } from '@/state/reducer'
 
 export const BOT_DELAY_MS = 400
@@ -210,7 +211,7 @@ export function GameScreen({
       <Button
         size="lg"
         variant={finished ? 'default' : 'outline'}
-        className="min-h-14 w-full rounded-[18px] text-base font-medium"
+        className={cn('min-h-14 w-full rounded-[18px] text-base font-medium', finished && 'cta')}
         onClick={newGame}
       >
         {finished && moment === 'lost-top' ? 'Take it back' : 'New game'}

@@ -64,7 +64,7 @@ describe('App settings', () => {
     expect(screen.getByText('I block. Can you?')).toBeInTheDocument()
     openSettings()
     fireEvent.click(screen.getByRole('switch', { name: 'Aggressive bot' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
     first.unmount()
 

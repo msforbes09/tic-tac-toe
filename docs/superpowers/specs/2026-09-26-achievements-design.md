@@ -236,10 +236,14 @@ that only served them. "Take it back" after a loss at 30 stays and still uses
 
 `components/AchievementsSheet.tsx`, opened by a trophy icon button in the setup header
 (aria-label "Achievements", beside the History clock; the gear sits on the right). Same
-Sheet as History, without the close cross: Back closes it. Header: "N of 41 unlocked" and a
-Sort and filter button (`SlidersHorizontal`) that shows a dot while the view is off the
-default. Under it a summary strip: a ring with the percent unlocked and four tier trophies
-with unlocked / total, platinum first.
+Sheet as History. Every sheet in the app closes from one round floating Back
+(`components/FloatingBack.tsx`, bottom-left over the content, aria-label "Back") and a tap
+outside; there is no corner cross and no Done row. Header: "N of 41 unlocked" and a Sort and
+filter button (`SlidersHorizontal`) that shows a dot while the view is off the default. Under
+it a summary strip: a ring with the percent complete and four tier trophies with unlocked /
+total, platinum first. The percent is weighted by tier (`TIER_POINTS`: bronze 1, silver 2,
+gold 3, platinum 4; `completion(unlocks)` returns earned, total and the rounded percent), so
+78 points make 100.
 
 The list is one column of rows, each with the icon in a square tile, name, condition, a
 tier dot and a last line:
@@ -259,9 +263,11 @@ tier dot and a last line:
 - `show`: `all`, `earned`, `locked`. `tier`: one tier or `all`.
 
 The Sort and filter button opens a small bottom sheet with three segmented controls (Sort:
-Recent / Oldest / Tier; Show: All / Earned / Locked; Tier: All plus the four trophies), a
-Reset link back to the default, and Done. The view lives in component state and starts
-fresh each time the sheet opens. An empty result shows "Nothing here yet."
+Recent / Oldest / Tier; Show: All / Earned / Locked; Tier: All plus the four trophies as
+icons) and a reset icon (`RotateCcw`, aria-label "Reset") back to the default. It is rendered
+as a sibling of the main sheet, not inside it, so a tap outside closes it. The view lives in
+component state and starts fresh each time the sheet opens. An empty result shows "Nothing
+here yet."
 
 ## The badge
 

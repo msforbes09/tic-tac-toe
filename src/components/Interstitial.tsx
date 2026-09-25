@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 /** How long a splash without buttons stays before it reports done. */
 export const INTERSTITIAL_MS = 2000
@@ -47,7 +48,7 @@ export function Interstitial({ title, subtitle, actions, durationMs = INTERSTITI
                   key={a.label}
                   size="lg"
                   variant={a.primary ? 'default' : 'outline'}
-                  className="min-h-14 w-full rounded-[18px] text-base font-semibold"
+                  className={cn('min-h-14 w-full rounded-[18px] text-base font-semibold', a.primary && 'cta')}
                   onClick={a.onClick}
                 >
                   {a.label}
