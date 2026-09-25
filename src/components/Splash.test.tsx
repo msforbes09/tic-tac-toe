@@ -58,3 +58,15 @@ describe('Splash footer', () => {
     expect(footer).not.toHaveClass('splash-rise')
   })
 })
+
+describe('Splash backdrop', () => {
+  it('shares the room backdrop and card with the app shell so nothing jumps when it leaves', () => {
+    render(<Splash onDone={() => {}} />)
+    const splash = screen.getByRole('status')
+    expect(splash.querySelector('[data-testid="backdrop"]')).not.toBeNull()
+    expect(splash.querySelector('.max-w-\\[420px\\]')).toHaveClass('room-card')
+    // The splash is the brand and already carries the footer, so the room's corners stay empty.
+    expect(splash.querySelector('.room-brand')).toBeNull()
+    expect(splash.querySelector('.room-colophon')).toBeNull()
+  })
+})
