@@ -3,7 +3,8 @@
 Mobile-first browser tic-tac-toe. Two-player local, versus an adaptive bot
 (easy / medium / hard as bands over a hidden 30-rung ladder), or online: rooms
 where members challenge each other to first-to-6 series that everyone else can
-watch. Bot games are saved to localStorage history; two-player games are not
+watch. Achievements unlock on the device as you play and sync to the cloud; one
+can be worn as a badge above your name online. Bot games are saved to localStorage history; two-player games are not
 saved; rooms, players, and series results live in Supabase.
 
 ## Stack
@@ -14,7 +15,9 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
 - `src/lib/bot.ts` — the bot, by rung: win / block / best-move chances over memoised minimax. Depends only on game.ts. Fully tested, including a simulation that pins the hard band.
-- `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (promotion, top, top held, lost top), storage. Fully tested.
+- `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (only lost-top still drives UI: the Take it back label), storage. Fully tested.
+- `src/lib/achievements.ts` — the 41-achievement catalogue, the flat `Progress` record, `record(state, event, now)` (one event in, new unlocks out), `defaultBadge` / `wornBadge`, `merge` (local + cloud), storage. Fully tested. `components/AchievementsSheet.tsx` lists them (hidden ones stay secret until unlocked or Show hidden), `AchievementToast.tsx` is the unlock toast, `AchievementBadge.tsx` the icon worn above a name.
+- `src/lib/reset.ts` — the full reset: a device that registered and finds no player row wipes its local game data (`WIPE_KEYS`) on launch. Fully tested.
 - `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones: `friendly` by default, `cocky` when the Aggressive bot switch is on. `src/lib/tone.ts` remembers the switch; `components/SettingsSheet.tsx` (gear on the setup screen) holds it and the nickname. Fully tested.
 - `src/lib/climb.ts` — the rung series for the History graph (`components/ClimbGraph.tsx`, a sparkline over three band lanes). Fully tested.
 - `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the Enter/Cancel prompt; the developer tools (rung, reset, exit) are a section of `SettingsSheet`, and the chip and setup show the rung while it is on. A tap or Back during the two-second wait cancels the prompt. Developer mode is in-memory only and the knock is ignored while it is on.
@@ -35,7 +38,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/platform/share.ts` — Web Share / clipboard behind `ShareLink`.
 - `src/platform/network.ts` — `useNetworkOnline`, the online / offline events; setup shows Online as "Offline" while there is no connection.
 - `src/components/OnlinePanel.tsx`, `RoomScreen.tsx`, `SeriesScreen.tsx`, `NicknameSheet.tsx`, `Interstitial.tsx` — the online UI.
-- `supabase/schema.sql` — full schema for a fresh project (rooms, results, players, games, ladders, `delete_room`, `upsert_player`, `save_ladder`, `reset_player_data`); `supabase/migrations/` holds dated deltas for existing projects.
+- `supabase/schema.sql` — full schema for a fresh project (rooms, results, players, games, ladders, achievements, `delete_room`, `upsert_player`, `save_ladder`, `save_achievements`, `reset_player_data`); `supabase/migrations/` holds dated deltas for existing projects. The full-reset `truncate` is commented at the end.
 - `src/components/` — React UI. `ui/` is shadcn-generated; don't hand-edit.
 - `docs/superpowers/specs/` — design spec. Read before changing behaviour.
 - `design/og-image.svg` — source of the link-preview banner `public/og-image.png`. `index.html` carries the SEO / Open Graph tags; keep the live URL there in sync with the domain.
@@ -50,6 +53,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Mobile-first single column (max 420px) on every screen size. Dark theme only: `<html class="dark">` in index.html; nothing follows the system setting.
 - Online: the challenger's device is the referee and holds the `SeriesState`; the challenged player and watchers send requests / `hello` and apply `state` snapshots. The challenger is `p1`; the challenged player is X in game 1 and first move alternates. First to 6 of 10, tie breaker if level, resign = loss, 30 s grace on a drop. Online games are not saved locally; the referee stores the series result (with challenger and challenged ids). History shows one mode at a time (the mode picked on setup): two-player and bot rows from the cloud with the local list as offline fallback, online series from `results`. Local entries carry `synced`; unsynced ones are pushed on launch. Two-player rows are from Player 1's side. Online is never the remembered setup mode.
 - Nicknames: 2–12 characters, letters, digits and single spaces, filtered as typed; random ones come from `randomNickname`. Each device has a player token that alone can rename its `players` row.
+- Achievements: screens emit `AchievementEvent`s (`game` from GameScreen and SeriesScreen players, `series` from SeriesScreen, `room-created` from App, `watched` from RoomScreen); `App` owns the state, saves locally on every event, pushes to `achievements` when it can, and merges the cloud copy on launch and on `online` after the wipe check. Streaks and the win-count achievements count bot and online games only. `SeriesPlayer` and `RoomPresence` carry an optional `badge`. See `docs/superpowers/specs/2026-09-26-achievements-design.md`.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.
 

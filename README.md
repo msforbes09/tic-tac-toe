@@ -8,7 +8,9 @@ and, on phones that support it, haptics. Pick X or O against the bot; after
 that the winner takes X and starts the next game, and a draw swaps. A session
 score sits above the board, and history shows your record per difficulty.
 Or play a friend online: create a room, share the four-letter code or link,
-and play from two phones.
+and play from two phones. Forty-one PlayStation-style achievements unlock as you
+play, offline included, and one of them can be worn as a badge above your name
+online.
 
 Built with Vite, React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 Tested with Vitest and React Testing Library.
@@ -48,7 +50,8 @@ Rooms and results persist; only the room's creator can delete it, and each
 device owns one room at a time.
 
 Online play runs over [Supabase](https://supabase.com): Realtime channels for
-presence and moves, plus two small tables for rooms and results. To enable it:
+presence and moves, plus small tables for rooms, results, players, games,
+ladders, and achievements. To enable it:
 
 1. Create a free Supabase project.
 2. Run `supabase/schema.sql` once in its SQL editor (see `supabase/README.md`;
@@ -59,6 +62,25 @@ presence and moves, plus two small tables for rooms and results. To enable it:
    environment variables on the Cloudflare Pages project.
 
 Without them the Online option shows as "Not set up".
+
+## Achievements
+
+Every finished game, series, room, and watch feeds the achievements. They unlock
+on the device the moment they happen (a toast at the top of the screen), are
+listed under **Achievements** on the setup screen (hidden ones show only their
+tier until unlocked, or flip **Show hidden**), and sync to the `achievements`
+table whenever there is a connection. In **Settings** you pick which unlocked
+achievement to wear as a badge above your nickname in rooms and series.
+
+To reset everyone, run this by hand in the SQL editor:
+
+```sql
+truncate public.rooms, public.results, public.players, public.games, public.ladders, public.achievements;
+```
+
+Every device that had registered notices its player row is gone on its next
+launch and wipes its own local history, ladder, achievements, nickname, and
+remembered setup. Device identity survives.
 
 ## Hosting
 
@@ -96,13 +118,15 @@ deploy.
 - `src/lib/game.ts` — pure board rules
 - `src/lib/bot.ts` — easy (random), medium (win/block), hard (minimax)
 - `src/lib/history.ts` — localStorage history, capped at 100 games
+- `src/lib/achievements.ts` — the achievements catalogue, progress, unlock rules, and cloud merge
+- `src/lib/reset.ts` — the full-reset handshake (a wiped cloud wipes the device on its next launch)
 - `src/lib/feedback.ts` + `src/platform/browserFeedback.ts` — move/win/draw sounds and haptics
 - `src/lib/room.ts` — channels, events, messages, and validation for online play
 - `src/state/reducer.ts` — game state
 - `src/state/series.ts` — series rules (first to 6, tie breaker, resign)
 - `src/state/online.ts` — the referee / player / watcher reducer
 - `src/platform/supabase*.ts` — Supabase adapters (the only Supabase imports)
-- `supabase/schema.sql` — rooms and results tables
+- `supabase/schema.sql` — every table and function
 - `src/components/` — React UI on shadcn/ui
 
 The design spec lives in `docs/superpowers/specs/`.

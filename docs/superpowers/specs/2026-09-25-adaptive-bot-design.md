@@ -90,36 +90,20 @@ anchors, the monotonic shape, and the simulation bounds are the contract.
 
 ## The moments
 
-Computed as a pure function of (rung before, rung after, result, badge held):
+Computed as a pure function of (rung before, rung after, result). Since
+`2026-09-26-achievements-design.md` the only one with any fanfare of its own is:
 
-- **Promoted** — the rung crosses up into Medium or Hard by playing, and the
-  new rung is below 30. The status line gains a second line, "Promoted to
-  Hard", and the start cue plays. Crossing down changes the chip only.
-- **Top of the pack** — the rung reaches 30 (a win at 29). Second line:
-  "Top of the pack." / "Nobody's above you now." Start cue. Shown every time
-  the rung arrives at 30. Nothing hints that 30 cannot be beaten.
-- **Top held** — a draw at rung 30 while the badge is not yet held. Confetti
-  (the same burst as a win) and a card over the board:
-  "That was the unbeatable bot." / "Holding it to a draw is as good as it
-  gets." with **Share** and **Keep playing**. Sets `topHeldAt`. Shown once ever.
-  Every draw at 30 adds to `topHeldCount`, which the badge shows.
 - **Lost the top** — a loss at rung 30 (which drops to 29). The New game
-  button reads **Take it back** for that one game. No fanfare otherwise.
+  button reads **Take it back** for that one game.
 
-Share opens the phone's share sheet with the text
-"I held the unbeatable tic-tac-toe bot to a draw. Your move." and the site URL,
-falling back to the clipboard as room links do. `ShareLink` gains an optional
-`text`.
+Promotion, reaching rung 30, and holding it to a draw are achievements now
+(Moving Up, Top of the Pack, The Immovable): the unlock toast is the fanfare, the
+achievements sheet is the record, and the badge worn online replaces the History
+badge. `topHeldAt` and `topHeldCount` are still kept on the ladder. The status
+line's second line, the top card, the share text, and the History badge are gone.
 
 Losing at 30 drops to 29. The relabel after a nudged first game is never a
 moment.
-
-## The badge
-
-While `topHeldAt` is set, the History sheet shows a badge above the bot record:
-**Top of the pack** with the date first held and "Held N times" (or "Held
-once"), and its own Share button with the same text. Device-local, like all
-history.
 
 ## History
 
@@ -167,10 +151,7 @@ Voided and two-player games get none. New game clears it.
   on mount from the saved ladder and the picked band, feeds it to the bot,
   advances it after each finished bot game, saves ladder and setup band,
   records the rung in history, shows moments.
-- `src/components/StatusBar.tsx` — optional second line.
-- `src/components/TopCard.tsx` — the once-only card.
-- `src/components/HistorySheet.tsx` — the badge.
-- `src/platform/share.ts` — text alongside the URL.
+- `src/components/StatusBar.tsx` — optional second line (now only the banter).
 
 ## Tests
 
@@ -184,18 +165,16 @@ Voided and two-player games get none. New game clears it.
   2000 games wins between 3% and 20% and never loses, and versus rung 30
   never wins.
 - Components: chip shows the picked band for the first game and the real band
-  after; promotion and top lines appear; the card appears once and Share is
-  called with the text; the badge shows in History with Share; setup shows the
+  after; Take it back after a loss at 30; achievement events carry the rungs;
+  setup shows the
   new descriptions and preselects the band.
 
-## Out of scope / deferred (TODO)
+## Out of scope / deferred
 
-- **Account-based badge.** When the rooms work lands its device identity and
-  Supabase tables, the badge can live there and show beside a nickname.
 - **Daily decay.** Each day without a bot game drops the rung by one.
-- **Achievements.** A small set beyond the top badge (first win at each
-  band, a ten-win streak, a hundred games, held the top ten times), each with
-  its own share line.
 - Seeding a new ladder from past history. Considered and declined: newcomers
   and old hands alike start at the bottom of the band they pick.
 - Showing the rung on the chip. Deliberately hidden: the top is a surprise.
+
+The account-based badge and achievements shipped: see
+`2026-09-26-achievements-design.md`.
