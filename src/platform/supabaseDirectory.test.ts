@@ -25,7 +25,7 @@ function fakeClient(responses: Response[]) {
       changeHandlers.push(cb)
       return channel
     }),
-    subscribe: vi.fn(() => channel),
+    subscribe: vi.fn((_onStatus?: (status: string) => void) => channel),
   }
   const client = {
     from: vi.fn(from),
@@ -122,6 +122,45 @@ describe('createSupabaseDirectory', () => {
     expect(seen).toHaveBeenLastCalledWith([])
     off()
     expect(f.client.removeChannel).toHaveBeenCalledTimes(1)
+  })
+
+  it('refetches the rooms when the channel joins, so a failed first fetch at launch is retried', async () => {
+    const f = fakeClient([
+      { data: null, error: { message: 'network down' } },
+      { data: [roomRow], error: null },
+    ])
+    const seen = vi.fn()
+    const off = createSupabaseDirectory(f.client).onRoomsChange(seen)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).not.toHaveBeenCalled()
+    // Supabase reports the join through the subscribe callback; it also fires again after a reconnect.
+    const onStatus = f.channel.subscribe.mock.calls[0][0]!
+    onStatus('SUBSCRIBED')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'ABCD23' })])
+    off()
+  })
+
+  it('refetches the rooms when the browser comes back online or the app returns to the foreground', async () => {
+    const f = fakeClient([
+      { data: [], error: null },
+      { data: [roomRow], error: null },
+      { data: [], error: null },
+    ])
+    const seen = vi.fn()
+    const off = createSupabaseDirectory(f.client).onRoomsChange(seen)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).toHaveBeenLastCalledWith([])
+    window.dispatchEvent(new Event('online'))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'ABCD23' })])
+    document.dispatchEvent(new Event('visibilitychange'))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).toHaveBeenLastCalledWith([])
+    off()
+    window.dispatchEvent(new Event('online'))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(seen).toHaveBeenCalledTimes(3)
   })
 
   it('throws a readable error when Supabase reports one', async () => {
