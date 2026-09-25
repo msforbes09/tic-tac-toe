@@ -5,7 +5,7 @@ import { ScoreBar } from './ScoreBar'
 import { StatusBar } from './StatusBar'
 import { Button } from '@/components/ui/button'
 import type { GameEvent } from '@/lib/achievements'
-import { chooseMove } from '@/lib/bot'
+import { chooseMove, MAX_THINK_MS, thinkTime } from '@/lib/bot'
 import { banterFor, type Tone } from '@/lib/banter'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
@@ -27,7 +27,8 @@ import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { createGameState, gameReducer, seatOf, symbolOf } from '@/state/reducer'
 
-export const BOT_DELAY_MS = 400
+/** The longest the bot thinks before a move; the actual pause varies with band, board, and move. */
+export const BOT_DELAY_MS = MAX_THINK_MS
 
 export type GameScreenProps = {
   settings: Settings
@@ -87,12 +88,11 @@ export function GameScreen({
   const youWon =
     settings.mode === 'bot' && state.status === 'won' && state.winner !== null && seatOf(state, state.winner) === 'p1'
 
-  // Bot reply, delayed so it feels like a turn rather than an instant reaction.
+  // Bot reply, paced like a turn: a snap on a win or block, a longer think on a quiet board.
   useEffect(() => {
     if (!isBotTurn) return
-    const id = setTimeout(() => {
-      dispatch({ type: 'MOVE', index: chooseMove(state.board, rung) })
-    }, BOT_DELAY_MS)
+    const index = chooseMove(state.board, rung)
+    const id = setTimeout(() => dispatch({ type: 'MOVE', index }), thinkTime(state.board, rung, index))
     return () => clearTimeout(id)
   }, [isBotTurn, state.board, rung])
 
