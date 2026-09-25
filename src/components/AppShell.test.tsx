@@ -12,6 +12,8 @@ describe("AppShell", () => {
     const main = screen.getByRole("main")
     expect(main).toHaveTextContent("hello")
     expect(main).toHaveClass("room-card")
+    // The card anchors absolute overlays (the grand-master confetti), not the full-width room.
+    expect(main).toHaveClass("relative")
   })
 
   it("draws a decorative backdrop behind the column: two glows and the faint logo", () => {

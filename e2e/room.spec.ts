@@ -29,6 +29,25 @@ test.describe("phone", () => {
     await expect(page.locator(".room-colophon")).toBeHidden()
   })
 
+  test("held sideways, the column stays a plain centred column with no room around it", async ({
+    page,
+    viewport: size,
+  }) => {
+    await page.setViewportSize({ width: size!.height, height: size!.width })
+    await openApp(page)
+    const vp = await viewport(page)
+    const main = await rect(card(page))
+    // As on develop: at most 420px wide and centred, with none of the desktop room.
+    expectClose(main.x, (vp.width - main.width) / 2)
+    const style = await card(page).evaluate((el) => {
+      const cs = getComputedStyle(el)
+      return { radius: cs.borderTopLeftRadius, shadow: cs.boxShadow, marginRight: cs.marginRight }
+    })
+    expect(style).toEqual({ radius: "0px", shadow: "none", marginRight: "0px" })
+    await expect(page.locator(".room-backdrop")).toBeHidden()
+    expect(vp.scrollWidth).toBeLessThanOrEqual(vp.width)
+  })
+
   test("the page never scrolls horizontally", async ({ page }) => {
     await openApp(page)
     const vp = await viewport(page)

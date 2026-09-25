@@ -227,7 +227,8 @@ body {
   display: none;
 }
 
-@media (min-width: 640px) {
+/* Wide AND tall: a phone held sideways is wide but stays a phone, and keeps the plain column. */
+@media (min-width: 640px) and (min-height: 500px) {
   .room-backdrop {
     display: block;
     position: absolute;
@@ -273,6 +274,13 @@ body {
     position: absolute;
     right: 28px;
     color: var(--muted-foreground);
+  }
+  /* Below about 720px the shifted card would paint over the corners, so they stay empty. */
+  @media (max-width: 719px) {
+    .room-brand,
+    .room-colophon {
+      display: none;
+    }
   }
   .room-brand {
     top: 24px;
