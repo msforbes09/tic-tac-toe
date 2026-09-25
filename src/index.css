@@ -216,8 +216,8 @@ body {
   --room-radius: 28px;
 }
 
+/* No `position` here: the splash and interstitial are rooms too, and they stay fixed. */
 .room {
-  position: relative;
   isolation: isolate;
   overflow: clip;
 }
@@ -293,7 +293,9 @@ body {
     margin-block: var(--room-inset);
     min-height: calc(100dvh - 2 * var(--room-inset));
     border-radius: var(--room-radius);
-    translate: calc(-1 * var(--room-shift)) 0;
+    /* Shifted by margin, not transform: a transformed column would become the containing
+       block for the fixed splash and interstitial and pin them inside the card. */
+    margin-right: calc(2 * var(--room-shift));
     box-shadow:
       inset 0 0 0 1px var(--tile-edge),
       0 40px 80px -30px oklch(0 0 0 / 80%),

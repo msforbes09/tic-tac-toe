@@ -4,7 +4,7 @@ import { Backdrop } from "@/components/Backdrop"
 // Phone-sized column on every viewport. On wide screens it floats as a card in the room.
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="room bg-muted flex min-h-dvh justify-center">
+    <div className="room relative flex min-h-dvh justify-center bg-muted">
       <Backdrop />
       <main
         className="room-card bg-background flex min-h-dvh w-full max-w-[420px] min-w-0 flex-col px-4"
