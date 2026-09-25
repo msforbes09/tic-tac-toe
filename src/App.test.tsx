@@ -177,8 +177,10 @@ describe('App developer mode', () => {
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium · 11')).toBeInTheDocument()
 
-    // The chip opens Settings, whose Developer section sets the rung, which applies from the next game.
-    tap('Bot · Medium · 11')
+    // The chip is plain text; the developer tools live in Settings, off the setup screen.
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
+    tap(/^← back$/i)
+    tap('Settings')
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByText('Developer')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('spinbutton', { name: /rung/i }), { target: { value: '29' } })
@@ -201,9 +203,7 @@ describe('App developer mode', () => {
     await act(async () => {})
     doKnock()
     await enter()
-    tap(/versus bot/i)
-    tap(/start game/i)
-    tap('Bot · Medium · 17')
+    tap('Settings')
     tap(/reset game data/i)
     tap(/tap again to confirm/i)
     await act(async () => {})
@@ -214,11 +214,10 @@ describe('App developer mode', () => {
     expect(await dir.loadLadder('device-0001')).toBeNull()
     // The reset landed on setup. The ladder is gone, so Medium starts at 11 again.
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
-    tap(/versus bot/i)
-    tap(/start game/i)
-    tap('Bot · Medium · 11')
+    tap('Settings')
     tap(/^exit developer mode$/i)
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    tap(/versus bot/i)
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()

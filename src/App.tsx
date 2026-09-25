@@ -355,7 +355,6 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           share={share}
           siteUrl={siteUrl}
           dev={devMode}
-          onOpenDev={() => setSettingsOpen(true)}
           onKnock={knock}
           onRecorded={onRecorded}
           tone={tone}

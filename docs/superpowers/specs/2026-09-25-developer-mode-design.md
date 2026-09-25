@@ -54,7 +54,7 @@ Nothing else changes for the player.
 ## The developer section
 
 Lives in **Settings** (the gear on the setup screen) while developer mode is
-on; the game chip opens Settings too. A dashed "Developer" box holds:
+on. A dashed "Developer" box holds:
 
 - **Rung** — a number field (1–30) and **Set**. Saves the rung with the streak
   reset; it applies from the next game. Closes the panel.

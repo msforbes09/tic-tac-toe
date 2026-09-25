@@ -37,9 +37,8 @@ export type GameScreenProps = {
   /** For bragging from the top-of-the-pack card. */
   share?: ShareLink
   siteUrl?: string
-  /** Developer mode: the chip shows the rung and streak, and opens the developer panel. */
+  /** Developer mode: the chip shows the rung and streak. */
   dev?: boolean
-  onOpenDev?: () => void
   /** Reports board taps for the developer knock; returns true when the knock just completed. */
   onKnock?: (event: KnockEvent) => boolean | void
   /** Every finished two-player or bot game, after it is saved locally; bot games bring the moved ladder. */
@@ -63,7 +62,6 @@ export function GameScreen({
   share,
   siteUrl,
   dev,
-  onOpenDev,
   onKnock,
   onRecorded,
   tone = 'friendly',
@@ -167,7 +165,6 @@ export function GameScreen({
   const streak = ladder?.streak ?? 0
   const devSuffix = dev && ladder ? ` · ${rung}${streak > 0 ? ` · +${streak}` : streak < 0 ? ` · −${-streak}` : ''}` : ''
   const badge = settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[shownBand]}${devSuffix}` : 'Two player'
-  const chipOpensDev = Boolean(dev && settings.mode === 'bot' && onOpenDev)
   // Every board tap feeds the knock; the tap that completes it stamps the cell and voids the game.
   const tap = (index: number) => {
     if (onKnock?.(`cell:${index}`) === true) dispatch({ type: 'OVERRIDE', index })
@@ -194,17 +191,7 @@ export function GameScreen({
             {hotStreak} in a row
           </span>
         )}
-        {chipOpensDev ? (
-          <button
-            type="button"
-            onClick={onOpenDev}
-            className="rounded-full bg-muted px-3 py-1 font-sans text-[13px] font-medium text-muted-foreground"
-          >
-            {badge}
-          </button>
-        ) : (
-          <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">{badge}</span>
-        )}
+        <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">{badge}</span>
       </header>
 
       <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} />

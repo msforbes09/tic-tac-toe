@@ -428,15 +428,12 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(22)
   })
 
-  it('shows the rung and streak on the chip in developer mode, and the chip opens the dev panel', () => {
-    const onOpenDev = vi.fn()
+  it('shows the rung and streak on the chip in developer mode; the chip is never a button', () => {
     const storage = fakeStorage()
     storage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 2 }))
-    render(
-      <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} dev onOpenDev={onOpenDev} />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Bot · Medium · 17 · +2' }))
-    expect(onOpenDev).toHaveBeenCalledTimes(1)
+    render(<GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} dev />)
+    expect(screen.getByText('Bot · Medium · 17 · +2')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
   })
 
   it('shows no streak on the chip when there is none, and no chip button outside developer mode', () => {
