@@ -385,14 +385,18 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
           {note}
         </p>
       )}
-      {outgoing && (
-        <div role="status" className="rise-in flex items-center justify-between gap-3 rounded-[18px] bg-muted/70 px-4 py-3 dark:bg-muted/50">
-          <span className="status-thinking font-medium">Waiting for {outgoing.player.nickname}…</span>
-          <Button variant="outline" size="sm" className="min-h-10 rounded-[12px]" onClick={cancelChallenge}>
-            Cancel
-          </Button>
-        </div>
-      )}
+      {/* The pending challenge is a window over the room: nothing else until it is answered or cancelled. */}
+      <AlertDialog open={outgoing !== null} onOpenChange={(o) => !o && cancelChallenge()}>
+        <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="status-thinking">Waiting for {outgoing?.player.nickname}…</AlertDialogTitle>
+            <AlertDialogDescription>They have a moment to accept.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {pairs.length > 0 && (
         <Block title="Games in progress">

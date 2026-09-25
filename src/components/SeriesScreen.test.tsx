@@ -89,6 +89,8 @@ describe('SeriesScreen basics', () => {
     expect(a.el()).toHaveTextContent("Bob's turn")
     expect(b.el()).toHaveTextContent('Your move')
     expect(c.el()).toHaveTextContent("Bob's turn")
+    // The mark of whoever is up sits beside the status, as in the other modes. Bob is X in game 1.
+    for (const side of [a, b, c]) expect(side.el().querySelector('[data-status-mark]')).toHaveAttribute('data-status-mark', 'X')
   })
 
   it("Bob's tap goes through the referee and reaches everyone; only the player to move can tap", async () => {
