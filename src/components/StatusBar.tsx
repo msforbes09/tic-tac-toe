@@ -36,14 +36,17 @@ export function StatusBar({
   youSeat,
   message,
   note,
+  mark = false,
 }: {
   state: GameState
   youSeat?: Seat
   message?: string
   /** A second line under the status, e.g. a promotion. */
   note?: string
+  /** Keep the mark of whoever is up beside a `message` too (online, whose status is a message). */
+  mark?: boolean
 }) {
-  const player = message ? null : statusPlayer(state)
+  const player = message && !mark ? null : statusPlayer(state)
   const thinking =
     state.status === 'playing' && state.settings.mode === 'bot' && player !== null && seatOf(state, player) === 'p2'
   const finished = state.status !== 'playing'
@@ -55,6 +58,7 @@ export function StatusBar({
     >
       {player && (
         <span
+          data-status-mark={player}
           className={cn(
             'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
             player === 'X' ? 'bg-player-x-soft text-player-x' : 'bg-player-o-soft text-player-o',

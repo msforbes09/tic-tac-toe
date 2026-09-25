@@ -45,5 +45,11 @@ describe('StatusBar message override', () => {
     render(<StatusBar state={createGameState(settings)} youSeat="p1" message="Waiting for your friend…" />)
     expect(screen.getByText('Waiting for your friend…')).toBeInTheDocument()
     expect(screen.queryByText('Your move')).not.toBeInTheDocument()
+    expect(document.querySelector('[data-status-mark]')).toBeNull()
+  })
+
+  it('keeps the mark of whoever is up beside the message when asked', () => {
+    render(<StatusBar state={createGameState(settings)} message="Your move" mark />)
+    expect(document.querySelector('[data-status-mark]')).toHaveAttribute('data-status-mark', 'X')
   })
 })

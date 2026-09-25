@@ -6,6 +6,7 @@ import { StatusBar } from './StatusBar'
 import { TopCard } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
+import { banterFor, type Tone } from '@/lib/banter'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryEntry, type HistoryStorage } from '@/lib/history'
@@ -36,13 +37,14 @@ export type GameScreenProps = {
   /** For bragging from the top-of-the-pack card. */
   share?: ShareLink
   siteUrl?: string
-  /** Developer mode: the chip shows the rung and streak, and opens the developer panel. */
+  /** Developer mode: the chip shows the rung and streak. */
   dev?: boolean
-  onOpenDev?: () => void
   /** Reports board taps for the developer knock; returns true when the knock just completed. */
   onKnock?: (event: KnockEvent) => boolean | void
   /** Every finished two-player or bot game, after it is saved locally; bot games bring the moved ladder. */
   onRecorded?: (entry: HistoryEntry, ladder: Ladder | null) => void
+  /** How the bot talks after a game. Friendly unless Settings says aggressive. */
+  tone?: Tone
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
@@ -52,28 +54,36 @@ const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
   top: () => "Top of the pack. Nobody's above you now.",
 }
 
-export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl, dev, onOpenDev, onKnock, onRecorded }: GameScreenProps) {
+export function GameScreen({
+  settings,
+  storage,
+  feedback,
+  onBack,
+  share,
+  siteUrl,
+  dev,
+  onKnock,
+  onRecorded,
+  tone = 'friendly',
+}: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
   // Null until the first board is seen, so the opening board plays the start cue.
   const previousBoard = useRef<BoardModel | null>(null)
 
   // The ladder, for bot games: resolved once from the saved rung and the picked band, then moved
-  // after each finished game. The bot plays the rung the game started on.
-  // Resolved without writing, so StrictMode's second run of the initialiser sees the same storage;
-  // the effect below persists it, and is idempotent.
+  // after each finished game. The bot plays the rung the game started on. The nudge from the picked
+  // band lives in memory only until a game finishes: backing out before then leaves the saved rung.
   const [ladder, setLadder] = useState<Ladder | null>(() => {
     if (settings.mode !== 'bot') return null
     const saved = loadLadder(storage)
     return { ...saved, rung: rungForSelection(saved.rung, settings.difficulty) }
   })
   const rung = ladder?.rung ?? 1
-  useEffect(() => {
-    if (ladder) saveLadder(storage, ladder)
-    // Only the resolved starting rung; later moves save themselves as they happen.
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [gamesPlayed, setGamesPlayed] = useState(0)
   const [moment, setMoment] = useState<Moment | null>(null)
+  // What the bot said about the last game; a ladder moment speaks instead when there is one.
+  const [banter, setBanter] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
@@ -135,12 +145,13 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
       setLadder(next)
       setGamesPlayed((n) => n + 1)
       setMoment(what)
+      setBanter(banterFor(bandOf(rung), result, Math.random, tone))
       if (what === 'top-held') setCardOpen(true)
       if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     }
     onRecorded?.(entry, next)
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded, tone])
 
   const finished = state.status !== 'playing'
   // The chip says what you picked for the first game, then the band the rung is really in.
@@ -149,14 +160,17 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
   const streak = ladder?.streak ?? 0
   const devSuffix = dev && ladder ? ` · ${rung}${streak > 0 ? ` · +${streak}` : streak < 0 ? ` · −${-streak}` : ''}` : ''
   const badge = settings.mode === 'bot' ? `Bot · ${DIFFICULTY_LABEL[shownBand]}${devSuffix}` : 'Two player'
-  const chipOpensDev = Boolean(dev && settings.mode === 'bot' && onOpenDev)
   // Every board tap feeds the knock; the tap that completes it stamps the cell and voids the game.
   const tap = (index: number) => {
     if (onKnock?.(`cell:${index}`) === true) dispatch({ type: 'OVERRIDE', index })
   }
-  const note = finished && moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
+  const momentNote = moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
+  const note = finished ? (momentNote ?? banter ?? undefined) : undefined
+  // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
+  const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
     setMoment(null)
+    setBanter(null)
     dispatch({ type: 'NEW_GAME' })
   }
 
@@ -166,17 +180,13 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
           ← Back
         </Button>
-        {chipOpensDev ? (
-          <button
-            type="button"
-            onClick={onOpenDev}
-            className="rounded-full bg-muted px-3 py-1 font-sans text-[13px] font-medium text-muted-foreground"
-          >
-            {badge}
-          </button>
-        ) : (
-          <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">{badge}</span>
+        {hotStreak > 0 && (
+          <span className="ml-auto mr-2 rounded-full bg-player-o-soft px-3 py-1 text-[13px] font-medium text-player-o">
+            <span aria-hidden="true">🔥 </span>
+            {hotStreak} in a row
+          </span>
         )}
+        <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium text-muted-foreground">{badge}</span>
       </header>
 
       <ScoreBar mode={settings.mode} score={state.score} p1Symbol={state.p1Symbol} />

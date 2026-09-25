@@ -49,6 +49,52 @@ describe('App', () => {
   })
 })
 
+describe('App settings', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  const flush = () => act(async () => {})
+  const openSettings = () => fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+
+  it('turns the aggressive bot on from Settings, changes the hints, and remembers it', () => {
+    const first = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    expect(screen.getByText('I block. Can you?')).toBeInTheDocument()
+    openSettings()
+    fireEvent.click(screen.getByRole('switch', { name: 'Aggressive bot' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+    first.unmount()
+
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+  })
+
+  it('renames the player from Settings, locally and in the directory when online is set up', async () => {
+    const hash = async (t: string) => `h:${t}`
+    const dir = createFakeDirectory(hash)
+    const deps = { open: createFakeRealtime().open, directory: dir, hash, share: async () => 'copied' as const, newId: () => 'R' }
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={deps} />)
+    await flush()
+    openSettings()
+    const field = screen.getByRole('textbox', { name: 'Nickname' })
+    expect(field).toHaveValue('Alice')
+    fireEvent.change(field, { target: { value: 'Bob' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(window.localStorage.getItem(NICKNAME_KEY)).toBe('Bob')
+    expect(dir.players()).toEqual([{ id: expect.any(String), nickname: 'Bob' }])
+  })
+
+  it('has no Settings gear during a game', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+})
+
 describe('App developer mode', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -60,7 +106,8 @@ describe('App developer mode', () => {
   const tap = (name: RegExp | string) => fireEvent.click(screen.getByRole('button', { name }))
 
   /** The whole knock, from setup. Ends with the developer dialog open (or not) after the pause. */
-  const doKnock = () => {
+  /** Every tap of the knock, ending on the occupied centre, with fake timers left running for the wait. */
+  const knockTaps = () => {
     tap(/two player/i)
     tap(/versus bot/i)
     tap(/two player/i)
@@ -71,11 +118,45 @@ describe('App developer mode', () => {
     // The last knock is a tap on the occupied centre: it falls through the disabled cell to its wrapper.
     vi.useFakeTimers()
     fireEvent.click(screen.getByRole('button', { name: 'Cell 5, O' }).parentElement!)
+  }
+  const doKnock = () => {
+    knockTaps()
     act(() => {
       vi.advanceTimersByTime(KNOCK_DELAY_MS)
     })
     vi.useRealTimers()
   }
+
+  it('cancels the developer prompt when the wait is interrupted by a tap, and lands on setup', () => {
+    render(<App />)
+    knockTaps()
+    // Tapping any cell during the wait (they are disabled, so it reaches the wrapper) calls it off.
+    fireEvent.click(screen.getByRole('button', { name: 'Cell 1, X' }).parentElement!)
+    expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(KNOCK_DELAY_MS)
+    })
+    vi.useRealTimers()
+    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
+  })
+
+  it('cancels the developer prompt when Back is tapped during the wait', () => {
+    render(<App />)
+    knockTaps()
+    tap(/^← back$/i)
+    act(() => {
+      vi.advanceTimersByTime(KNOCK_DELAY_MS)
+    })
+    vi.useRealTimers()
+    expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
+  })
+
+  it('offers no developer section in Settings outside developer mode', () => {
+    render(<App />)
+    tap('Settings')
+    expect(screen.queryByText('Developer')).not.toBeInTheDocument()
+  })
   /** Enter developer mode; every dialog action lands on setup. */
   const enter = async () => {
     tap(/^enter$/i)
@@ -96,8 +177,12 @@ describe('App developer mode', () => {
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium · 11')).toBeInTheDocument()
 
-    // The chip opens the developer panel: set the rung, which applies from the next game.
-    tap('Bot · Medium · 11')
+    // The chip is plain text; the developer tools live in Settings, off the setup screen.
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
+    tap(/^← back$/i)
+    tap('Settings')
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByText('Developer')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('spinbutton', { name: /rung/i }), { target: { value: '29' } })
     tap(/^set$/i)
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
@@ -118,9 +203,7 @@ describe('App developer mode', () => {
     await act(async () => {})
     doKnock()
     await enter()
-    tap(/versus bot/i)
-    tap(/start game/i)
-    tap('Bot · Medium · 17')
+    tap('Settings')
     tap(/reset game data/i)
     tap(/tap again to confirm/i)
     await act(async () => {})
@@ -131,11 +214,10 @@ describe('App developer mode', () => {
     expect(await dir.loadLadder('device-0001')).toBeNull()
     // The reset landed on setup. The ladder is gone, so Medium starts at 11 again.
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
-    tap(/versus bot/i)
-    tap(/start game/i)
-    tap('Bot · Medium · 11')
-    tap(/^exit$/i)
+    tap('Settings')
+    tap(/^exit developer mode$/i)
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    tap(/versus bot/i)
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
@@ -261,6 +343,30 @@ describe('App online rooms', () => {
   it('disables Online when Supabase is not configured (tests never see the real env)', () => {
     render(<App />)
     expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
+  })
+
+  it('disables Online as Offline while the phone has no connection, and re-enables it when it returns', () => {
+    const { deps } = online()
+    const setOnLine = (value: boolean) => Object.defineProperty(window.navigator, 'onLine', { value, configurable: true })
+    setOnLine(false)
+    try {
+      render(<App deps={deps} />)
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
+      expect(screen.getByText('Offline')).toBeInTheDocument()
+      setOnLine(true)
+      act(() => {
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeEnabled()
+      expect(screen.queryByText('Offline')).not.toBeInTheDocument()
+      setOnLine(false)
+      act(() => {
+        window.dispatchEvent(new Event('offline'))
+      })
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
+    } finally {
+      setOnLine(true)
+    }
   })
 
   it('asks for a nickname the first time Online is picked and remembers it', async () => {

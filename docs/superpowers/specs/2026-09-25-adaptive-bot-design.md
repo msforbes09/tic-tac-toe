@@ -23,7 +23,7 @@ they lose. The three visible levels stay; a hidden ladder does the work.
 - **Streaks.** From the third win in a row each win moves two rungs; likewise
   from the third loss in a row. A draw breaks the streak.
 - **Sticky bands.** A loss only drops the rung into a lower band when it is
-  the third loss in a row; before that it stops at the band's bottom rung.
+  the second loss in a row; before that it stops at the band's bottom rung.
   Any win that crosses up promotes at once.
 - Saved to `localStorage` under `tic-tac-toe:ladder`:
   `{ rung: number | null, streak: number, topHeldAt: number | null, topHeldCount: number }`.
@@ -42,6 +42,9 @@ Setup keeps its three buttons and preselects the band the saved rung is in
 - Picking any other band: the new rung is **halfway between the current rung
   and the middle of the picked band, rounded down**. The buttons nudge; they do
   not teleport.
+- The nudge is applied when the game screen opens (the bot plays it from the
+  first move) but is **only saved once that game finishes**, moved by its
+  result. Backing out before the end leaves the saved rung untouched.
 
 | Rung | Picks | Halfway to | Lands on |
 |------|-------|-----------:|---------:|
@@ -124,14 +127,35 @@ history.
 games. `difficulty` keeps recording the band the game was labelled with, so the
 record table is unchanged. Old entries stay valid.
 
+**The climb** (`src/lib/climb.ts`, `components/ClimbGraph.tsx`): in bot
+History, above the record table, a sparkline of the rung over the last 30 bot
+games with a rung, oldest first, over three shaded lanes labelled Easy, Medium,
+Hard. No rung numbers are printed. Shown once two such games exist.
+
 ## Copy
 
-Difficulty descriptions on setup, replacing "Makes mistakes" / "Blocks and
-pounces" / "Unbeatable":
+All bot copy lives in `src/lib/banter.ts` in two tones. `friendly` is the
+default, for kids; `cocky` is the **Aggressive bot** switch in Settings
+(`src/lib/tone.ts`, key `tic-tac-toe:tone`, off unless switched on).
 
-- Easy — **Go on, warm up.**
-- Medium — **Blocks. Bites back.**
-- Hard — **Bring your best. It won't matter.**
+**Settings** (`components/SettingsSheet.tsx`): a gear at the top right of the
+setup screen, and nowhere else, opens a sheet with the nickname (same rules
+and save path as the online nickname sheet; prefilled with the random
+suggestion until one is chosen) and the Aggressive bot switch.
+
+Difficulty descriptions on setup:
+
+- Easy — **Go on, warm up.** (cocky: the same)
+- Medium — **I block. Can you?** (cocky: *Blocks. Bites back.*)
+- Hard — **My best game. Ready?** (cocky: *Bring your best. It won't matter.*)
+
+**Banter.** After every finished bot game the second status line carries one
+line from the bot, picked at random from ten per band and result (the band the
+game was played at). A ladder moment (promotion, top) takes that line instead.
+Voided and two-player games get none. New game clears it.
+
+**Streak pill.** From the third straight win, a pill beside the chip reads
+`🔥 N in a row`. Losing streaks are never shown.
 
 ## Modules
 
@@ -168,7 +192,6 @@ pounces" / "Unbeatable":
 
 - **Account-based badge.** When the rooms work lands its device identity and
   Supabase tables, the badge can live there and show beside a nickname.
-- **Level graph in History**, drawn from the stored rungs.
 - **Daily decay.** Each day without a bot game drops the rung by one.
 - **Achievements.** A small set beyond the top badge (first win at each
   band, a ten-win streak, a hundred games, held the top ten times), each with

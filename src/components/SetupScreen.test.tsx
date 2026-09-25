@@ -74,6 +74,13 @@ describe('SetupScreen online', () => {
     expect(screen.getByText('Not set up')).toBeInTheDocument()
   })
 
+  it('shows Online disabled as Offline when the phone has no connection', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={{ available: false, reason: 'Offline', panel: null }} />)
+    expect(screen.getByRole('button', { name: /online/i })).toBeDisabled()
+    expect(screen.getByText('Offline')).toBeInTheDocument()
+    expect(screen.queryByText('Not set up')).not.toBeInTheDocument()
+  })
+
   it('replaces difficulty, symbol and Start with the online panel', () => {
     render(
       <SetupScreen
@@ -124,6 +131,15 @@ describe('SetupScreen install card', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
+  it('is a centred modal: nothing behind it can be tapped until it is closed', () => {
+    render(
+      <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'prompt', onInstall: () => {}, onDismiss: () => {} }} />,
+    )
+    expect(screen.getByRole('alertdialog', { name: /add to home screen/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /start game/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start game/i, hidden: true })).toBeInTheDocument()
+  })
+
   it('explains the Share steps on iPhone instead of an Install button', () => {
     render(
       <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'ios-steps', onInstall: () => {}, onDismiss: () => {} }} />,
@@ -162,10 +178,25 @@ describe('SetupScreen install card', () => {
     render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
     expect(screen.getByText("Win three.")).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /bot/i }))
-    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+    expect(screen.getByText('I block. Can you?')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^easy$/i }))
     expect(screen.getByText('Go on, warm up.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
+    expect(screen.getByText('My best game. Ready?')).toBeInTheDocument()
+  })
+
+  it('uses the cocky hints when the bot is aggressive', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} tone="cocky" />)
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
     expect(screen.getByText("Bring your best. It won't matter.")).toBeInTheDocument()
+  })
+
+  it('has a Settings button when there is somewhere for it to go', () => {
+    const onOpenSettings = vi.fn()
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onOpenSettings={onOpenSettings} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(onOpenSettings).toHaveBeenCalled()
   })
 })
