@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   ACHIEVEMENTS,
   ACHIEVEMENTS_KEY,
+  DEFAULT_VIEW,
+  listAchievements,
+  type ListView,
   EMPTY_PROGRESS,
   EMPTY_STATE,
   achievementById,
@@ -318,5 +321,39 @@ describe('record: series feats need a decided series', () => {
     expect(run([series({ trailedBy3: true, decided: false })]).unlocked).not.toContain('comeback-kid')
     expect(run([series({ tieBreak: true, decided: false })]).unlocked).not.toContain('tiebreaker')
     expect(run([series({ trailedBy3: true, decided: true })]).unlocked).toContain('comeback-kid')
+  })
+})
+
+describe('listAchievements', () => {
+  const unlocks = { 'hello-bot': 300, 'the-immovable': 100, 'closer': 200 }
+  const ids = (view: Partial<ListView> = {}) => listAchievements(unlocks, { ...DEFAULT_VIEW, ...view }).map((a) => a.id)
+
+  it('defaults to recent: earned newest first, then locked by tier from platinum down in catalogue order', () => {
+    expect(DEFAULT_VIEW).toEqual({ sort: 'recent', show: 'all', tier: 'all' })
+    const all = ids()
+    expect(all.slice(0, 3)).toEqual(['hello-bot', 'closer', 'the-immovable'])
+    expect(all[3]).toBe('grand-master')
+    expect(all[4]).toBe('perfect-ten')
+    expect(all.at(-1)).toBe('full-circle')
+    expect(all).toHaveLength(ACHIEVEMENTS.length)
+  })
+
+  it('oldest puts the earliest unlock first and locked after', () => {
+    expect(ids({ sort: 'oldest' }).slice(0, 4)).toEqual(['the-immovable', 'closer', 'hello-bot', 'grand-master'])
+  })
+
+  it('tier orders platinum to bronze and catalogue within a tier, earned or not', () => {
+    const t = ids({ sort: 'tier' })
+    expect(t.slice(0, 3)).toEqual(['grand-master', 'perfect-ten', 'untouchable'])
+    expect(t.indexOf('the-immovable')).toBeLessThan(t.indexOf('closer'))
+    expect(t.indexOf('closer')).toBeLessThan(t.indexOf('hello-bot'))
+  })
+
+  it('filters by earned, locked, and tier', () => {
+    expect(ids({ show: 'earned' })).toEqual(['hello-bot', 'closer', 'the-immovable'])
+    expect(ids({ show: 'locked' })).toHaveLength(ACHIEVEMENTS.length - 3)
+    expect(ids({ tier: 'gold' })).toHaveLength(10)
+    expect(ids({ tier: 'gold' })[0]).toBe('the-immovable')
+    expect(ids({ show: 'earned', tier: 'platinum' })).toEqual([])
   })
 })

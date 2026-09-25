@@ -15,7 +15,6 @@ function props(over: Partial<OnlinePanelProps> = {}): OnlinePanelProps {
     rooms,
     counts: { r1: 3 },
     ownedRoomId: null,
-    onCreate: vi.fn(),
     onEnter: vi.fn(),
     ...over,
   }
@@ -62,11 +61,9 @@ describe('OnlinePanel', () => {
     expect(screen.queryByText('No open rooms yet. Create one!')).not.toBeInTheDocument()
   })
 
-  it('shows the empty state and creates a room', () => {
-    const p = props({ rooms: [] })
-    render(<OnlinePanel {...p} />)
+  it('shows the empty state; Create room lives on the setup screen, not here', () => {
+    render(<OnlinePanel {...props({ rooms: [] })} />)
     expect(screen.getByText('No open rooms yet. Create one!')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /create room/i }))
-    expect(p.onCreate).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /create room/i })).not.toBeInTheDocument()
   })
 })

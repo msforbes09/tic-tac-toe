@@ -81,18 +81,22 @@ describe('SetupScreen online', () => {
     expect(screen.queryByText('Not set up')).not.toBeInTheDocument()
   })
 
-  it('replaces difficulty, symbol and Start with the online panel', () => {
+  it('replaces difficulty, symbol and Start with the online panel and Create room', () => {
+    const onCreate = vi.fn()
     render(
       <SetupScreen
         onStart={() => {}}
         onOpenHistory={() => {}}
-        online={{ available: true, panel: <div data-testid="panel">rooms here</div> }}
+        online={{ available: true, panel: <div data-testid="panel">rooms here</div>, onCreate }}
       />,
     )
     expect(screen.queryByTestId('panel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create room' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /online/i }))
     expect(screen.getByTestId('panel')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Create room' }))
+    expect(onCreate).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: /hard/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: /your symbol/i })).not.toBeInTheDocument()
   })
@@ -205,5 +209,14 @@ describe('SetupScreen install card', () => {
     render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onOpenAchievements={onOpenAchievements} />)
     fireEvent.click(screen.getByRole('button', { name: 'Achievements' }))
     expect(onOpenAchievements).toHaveBeenCalled()
+  })
+
+  it('History and Achievements are icon buttons in the header, not rows at the bottom', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onOpenAchievements={() => {}} />)
+    const history = screen.getByRole('button', { name: 'History' })
+    const achievements = screen.getByRole('button', { name: 'Achievements' })
+    expect(history).toHaveTextContent('')
+    expect(achievements).toHaveTextContent('')
+    expect(history.compareDocumentPosition(screen.getByRole('heading', { name: 'Tic-Tac-Toe' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 })
