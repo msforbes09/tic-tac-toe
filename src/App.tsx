@@ -52,7 +52,6 @@ import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
 import { useNetworkOnline } from '@/platform/network'
 import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
-import { shareLink, type ShareLink } from '@/platform/share'
 import { createSupabaseServices } from '@/platform/supabase'
 
 const noopStorage: HistoryStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
@@ -78,7 +77,6 @@ export type AppDeps = {
   /** Rooms and results storage; null when online play is not configured. */
   directory?: RoomDirectory | null
   hash?: (text: string) => Promise<string>
-  share?: ShareLink
   /** The page URL at load, for `?room=` links. */
   url?: string
   replaceUrl?: (url: string) => void
@@ -109,9 +107,6 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const replaceUrl = deps.replaceUrl ?? ((next: string) => window.history.replaceState(null, '', next))
   const newId = deps.newId ?? (() => createId(6))
   const random = deps.random ?? Math.random
-  const share = deps.share ?? shareLink
-  // The bare site link, for bragging: whatever room code the page opened with is dropped.
-  const siteUrl = withoutRoomParam(url)
 
   const [deviceId] = useState(() => loadDeviceId(storage))
   const [playerToken] = useState(() => loadPlayerToken(storage))
@@ -352,8 +347,6 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           storage={storage}
           feedback={feedback}
           onBack={() => (knockPending ? cancelKnock() : setScreen({ kind: 'setup' }))}
-          share={share}
-          siteUrl={siteUrl}
           dev={devMode}
           onKnock={knock}
           onRecorded={onRecorded}
@@ -426,8 +419,6 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         mode={setupMode}
         cloud={services ? { deviceId, directory: services.directory } : undefined}
         online={services && nickname ? { deviceId, directory: services.directory } : undefined}
-        share={share}
-        siteUrl={siteUrl}
         onKnock={knock}
       />
 

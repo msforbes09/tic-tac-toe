@@ -3,8 +3,8 @@ import { Board } from './Board'
 import { Celebration } from './Celebration'
 import { ScoreBar } from './ScoreBar'
 import { StatusBar } from './StatusBar'
-import { TopCard } from './TopCard'
 import { Button } from '@/components/ui/button'
+import type { GameEvent } from '@/lib/achievements'
 import { chooseMove } from '@/lib/bot'
 import { banterFor, type Tone } from '@/lib/banter'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
@@ -24,7 +24,6 @@ import {
 import type { KnockEvent } from '@/lib/knock'
 import { saveSetup } from '@/lib/setup'
 import type { Board as BoardModel, Outcome, Settings } from '@/lib/types'
-import type { ShareLink } from '@/platform/share'
 import { createGameState, gameReducer, seatOf, symbolOf } from '@/state/reducer'
 
 export const BOT_DELAY_MS = 400
@@ -34,9 +33,8 @@ export type GameScreenProps = {
   storage: HistoryStorage
   feedback: Feedback
   onBack: () => void
-  /** For bragging from the top-of-the-pack card. */
-  share?: ShareLink
-  siteUrl?: string
+  /** Every finished, non-voided game, for the achievements; bot games carry the ladder before and after. */
+  onAchievement?: (event: GameEvent) => void
   /** Developer mode: the chip shows the rung and streak. */
   dev?: boolean
   /** Reports board taps for the developer knock; returns true when the knock just completed. */
@@ -49,18 +47,12 @@ export type GameScreenProps = {
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
 
-const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
-  promoted: (band) => `Promoted to ${band}`,
-  top: () => "Top of the pack. Nobody's above you now.",
-}
-
 export function GameScreen({
   settings,
   storage,
   feedback,
   onBack,
-  share,
-  siteUrl,
+  onAchievement,
   dev,
   onKnock,
   onRecorded,
@@ -81,10 +73,10 @@ export function GameScreen({
   })
   const rung = ladder?.rung ?? 1
   const [gamesPlayed, setGamesPlayed] = useState(0)
+  // Only 'lost-top' matters here (the New game button reads Take it back); the rest are achievements now.
   const [moment, setMoment] = useState<Moment | null>(null)
-  // What the bot said about the last game; a ladder moment speaks instead when there is one.
+  // What the bot said about the last game.
   const [banter, setBanter] = useState<string | null>(null)
-  const [cardOpen, setCardOpen] = useState(false)
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
   const isBotTurn = botSymbol !== null && state.status === 'playing' && nextPlayer(state.board) === botSymbol
@@ -135,23 +127,30 @@ export function GameScreen({
     } catch {
       // Storage unavailable (private mode, quota). History is best-effort.
     }
+    const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
     let next: Ladder | null = null
     if (isBot && ladder) {
-      const result: GameResult = outcome === 'draw' ? 'draw' : seatOf(state, outcome) === 'p1' ? 'win' : 'loss'
       next = advance(ladder, result, now)
-      const what = momentAfter(ladder, next, result)
       saveLadder(storage, next)
       saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
       setLadder(next)
       setGamesPlayed((n) => n + 1)
-      setMoment(what)
+      setMoment(momentAfter(ladder, next, result))
       setBanter(banterFor(bandOf(rung), result, Math.random, tone))
-      if (what === 'top-held') setCardOpen(true)
-      if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     }
     onRecorded?.(entry, next)
+    onAchievement?.({
+      kind: 'game',
+      mode: settings.mode,
+      result,
+      board: state.board,
+      symbol: state.p1Symbol,
+      finishedAt: now,
+      // The real band of the rung played, not the label: "first win at Hard" means a Hard bot.
+      ...(isBot ? { band: bandOf(rung), rungBefore: rung, rungAfter: next?.rung ?? rung } : {}),
+    })
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded, tone])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, onRecorded, onAchievement, tone])
 
   const finished = state.status !== 'playing'
   // The chip says what you picked for the first game, then the band the rung is really in.
@@ -164,8 +163,7 @@ export function GameScreen({
   const tap = (index: number) => {
     if (onKnock?.(`cell:${index}`) === true) dispatch({ type: 'OVERRIDE', index })
   }
-  const momentNote = moment ? NOTE_FOR[moment]?.(DIFFICULTY_LABEL[bandOf(rung)]) : undefined
-  const note = finished ? (momentNote ?? banter ?? undefined) : undefined
+  const note = finished ? (banter ?? undefined) : undefined
   // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
   const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
@@ -201,8 +199,7 @@ export function GameScreen({
             onSelect={(index) => dispatch({ type: 'MOVE', index })}
             onTap={tap}
           />
-          {(youWon || cardOpen) && <Celebration />}
-          {cardOpen && <TopCard share={share} siteUrl={siteUrl} onClose={() => setCardOpen(false)} />}
+          {youWon && <Celebration />}
         </div>
       </div>
 
