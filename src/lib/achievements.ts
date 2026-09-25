@@ -147,6 +147,8 @@ export type SeriesEvent = {
   trailedBy3: boolean
   /** Decided in game 11 or later. */
   tieBreak: boolean
+  /** Played out to a decision, not handed over by a resignation or a drop. */
+  decided: boolean
   roomId: string
   opponentId: string
   opponentBadge: AchievementId | null
@@ -244,7 +246,7 @@ const RULES: Record<Exclude<AchievementId, 'grand-master'>, Rule> = {
   'high-five': (p) => p.winStreak >= 5,
   unbroken: (p) => p.unbeatenStreak >= 5,
   century: (p) => p.games.bot >= 100,
-  'comeback-kid': onSeries((e) => e.won && e.trailedBy3),
+  'comeback-kid': onSeries((e) => e.won && e.decided && e.trailedBy3),
   'bounce-back': onGame((e) => e.mode === 'bot' && e.result === 'win' && e.lostAtTopBefore === true),
   'frequent-flyer': (p) => p.rooms.length >= 3,
   fifty: (p) => rankedWins(p) >= 50,
@@ -260,7 +262,7 @@ const RULES: Record<Exclude<AchievementId, 'grand-master'>, Rule> = {
   'top-of-the-pack': onGame((e) => e.mode === 'bot' && e.rungAfter === TOP_RUNG && (e.rungBefore ?? TOP_RUNG) < TOP_RUNG),
   'the-immovable': onGame((e) => e.mode === 'bot' && e.result === 'draw' && e.rungBefore === TOP_RUNG),
   marathon: (p) => totalGames(p) >= 500,
-  tiebreaker: onSeries((e) => e.won && e.tieBreak),
+  tiebreaker: onSeries((e) => e.won && e.decided && e.tieBreak),
   'two-hundred': (p) => rankedWins(p) >= 200,
   'giant-killer': onSeries((e) => e.won && e.opponentBadge === 'the-immovable'),
   'deep-end': onGame((e) => e.mode === 'bot' && e.result === 'win' && (e.rungBefore ?? 0) >= DEEP_END_RUNG),

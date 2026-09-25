@@ -1,16 +1,103 @@
-import * as icons from 'lucide-react'
+import {
+  Anchor,
+  ArrowUpFromLine,
+  Award,
+  Axe,
+  Bot,
+  Brush,
+  Calendar,
+  CalendarDays,
+  CloudRain,
+  Cpu,
+  Crown,
+  DoorOpen,
+  Equal,
+  Eye,
+  Flag,
+  Flame,
+  Footprints,
+  Gem,
+  Hand,
+  Handshake,
+  Hash,
+  Leaf,
+  Medal,
+  Moon,
+  Mountain,
+  MoveDiagonal,
+  Orbit,
+  Plane,
+  Play,
+  Scale,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  Sunrise,
+  Swords,
+  Target,
+  TrendingUp,
+  Undo2,
+  Users,
+  Waves,
+  Wifi,
+  Zap,
+} from 'lucide-react'
 import type { ComponentType, CSSProperties } from 'react'
 import { TIER_COLOR, achievementById, isAchievementId } from '@/lib/achievements'
 import { cn } from '@/lib/utils'
 
 type IconComponent = ComponentType<{ className?: string; style?: CSSProperties; 'aria-hidden'?: boolean }>
-const ICONS = icons as unknown as Record<string, IconComponent | undefined>
+
+/** Named imports only, so the bundle ships these icons and not the whole of lucide. A test keeps it in step with the catalogue. */
+export const ICONS: Record<string, IconComponent> = {
+  Anchor,
+  ArrowUpFromLine,
+  Axe,
+  Bot,
+  Brush,
+  Calendar,
+  CalendarDays,
+  CloudRain,
+  Cpu,
+  Crown,
+  DoorOpen,
+  Equal,
+  Eye,
+  Flag,
+  Flame,
+  Footprints,
+  Gem,
+  Hand,
+  Handshake,
+  Hash,
+  Leaf,
+  Medal,
+  Moon,
+  Mountain,
+  MoveDiagonal,
+  Orbit,
+  Plane,
+  Play,
+  Scale,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  Sunrise,
+  Swords,
+  Target,
+  TrendingUp,
+  Undo2,
+  Users,
+  Waves,
+  Wifi,
+  Zap,
+}
 
 /** An achievement's icon in its tier colour (or the current colour when dimmed). Nothing for an unknown id. */
 export function AchievementIcon({ id, className, dimmed = false }: { id: string; className?: string; dimmed?: boolean }) {
   if (!isAchievementId(id)) return null
   const a = achievementById(id)
-  const Icon = ICONS[a.icon] ?? icons.Award
+  const Icon = ICONS[a.icon] ?? Award
   return <Icon aria-hidden className={cn('shrink-0', className)} style={dimmed ? undefined : { color: TIER_COLOR[a.tier] }} />
 }
 

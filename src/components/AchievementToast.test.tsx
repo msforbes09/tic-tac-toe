@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AchievementBadge } from './AchievementBadge'
+import { AchievementBadge, ICONS } from './AchievementBadge'
+import { ACHIEVEMENTS } from '@/lib/achievements'
 import { AchievementToast, TOAST_MS } from './AchievementToast'
 
 describe('AchievementToast', () => {
@@ -37,5 +38,11 @@ describe('AchievementBadge', () => {
     expect(screen.queryByRole('img')).toBeNull()
     rerender(<AchievementBadge id={null} />)
     expect(screen.queryByRole('img')).toBeNull()
+  })
+})
+
+describe('AchievementIcon map', () => {
+  it('has a named import for every icon in the catalogue, so the bundle ships only those', () => {
+    for (const a of ACHIEVEMENTS) expect(ICONS[a.icon], a.icon).toBeDefined()
   })
 })

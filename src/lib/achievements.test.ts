@@ -227,7 +227,7 @@ describe('record: board and clock', () => {
 })
 
 const series = (over: Partial<SeriesEvent> = {}): AchievementEvent => ({
-  kind: 'series', won: true, mine: 6, theirs: 2, trailedBy3: false, tieBreak: false, roomId: 'r1', opponentId: 'o1', opponentBadge: null, ...over,
+  kind: 'series', won: true, mine: 6, theirs: 2, trailedBy3: false, tieBreak: false, decided: true, roomId: 'r1', opponentId: 'o1', opponentBadge: null, ...over,
 })
 
 describe('record: series, rooms, watching', () => {
@@ -310,5 +310,13 @@ describe('merge', () => {
 
   it('identical copies change nothing', () => {
     expect(merge(local, { ...local })).toEqual({ state: local, localChanged: false, cloudBehind: false })
+  })
+})
+
+describe('record: series feats need a decided series', () => {
+  it('comeback kid and tiebreaker do not unlock when the opponent resigned or left', () => {
+    expect(run([series({ trailedBy3: true, decided: false })]).unlocked).not.toContain('comeback-kid')
+    expect(run([series({ tieBreak: true, decided: false })]).unlocked).not.toContain('tiebreaker')
+    expect(run([series({ trailedBy3: true, decided: true })]).unlocked).toContain('comeback-kid')
   })
 })

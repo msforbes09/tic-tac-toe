@@ -182,16 +182,20 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
     const { directory } = services
     let cancelled = false
     const sync = async () => {
+      // Read before the lookup: a registration that lands mid-flight must not turn a null row into a wipe.
+      const registered = isRegistered(storage)
       let player: PlayerRecord | null
       try {
         player = await directory.loadPlayer(deviceId)
       } catch {
-        // The cloud cannot be read, so nothing is wiped; the rest behaves as before the check existed.
-        if (!cancelled) setCloudChecked(true)
+        // The cloud cannot be read, so nothing is decided this pass and nothing is pushed. A device
+        // that never registered may still register; a registered one waits for a successful check,
+        // or a wipe could be escaped by re-creating the row.
+        if (!cancelled && !registered) setCloudChecked(true)
         return
       }
       if (cancelled) return
-      if (shouldWipe(isRegistered(storage), player)) {
+      if (shouldWipe(registered, player)) {
         wipeLocal(storage)
         setNickname(null)
         achievementsRef.current = EMPTY_STATE

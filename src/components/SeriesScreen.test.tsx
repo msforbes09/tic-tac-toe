@@ -286,7 +286,7 @@ describe('SeriesScreen achievements', () => {
       fireEvent.click(side.cell(n))
       await flush()
     }
-    expect(a.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 6, theirs: 0, trailedBy3: false, tieBreak: false, roomId: 'r', opponentId: 'b', opponentBadge: null }))
+    expect(a.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 6, theirs: 0, trailedBy3: false, tieBreak: false, decided: true, roomId: 'r', opponentId: 'b', opponentBadge: null }))
     expect(b.onAchievement).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'series', won: false, mine: 0, theirs: 6 }))
     expect(a.onAchievement.mock.calls.map((c) => c[0].kind)).toEqual(['game', 'series'])
     expect(c.onAchievement).not.toHaveBeenCalled()
@@ -298,7 +298,7 @@ describe('SeriesScreen achievements', () => {
     fireEvent.click(screen.getByRole('button', { name: /yes, resign/i }))
     await flush()
     expect(a.onAchievement).toHaveBeenCalledTimes(1)
-    expect(a.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 0, theirs: 3, trailedBy3: true }))
+    expect(a.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'series', won: true, mine: 0, theirs: 3, trailedBy3: true, decided: false }))
     expect(b.onAchievement).toHaveBeenCalledTimes(1)
     expect(b.onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'series', won: false, trailedBy3: false }))
   })

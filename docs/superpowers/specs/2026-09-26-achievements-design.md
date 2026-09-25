@@ -23,7 +23,8 @@ Rules of counting:
 - **Wins** for Fifty and Two Hundred count bot and online games only.
 - **Games** for Regular, Marathon, Week Warrior, Night Owl, and Early Bird count every mode.
 - **Board secrets** (Fast Hands, Sly Diagonal, Centre Stage) count every mode; the final
-  board is the evidence. A two-player win is credited to the device.
+  board is the evidence. A two-player game is seen from Player 1's side, like its history
+  row: Player 1's win counts, Player 2's does not.
 - One online game in a series is one game. A series result is one series.
 - A voided game (developer knock) records nothing.
 
@@ -85,7 +86,8 @@ Detail rules:
 - **Comeback Kid**: at some point in the series the player's score was 3 or more behind;
   the referee's snapshots carry both scores after every game, so each player tracks
   `trailedBy3` from them while the series runs.
-- **Tiebreaker**: the series was won in game 11 or later.
+- **Tiebreaker**: the series was won in game 11 or later. Comeback Kid and Tiebreaker need a
+  series played out to a decision; a resignation or a drop hands over the win but not the feat.
 - **Clean Sweep**: won 6–0.
 - **Old Rivals**: the map of opponent id → series count reaches 3 for one opponent. The
   map keeps at most 50 opponents; the oldest is dropped.

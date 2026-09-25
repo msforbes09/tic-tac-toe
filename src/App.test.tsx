@@ -716,3 +716,37 @@ describe('App achievements', () => {
     expect(loadAchievements(window.localStorage).unlocks.landlord).toBeDefined()
   })
 })
+
+describe('App full reset guards', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  const flush = () => act(async () => {})
+  const hash = async (t: string) => `h:${t}`
+
+  it('does not re-register a registered device while the player lookup fails, so a wipe cannot be escaped', async () => {
+    const rt = createFakeRealtime()
+    const dir = createFakeDirectory(hash)
+    const savePlayer = vi.spyOn(dir, 'savePlayer')
+    vi.spyOn(dir, 'loadPlayer').mockRejectedValue(new Error('offline-ish'))
+    window.localStorage.setItem(REGISTERED_KEY, '1')
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={{ open: rt.open, directory: dir, hash }} />)
+    await flush()
+    await flush()
+    expect(savePlayer).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem(NICKNAME_KEY)).toBe('Alice')
+  })
+
+  it('still registers a device that never registered when the lookup fails', async () => {
+    const rt = createFakeRealtime()
+    const dir = createFakeDirectory(hash)
+    const savePlayer = vi.spyOn(dir, 'savePlayer')
+    vi.spyOn(dir, 'loadPlayer').mockRejectedValue(new Error('offline-ish'))
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={{ open: rt.open, directory: dir, hash }} />)
+    await flush()
+    await flush()
+    expect(savePlayer).toHaveBeenCalled()
+  })
+})
