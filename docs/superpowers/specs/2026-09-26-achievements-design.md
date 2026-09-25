@@ -293,5 +293,6 @@ Removed: `TopCard.tsx` and its test.
 ## Out of scope
 
 Sharing achievements, progress bars on locked tiles, achievement history in the cloud
-beyond one row per device, badges beside names in History for two-player and bot rows,
+beyond one row per device, badges beside names in History for two-player and bot rows or on
+results read back from the cloud (the badge travels with presence and live series state only),
 partial cloud resets.

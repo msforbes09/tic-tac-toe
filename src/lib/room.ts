@@ -69,7 +69,8 @@ export type Snapshot = {
   winningLine: WinLine | null
 }
 
-export type SeriesPlayer = { deviceId: string; nickname: string }
+/** A player as the room sees them; `badge` is the achievement id they wear, if any. */
+export type SeriesPlayer = { deviceId: string; nickname: string; badge?: string }
 
 export type SeriesResult = {
   gameId: string
@@ -87,7 +88,7 @@ export type SeriesResult = {
 }
 
 export type MemberStatus = 'idle' | 'playing' | 'watching'
-export type RoomPresence = { deviceId: string; nickname: string; status: MemberStatus; gameId: string | null }
+export type RoomPresence = { deviceId: string; nickname: string; status: MemberStatus; gameId: string | null; badge?: string }
 export type LobbyPresence = { roomId: string; nickname: string }
 export type GameRole = 'referee' | 'player' | 'watcher'
 export type GamePresence = { deviceId: string; role: GameRole }
@@ -119,7 +120,8 @@ const isCellIndex = (v: unknown): v is number => Number.isInteger(v) && (v as nu
 const isPlayer = (v: unknown): v is Player => v === 'X' || v === 'O'
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
 const isString = (v: unknown): v is string => typeof v === 'string'
-const isPlayerRef = (v: unknown): v is SeriesPlayer => isObject(v) && isString(v.deviceId) && isString(v.nickname)
+const hasBadge = (v: Record<string, unknown>) => v.badge === undefined || isString(v.badge)
+const isPlayerRef = (v: unknown): v is SeriesPlayer => isObject(v) && isString(v.deviceId) && isString(v.nickname) && hasBadge(v)
 
 export function isGameSnapshot(v: unknown): v is Snapshot {
   if (!isObject(v)) return false
@@ -192,7 +194,8 @@ export function isRoomPresence(v: unknown): v is RoomPresence {
     isString(v.deviceId) &&
     isString(v.nickname) &&
     (v.status === 'idle' || v.status === 'playing' || v.status === 'watching') &&
-    (v.gameId === null || isString(v.gameId))
+    (v.gameId === null || isString(v.gameId)) &&
+    hasBadge(v)
   )
 }
 

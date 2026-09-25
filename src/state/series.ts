@@ -155,7 +155,8 @@ export function snapshotOfSeries(state: SeriesState): SeriesSnapshot {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
-const isPlayerRef = (v: unknown): v is SeriesPlayer => isObj(v) && typeof v.deviceId === 'string' && typeof v.nickname === 'string'
+const isPlayerRef = (v: unknown): v is SeriesPlayer =>
+  isObj(v) && typeof v.deviceId === 'string' && typeof v.nickname === 'string' && (v.badge === undefined || typeof v.badge === 'string')
 
 export function isSeriesSnapshot(v: unknown): v is SeriesSnapshot {
   if (!isObj(v)) return false
