@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AchievementIcon } from './AchievementBadge'
 import { Button } from '@/components/ui/button'
+import { FloatingBack } from './FloatingBack'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ACHIEVEMENTS, achievementById, type AchievementId, type Unlocks } from '@/lib/achievements'
 import type { Tone } from '@/lib/banter'
@@ -63,10 +64,11 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         // A tap moves no focus, so the nickname field does not pop the keyboard; keyboard users keep the default.
         initialFocus={(openType) => openType === 'keyboard'}
         className="mx-auto flex w-full max-w-[420px] flex-col gap-6 rounded-t-[28px] px-5 pt-5"
-        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'max(4.5rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="font-heading text-2xl font-semibold">Settings</SheetTitle>
@@ -192,10 +194,7 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
             </div>
           </div>
         )}
-
-        <Button variant="secondary" className="min-h-12 w-full rounded-[16px] text-base font-medium" onClick={close}>
-          Done
-        </Button>
+        <FloatingBack />
       </SheetContent>
     </Sheet>
   )

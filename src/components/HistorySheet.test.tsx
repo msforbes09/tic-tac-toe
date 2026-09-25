@@ -119,6 +119,7 @@ describe('HistorySheet bot section', () => {
     const onKnock = vi.fn()
     render(<HistorySheet mode="bot" open onOpenChange={onOpenChange} storage={fakeStorage([entry({ id: 'a' })])} onKnock={onKnock} />)
     expect(screen.queryByRole('button', { name: /clear/i })).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^(back|close)$/i })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: /^back$/i }))
     expect(onOpenChange.mock.calls[0][0]).toBe(false)
     expect(onKnock).toHaveBeenCalledWith('history:back')

@@ -21,8 +21,7 @@ on any other; the first step always restarts the knock.
 
 1. Setup: **Two player**, **Versus bot**, **Two player** (tapping the selected
    mode still counts).
-2. **History**, then the sheet's **Back** button (the corner close does not
-   count).
+2. **History**, then the sheet's floating **Back** button (its only way out).
 3. **Start game** — a two-player game.
 4. On the board: **X top-left**, **O centre**, **X bottom-right**, **O
    top-right**, then **X taps the centre**, which is O's square.

@@ -1,12 +1,12 @@
-import { Lock, SlidersHorizontal, Trophy } from "lucide-react"
+import { Lock, RotateCcw, SlidersHorizontal, Trophy } from "lucide-react"
 import { useState, type ReactNode } from "react"
 import { AchievementIcon } from "./AchievementBadge"
+import { FloatingBack } from "./FloatingBack"
 import { segmentItem, segmentTrack } from "./segment"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   ACHIEVEMENTS,
   DEFAULT_VIEW,
+  completion,
   TIER_COLOR,
   TIER_ORDER,
   listAchievements,
@@ -58,40 +59,37 @@ const isDefault = (v: ListView) =>
   v.sort === DEFAULT_VIEW.sort && v.show === DEFAULT_VIEW.show && v.tier === DEFAULT_VIEW.tier
 
 /** The trophy case: a summary strip, then every achievement as a row, sorted and filtered from a popup. */
-export function AchievementsSheet({ open, onOpenChange, state }: AchievementsSheetProps) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        showCloseButton={false}
-        initialFocus={(openType) => openType === "keyboard"}
-        className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
-        style={{ height: "85dvh", paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
-      >
-        <Body state={state} />
-        <SheetClose
-          render={<Button className="mt-2 min-h-12 w-full rounded-[16px] text-base font-medium" />}
-        >
-          Back
-        </SheetClose>
-      </SheetContent>
-    </Sheet>
-  )
+export function AchievementsSheet(props: AchievementsSheetProps) {
+  // Each opening is a new session: reveals and the view start fresh.
+  const [session, setSession] = useState(0)
+  const [wasOpen, setWasOpen] = useState(props.open)
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open)
+    if (props.open) setSession((n) => n + 1)
+  }
+  return <Session key={session} {...props} />
 }
 
-/** Mounted with the sheet, so reveals and the view start fresh each time it opens. */
-function Body({ state }: { state: AchievementState }) {
+function Session({ open, onOpenChange, state }: AchievementsSheetProps) {
   const [view, setView] = useState<ListView>(DEFAULT_VIEW)
   const [popup, setPopup] = useState(false)
   const [revealed, setRevealed] = useState<Set<AchievementId>>(() => new Set())
   const reveal = (id: AchievementId) => setRevealed((prev) => new Set(prev).add(id))
 
   const unlocked = ACHIEVEMENTS.filter((a) => state.unlocks[a.id] !== undefined).length
-  const percent = Math.round((unlocked / ACHIEVEMENTS.length) * 100)
+  const { percent } = completion(state.unlocks)
   const shown = listAchievements(state.unlocks, view)
 
   return (
     <>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        initialFocus={(openType) => openType === "keyboard"}
+        className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
+        style={{ height: "85dvh", paddingBottom: "max(4.5rem, env(safe-area-inset-bottom))" }}
+      >
       <SheetHeader className="flex-row items-center justify-between p-0 text-left">
         <div className="flex flex-col gap-1">
           <SheetTitle className="font-heading text-2xl font-semibold">Achievements</SheetTitle>
@@ -166,7 +164,11 @@ function Body({ state }: { state: AchievementState }) {
           </ul>
         )}
       </ScrollArea>
+        <FloatingBack />
+      </SheetContent>
+    </Sheet>
 
+      {/* A sibling of the sheet, not a child: a nested dialog would treat taps on the sheet as inside itself and never close. */}
       <ViewPopup open={popup} onOpenChange={setPopup} view={view} onChange={setView} />
     </>
   )
@@ -262,17 +264,18 @@ function ViewPopup({
         showCloseButton={false}
         initialFocus={(openType) => openType === "keyboard"}
         className="mx-auto flex w-full max-w-[420px] flex-col gap-5 rounded-t-[28px] px-5 pt-5"
-        style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "max(4.5rem, env(safe-area-inset-bottom))" }}
       >
         <SheetHeader className="flex-row items-center justify-between p-0 text-left">
           <SheetTitle className="font-heading text-xl font-semibold">Sort and filter</SheetTitle>
           <Button
             variant="ghost"
-            size="sm"
-            className="text-muted-foreground rounded-full"
+            size="icon"
+            aria-label="Reset"
+            className="text-muted-foreground size-9 rounded-full"
             onClick={() => onChange(DEFAULT_VIEW)}
           >
-            Reset
+            <RotateCcw className="size-5" aria-hidden="true" />
           </Button>
         </SheetHeader>
 
@@ -341,12 +344,7 @@ function ViewPopup({
             ))}
           </ToggleGroup>
         </Group>
-
-        <SheetClose
-          render={<Button className="min-h-12 w-full rounded-[16px] text-base font-medium" />}
-        >
-          Done
-        </SheetClose>
+        <FloatingBack />
       </SheetContent>
     </Sheet>
   )

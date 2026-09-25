@@ -60,7 +60,7 @@ import type { PlayerRecord, RoomDirectory, RoomRecord } from '@/lib/roomDirector
 import { DevDialog } from '@/components/DevDialog'
 import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntries, type HistoryEntry } from '@/lib/history'
 import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
-import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
+import { LADDER_KEY, loadLadder, newerLadder, saveLadder, suggestedBand, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
 import { loadTone, saveTone } from '@/lib/tone'
 import { SettingsSheet } from '@/components/SettingsSheet'
@@ -480,6 +480,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           tone={tone}
           onModeChange={setSetupMode}
           dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
+          suggested={suggestedBand(loadLadder(storage)) ?? undefined}
           onKnock={knock}
           online={{
             available: services !== null && connected,

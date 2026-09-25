@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SetupScreen } from './SetupScreen'
 
@@ -8,6 +8,19 @@ describe('SetupScreen', () => {
     render(<SetupScreen onStart={onStart} onOpenHistory={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: /start/i }))
     expect(onStart).toHaveBeenCalledWith({ mode: 'pvp', difficulty: 'medium', p1Symbol: 'X' })
+  })
+
+  it('marks the suggested band with a sparkle when a ladder says so, and nothing at first', () => {
+    const { rerender } = render(<SetupScreen initial={{ mode: 'bot', difficulty: 'hard', p1Symbol: 'X' }} onStart={() => {}} onOpenHistory={() => {}} />)
+    expect(screen.queryByLabelText('Suggested')).toBeNull()
+    rerender(<SetupScreen initial={{ mode: 'bot', difficulty: 'hard', p1Symbol: 'X' }} onStart={() => {}} onOpenHistory={() => {}} suggested="medium" />)
+    expect(within(screen.getByRole('button', { name: 'Medium' })).getByLabelText('Suggested')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: 'Hard' })).queryByLabelText('Suggested')).toBeNull()
+  })
+
+  it('the primary action wears the cta treatment', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Start game' })).toHaveClass('cta')
   })
 
   it('hides difficulty until bot mode is chosen', () => {

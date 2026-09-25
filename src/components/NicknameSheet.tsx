@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { FloatingBack } from './FloatingBack'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { NICKNAME_MAX, normalizeNickname, sanitizeNicknameInput } from '@/lib/identity'
 
@@ -23,8 +24,9 @@ export function NicknameSheet({ open, initial, onSave }: NicknameSheetProps) {
     <Sheet open={open} onOpenChange={(next) => !next && onSave(initial)}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         className="mx-auto flex w-full max-w-[420px] flex-col gap-5 rounded-t-[28px] px-5 pt-5"
-        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'max(4.5rem, env(safe-area-inset-bottom))' }}
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="text-2xl font-bold tracking-tight">Your nickname</SheetTitle>
@@ -46,6 +48,7 @@ export function NicknameSheet({ open, initial, onSave }: NicknameSheetProps) {
         <Button size="lg" className="min-h-14 w-full rounded-[18px] text-base font-semibold" onClick={save}>
           Save
         </Button>
+        <FloatingBack />
       </SheetContent>
     </Sheet>
   )
