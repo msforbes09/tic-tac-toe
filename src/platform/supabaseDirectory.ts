@@ -1,3 +1,4 @@
+import { readAchievementState, type AchievementState } from '@/lib/achievements'
 import type { GameRow } from '@/lib/history'
 import type { Ladder } from '@/lib/ladder'
 import type { SeriesResult } from '@/lib/room'
@@ -23,7 +24,7 @@ export type ChangesChannelLike = {
   subscribe(onStatus?: (status: string) => void): unknown
 }
 export type DirectoryClientLike = {
-  from(table: 'rooms' | 'results' | 'games' | 'ladders'): QueryLike
+  from(table: 'rooms' | 'results' | 'games' | 'ladders' | 'players' | 'achievements'): QueryLike
   rpc(fn: 'delete_room', args: { room_id: string; token: string }): Promise<Response<unknown>>
   rpc(fn: 'upsert_player', args: { p_id: string; p_token: string; p_nickname: string }): Promise<Response<unknown>>
   rpc(
@@ -31,6 +32,10 @@ export type DirectoryClientLike = {
     args: { p_id: string; p_token: string; p_rung: number | null; p_streak: number; p_top_held_at: string | null; p_top_held_count: number; p_updated_at: string },
   ): Promise<Response<unknown>>
   rpc(fn: 'reset_player_data', args: { p_id: string; p_token: string }): Promise<Response<unknown>>
+  rpc(
+    fn: 'save_achievements',
+    args: { p_id: string; p_token: string; p_unlocks: unknown; p_progress: unknown; p_badge: string | null; p_updated_at: string },
+  ): Promise<Response<unknown>>
   channel(name: string): ChangesChannelLike
   removeChannel(channel: ChangesChannelLike): Promise<unknown>
 }
@@ -93,6 +98,10 @@ type GameRowDb = {
   played_at: string
 }
 type LadderRow = { player_id: string; rung: number | null; streak: number; top_held_at: string | null; top_held_count: number; updated_at: string }
+type PlayerRow = { id: string; nickname: string }
+type AchievementsRow = { player_id: string; unlocks: unknown; progress: unknown; badge: string | null; updated_at: string }
+/** The badge column cannot hold undefined: this stands for "never chose", so the default is worn. */
+const DEFAULT_BADGE = 'default'
 
 const gameFromRow = (r: GameRowDb): GameRow => ({
   id: r.id, playerId: r.player_id, mode: r.mode, difficulty: r.difficulty, rung: r.rung, outcome: r.outcome, symbol: r.symbol, playedAt: Date.parse(r.played_at),
@@ -215,6 +224,31 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
       const { data, error } = await client.rpc('reset_player_data', { p_id: playerId, p_token: token })
       if (error) throw new Error(error.message)
       return data === true
+    },
+    async loadPlayer(playerId) {
+      const row = await unwrap<PlayerRow | null>(client.from('players').select('*').eq('id', playerId).maybeSingle())
+      return row ? { id: row.id, nickname: row.nickname } : null
+    },
+    async loadAchievements(playerId) {
+      const row = await unwrap<AchievementsRow | null>(client.from('achievements').select('*').eq('player_id', playerId).maybeSingle())
+      if (!row) return null
+      return readAchievementState({
+        unlocks: row.unlocks,
+        progress: row.progress,
+        badge: row.badge === DEFAULT_BADGE ? undefined : row.badge,
+        updatedAt: Date.parse(row.updated_at),
+      })
+    },
+    async saveAchievements(playerId, token, state: AchievementState) {
+      const { error } = await client.rpc('save_achievements', {
+        p_id: playerId,
+        p_token: token,
+        p_unlocks: state.unlocks,
+        p_progress: state.progress,
+        p_badge: state.badge === undefined ? DEFAULT_BADGE : state.badge,
+        p_updated_at: new Date(state.updatedAt).toISOString(),
+      })
+      if (error) throw new Error(error.message)
     },
     async loadLadder(playerId) {
       const row = await unwrap<LadderRow | null>(client.from('ladders').select('*').eq('player_id', playerId).maybeSingle())

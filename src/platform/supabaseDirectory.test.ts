@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { EMPTY_PROGRESS, EMPTY_STATE } from '@/lib/achievements'
 import { createSupabaseDirectory, type DirectoryClientLike } from './supabaseDirectory'
 
 type Response = { data: unknown; error: { message: string } | null }
@@ -235,5 +236,34 @@ describe('createSupabaseDirectory', () => {
     expect(f.client.rpc).toHaveBeenCalledWith('save_ladder', {
       p_id: 'dev', p_token: 'tok', p_rung: 13, p_streak: 3, p_top_held_at: new Date(5000).toISOString(), p_top_held_count: 1, p_updated_at: new Date(6000).toISOString(),
     })
+  })
+
+  it('loads a player row by id, or null', async () => {
+    const f = fakeClient([{ data: { id: 'dev', nickname: 'Ann', token_hash: 'h', last_seen_at: 'x' }, error: null }, { data: null, error: null }])
+    const dir = createSupabaseDirectory(f.client)
+    expect(await dir.loadPlayer('dev')).toEqual({ id: 'dev', nickname: 'Ann' })
+    expect(f.calls).toEqual([
+      ['players', 'select', '*'],
+      ['players', 'eq', 'id', 'dev'],
+      ['players', 'maybeSingle'],
+    ])
+    expect(await dir.loadPlayer('nobody')).toBeNull()
+  })
+
+  it('loads an achievements row and saves one through save_achievements, keeping a never-chosen badge distinct from None', async () => {
+    const row = { player_id: 'dev', unlocks: { 'hello-bot': 5, future: 1 }, progress: { ...EMPTY_PROGRESS, botDraws: 2 }, badge: 'default', updated_at: '2026-09-26T10:00:00.000Z' }
+    const f = fakeClient([{ data: row, error: null }, { data: { ...row, badge: null }, error: null }, { data: null, error: null }, { data: null, error: null }, { data: null, error: null }])
+    const dir = createSupabaseDirectory(f.client)
+    const loaded = await dir.loadAchievements('dev')
+    expect(loaded).toEqual({ progress: { ...EMPTY_PROGRESS, botDraws: 2 }, unlocks: { 'hello-bot': 5 }, updatedAt: Date.parse(row.updated_at) })
+    expect(loaded?.badge).toBeUndefined()
+    expect((await dir.loadAchievements('dev'))?.badge).toBeNull()
+    expect(await dir.loadAchievements('nobody')).toBeNull()
+    await dir.saveAchievements('dev', 'tok', { ...EMPTY_STATE, unlocks: { closer: 7 }, updatedAt: 6000 })
+    expect(f.client.rpc).toHaveBeenCalledWith('save_achievements', {
+      p_id: 'dev', p_token: 'tok', p_unlocks: { closer: 7 }, p_progress: EMPTY_PROGRESS, p_badge: 'default', p_updated_at: new Date(6000).toISOString(),
+    })
+    await dir.saveAchievements('dev', 'tok', { ...EMPTY_STATE, badge: null, updatedAt: 7000 })
+    expect(f.client.rpc).toHaveBeenLastCalledWith('save_achievements', expect.objectContaining({ p_badge: null }))
   })
 })

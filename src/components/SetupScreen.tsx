@@ -47,6 +47,8 @@ export type SetupScreenProps = {
   tone?: Tone
   /** When set, a gear in the header opens Settings. */
   onOpenSettings?: () => void
+  /** When set, an Achievements button under History opens the sheet. */
+  onOpenAchievements?: () => void
 }
 
 /** "Difficulty · 25 → 20": the saved rung and, when the picked band would move it, where it lands. */
@@ -101,6 +103,7 @@ export function SetupScreen({
   onKnock,
   tone = 'friendly',
   onOpenSettings,
+  onOpenAchievements,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
@@ -250,6 +253,11 @@ export function SetupScreen({
         >
           History
         </Button>
+        {onOpenAchievements && (
+          <Button variant="outline" size="lg" className="min-h-14 w-full rounded-[18px] text-base font-medium" onClick={onOpenAchievements}>
+            Achievements
+          </Button>
+        )}
         {install && <InstallCard offer={install} />}
       </div>
     </section>

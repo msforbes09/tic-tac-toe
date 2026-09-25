@@ -131,4 +131,12 @@ describe('createBrowserFeedback', () => {
     expect(audio.tones.length).toBeGreaterThan(before)
     expect(vibrate).toHaveBeenCalledTimes(2)
   })
+
+  it('plays a rising two-note chime and a light buzz for an achievement', () => {
+    const audio = fakeAudio()
+    const vibrate = vi.fn(() => true)
+    createBrowserFeedback({ vibrate, createAudio: () => audio }).play({ kind: 'achievement' })
+    expect(audio.tones).toEqual([784, 1175])
+    expect(vibrate).toHaveBeenCalledWith([20, 40, 40])
+  })
 })
