@@ -9,7 +9,8 @@ export type OnlinePanelProps = {
   /** The random themed name offered when there is no nickname yet. */
   suggestedNickname: string
   onSaveNickname: (name: string) => void
-  rooms: RoomRecord[]
+  /** Null until the list has been read once. */
+  rooms: RoomRecord[] | null
   /** roomId → members present right now, from lobby presence. */
   counts: Record<string, number>
   ownedRoomId: string | null
@@ -39,7 +40,9 @@ export function OnlinePanel({ nickname, suggestedNickname, onSaveNickname, rooms
         Create room
       </Button>
 
-      {rooms.length === 0 ? (
+      {rooms === null ? (
+        <p className="py-6 text-center text-muted-foreground">Loading rooms…</p>
+      ) : rooms.length === 0 ? (
         <p className="py-6 text-center text-muted-foreground">No open rooms yet. Create one!</p>
       ) : (
         <ul className="flex flex-col gap-2">

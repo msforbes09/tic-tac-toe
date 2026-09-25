@@ -407,7 +407,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
                     saveNickname(storage, name)
                     setNickname(name)
                   }}
-                  rooms={rooms ?? []}
+                  rooms={rooms}
                   counts={counts}
                   ownedRoomId={ownedRoom?.id ?? null}
                   onCreate={onCreate}
