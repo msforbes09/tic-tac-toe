@@ -9,7 +9,6 @@ import {
   bandOf,
   suggestedBand,
   loadLadder,
-  momentAfter,
   rungForSelection,
   saveLadder,
   type Ladder,
@@ -79,14 +78,8 @@ describe('advance', () => {
     expect(advance(advance(at(11, { streak: -1 }), 'draw', 0), 'loss', 0).rung).toBe(11)
   })
 
-  it('counts draws at the top and dates the first one', () => {
-    const first = advance(at(30), 'draw', 1000)
-    expect(first.topHeldAt).toBe(1000)
-    expect(first.topHeldCount).toBe(1)
-    const second = advance(first, 'draw', 2000)
-    expect(second.topHeldAt).toBe(1000)
-    expect(second.topHeldCount).toBe(2)
-    expect(advance(at(29), 'draw', 3000).topHeldCount).toBe(0)
+  it('keeps the rung on a draw at the top and only stamps the time', () => {
+    expect(advance(at(30, { streak: 2 }), 'draw', 1000)).toEqual({ rung: 30, streak: 0, updatedAt: 1000 })
   })
 })
 
@@ -112,47 +105,25 @@ describe('rungForSelection', () => {
   })
 })
 
-describe('momentAfter', () => {
-  it('promotes when a win crosses into a higher band', () => {
-    expect(momentAfter(at(10), at(11), 'win')).toBe('promoted')
-    expect(momentAfter(at(19, { streak: 2 }), at(21), 'win')).toBe('promoted')
-  })
-
-  it('says nothing for an ordinary rung change, a demotion, or a draw', () => {
-    expect(momentAfter(at(12), at(13), 'win')).toBeNull()
-    expect(momentAfter(at(11, { streak: -2 }), at(9), 'loss')).toBeNull()
-    expect(momentAfter(at(15), at(15), 'draw')).toBeNull()
-  })
-
-  it('announces the top when a win reaches 30, every time', () => {
-    expect(momentAfter(at(29), at(30), 'win')).toBe('top')
-    expect(momentAfter(at(29, { topHeldAt: 1 }), at(30, { topHeldAt: 1 }), 'win')).toBe('top')
-  })
-
-  it('celebrates the first draw at 30 and only the first', () => {
-    expect(momentAfter(at(30), at(30, { topHeldAt: 1, topHeldCount: 1 }), 'draw')).toBe('top-held')
-    expect(momentAfter(at(30, { topHeldAt: 1, topHeldCount: 1 }), at(30, { topHeldAt: 1, topHeldCount: 2 }), 'draw')).toBeNull()
-  })
-
-  it('offers a rematch after a loss at the top', () => {
-    expect(momentAfter(at(30), at(29, { streak: -1 }), 'loss')).toBe('lost-top')
-  })
-})
-
 describe('ladder storage', () => {
   it('reads an empty ladder when nothing is saved or the data is bad', () => {
     expect(loadLadder(fakeStorage())).toEqual(EMPTY_LADDER)
     expect(loadLadder(fakeStorage({ [LADDER_KEY]: 'nope' }))).toEqual(EMPTY_LADDER)
-    expect(loadLadder(fakeStorage({ [LADDER_KEY]: '{"rung":99,"topHeldAt":"x","streak":"a","topHeldCount":-1}' }))).toEqual(
+    expect(loadLadder(fakeStorage({ [LADDER_KEY]: '{"rung":99,"streak":"a"}' }))).toEqual(
       EMPTY_LADDER,
     )
   })
 
   it('round-trips a saved ladder', () => {
     const storage = fakeStorage()
-    const ladder: Ladder = { rung: 17, streak: -2, topHeldAt: 1700000000000, topHeldCount: 3, updatedAt: 0 }
+    const ladder: Ladder = { rung: 17, streak: -2, updatedAt: 0 }
     saveLadder(storage, ladder)
     expect(loadLadder(storage)).toEqual(ladder)
+  })
+
+  it('drops the old top-draw fields from a ladder saved before they were removed', () => {
+    const old = { rung: 30, streak: 0, topHeldAt: 1700000000000, topHeldCount: 3, updatedAt: 5 }
+    expect(loadLadder(fakeStorage({ [LADDER_KEY]: JSON.stringify(old) }))).toEqual({ rung: 30, streak: 0, updatedAt: 5 })
   })
 
   it('never throws when storage does', () => {

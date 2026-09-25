@@ -97,7 +97,7 @@ type GameRowDb = {
   symbol: GameRow['symbol']
   played_at: string
 }
-type LadderRow = { player_id: string; rung: number | null; streak: number; top_held_at: string | null; top_held_count: number; updated_at: string }
+type LadderRow = { player_id: string; rung: number | null; streak: number; updated_at: string }
 type PlayerRow = { id: string; nickname: string }
 type AchievementsRow = { player_id: string; unlocks: unknown; progress: unknown; badge: string | null; updated_at: string }
 /** The badge column cannot hold undefined: this stands for "never chose", so the default is worn. */
@@ -113,8 +113,6 @@ const ladderFromRow = (r: LadderRow): CloudLadder => ({
   playerId: r.player_id,
   rung: r.rung,
   streak: r.streak,
-  topHeldAt: r.top_held_at === null ? null : Date.parse(r.top_held_at),
-  topHeldCount: r.top_held_count,
   updatedAt: Date.parse(r.updated_at),
 })
 
@@ -260,8 +258,9 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
         p_token: token,
         p_rung: ladder.rung,
         p_streak: ladder.streak,
-        p_top_held_at: ladder.topHeldAt === null ? null : new Date(ladder.topHeldAt).toISOString(),
-        p_top_held_count: ladder.topHeldCount,
+        // The app no longer tracks draws at the top; save_ladder still takes these until a cleanup migration.
+        p_top_held_at: null,
+        p_top_held_count: 0,
         p_updated_at: new Date(ladder.updatedAt).toISOString(),
       })
       if (error) throw new Error(error.message)

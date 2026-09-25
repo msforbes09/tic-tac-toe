@@ -232,8 +232,8 @@ a pill at the top under the safe area, icon in tier colour on the left, the name
 
 Removed: the status-line second line for promoted / top / top-held, `TopCard`,
 `TOP_SHARE_TEXT`, the `TopBadge` block in History, and the `share` / `siteUrl` props
-that only served them. "Take it back" after a loss at 30 stays and still uses
-`momentAfter`; the achievements module does its own rung checks from the event.
+that only served them. Ladder moments are gone entirely, "Take it back" included; the
+achievements module does its own rung checks from the event.
 
 ## The sheet
 

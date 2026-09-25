@@ -324,9 +324,9 @@ describe('GameScreen ladder', () => {
     })
   const ladderIn = (storage: HistoryStorage) => JSON.parse(storage.getItem(LADDER_KEY) ?? 'null')
   const setupIn = (storage: HistoryStorage) => JSON.parse(storage.getItem(SETUP_KEY) ?? 'null')
-  const seeded = (rung: number | null, topHeldAt: number | null = null) => {
+  const seeded = (rung: number | null) => {
     const storage = fakeStorage()
-    storage.setItem(LADDER_KEY, JSON.stringify({ rung, topHeldAt }))
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung }))
     return storage
   }
   /** Plays the human's move, then lets the bot answer. */
@@ -413,7 +413,7 @@ describe('GameScreen ladder', () => {
     expect(screen.queryByText('That was the unbeatable bot.')).not.toBeInTheDocument()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.queryByTestId('celebration')).not.toBeInTheDocument()
-    expect(typeof ladderIn(storage).topHeldAt).toBe('number')
+    expect(ladderIn(storage).rung).toBe(30)
     expect(onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'game', mode: 'bot', result: 'draw', rungBefore: 30, rungAfter: 30 }))
     expect(screen.getByRole('button', { name: 'New game' })).toBeInTheDocument()
     view.unmount()
@@ -524,15 +524,15 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(21)
   })
 
-  it('offers to take it back after a loss at rung 30', () => {
+  it('offers a plain new game after a loss at rung 30', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0)
     const storage = seeded(30)
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
     play(1, 2, 4)
     expect(screen.getByText('You lost')).toBeInTheDocument()
     expect(ladderIn(storage).rung).toBe(29)
-    fireEvent.click(screen.getByRole('button', { name: 'Take it back' }))
     expect(screen.getByRole('button', { name: 'New game' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Take it back' })).not.toBeInTheDocument()
   })
 })
 
@@ -557,7 +557,7 @@ describe('GameScreen banter', () => {
   }
   const seeded = (ladder: Partial<Ladder>) => {
     const storage = fakeStorage()
-    storage.setItem(LADDER_KEY, JSON.stringify({ rung: null, streak: 0, topHeldAt: null, topHeldCount: 0, ...ladder }))
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: null, streak: 0, ...ladder }))
     return storage
   }
 

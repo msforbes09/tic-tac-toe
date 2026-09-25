@@ -14,12 +14,10 @@ import {
   advance,
   bandOf,
   loadLadder,
-  momentAfter,
   rungForSelection,
   saveLadder,
   type GameResult,
   type Ladder,
-  type Moment,
 } from '@/lib/ladder'
 import type { KnockEvent } from '@/lib/knock'
 import { saveSetup } from '@/lib/setup'
@@ -75,8 +73,6 @@ export function GameScreen({
   })
   const rung = ladder?.rung ?? 1
   const [gamesPlayed, setGamesPlayed] = useState(0)
-  // Only 'lost-top' matters here (the New game button reads Take it back); the rest are achievements now.
-  const [moment, setMoment] = useState<Moment | null>(null)
   // What the bot said about the last game.
   const [banter, setBanter] = useState<string | null>(null)
   // What the bot said last, so it never says the same thing two games running.
@@ -138,7 +134,6 @@ export function GameScreen({
       saveSetup(storage, { ...settings, difficulty: bandOf(next.rung ?? rung) })
       setLadder(next)
       setGamesPlayed((n) => n + 1)
-      setMoment(momentAfter(ladder, next, result))
       const line = banterFor(bandOf(rung), result, Math.random, tone, lastBanter.current)
       lastBanter.current = line
       setBanter(line)
@@ -172,7 +167,6 @@ export function GameScreen({
   // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
   const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
-    setMoment(null)
     setBanter(null)
     dispatch({ type: 'NEW_GAME' })
   }
@@ -214,7 +208,7 @@ export function GameScreen({
         className={cn('min-h-14 w-full rounded-[18px] text-base font-medium', finished && 'cta')}
         onClick={newGame}
       >
-        {finished && moment === 'lost-top' ? 'Take it back' : 'New game'}
+        New game
       </Button>
     </section>
   )
