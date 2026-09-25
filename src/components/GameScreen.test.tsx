@@ -403,6 +403,9 @@ describe('GameScreen ladder', () => {
     expect(screen.getByText('That was the unbeatable bot.')).toBeInTheDocument()
     expect(screen.getByTestId('celebration')).toBeInTheDocument()
     expect(typeof ladderIn(storage).topHeldAt).toBe('number')
+    // The card is modal: the board and New game are out of reach until it is closed.
+    expect(screen.getByRole('alertdialog', { name: 'That was the unbeatable bot.' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'New game' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(share).toHaveBeenCalledWith('https://ttt.test/', 'I held the unbeatable tic-tac-toe bot to a draw. Your move.')
     fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }))

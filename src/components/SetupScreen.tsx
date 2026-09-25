@@ -1,5 +1,14 @@
 import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { KnockEvent } from '@/lib/knock'
@@ -242,31 +251,28 @@ export function SetupScreen({
   )
 }
 
+/** The install nudge, in the middle of the screen; nothing behind it can be tapped until it is closed. */
 function InstallCard({ offer }: { offer: InstallOffer }) {
   return (
-    <div className="rise-in mt-1 flex flex-col gap-3 rounded-[18px] bg-muted/70 p-4 dark:bg-muted/50">
-      <div className="flex flex-col gap-1">
-        <span className="font-heading text-[15px] font-medium">Add to Home Screen</span>
-        <span className="text-sm text-muted-foreground">
-          {offer.kind === 'prompt'
-            ? 'Opens full screen like an app and works offline.'
-            : 'Tap Share, then add it to your Home Screen. It opens full screen and works offline.'}
-        </span>
-      </div>
-      <div className="flex gap-2">
-        {offer.kind === 'prompt' && (
-          <Button className="min-h-11 flex-1 rounded-[14px] text-[15px] font-medium" onClick={offer.onInstall}>
-            Install
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          className={cn('min-h-11 rounded-[14px] text-[15px]', offer.kind === 'prompt' ? 'px-4' : 'flex-1')}
-          onClick={offer.onDismiss}
-        >
-          Not now
-        </Button>
-      </div>
-    </div>
+    <AlertDialog open onOpenChange={(o) => !o && offer.onDismiss()}>
+      <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add to Home Screen</AlertDialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {offer.kind === 'prompt'
+              ? 'Opens full screen like an app and works offline.'
+              : 'Tap Share, then add it to your Home Screen. It opens full screen and works offline.'}
+          </p>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="min-h-11">Not now</AlertDialogCancel>
+          {offer.kind === 'prompt' && (
+            <AlertDialogAction className="min-h-11" onClick={offer.onInstall}>
+              Install
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

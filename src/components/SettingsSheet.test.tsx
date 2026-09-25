@@ -58,6 +58,56 @@ describe('SettingsSheet', () => {
     expect(onToneChange).toHaveBeenCalledWith('friendly')
   })
 
+  it('has no developer section unless developer mode is on', () => {
+    render(<SettingsSheet {...base} />)
+    expect(screen.queryByText('Developer')).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Rung' })).not.toBeInTheDocument()
+  })
+
+  describe('developer section', () => {
+    const dev = () => ({ rung: 17, onSetRung: vi.fn(), onReset: vi.fn(), onExit: vi.fn() })
+
+    it('sets the rung and closes', () => {
+      const d = dev()
+      const onOpenChange = vi.fn()
+      render(<SettingsSheet {...base} dev={d} onOpenChange={onOpenChange} />)
+      expect(screen.getByText('Developer')).toBeInTheDocument()
+      const field = screen.getByRole('spinbutton', { name: 'Rung' })
+      expect(field).toHaveValue(17)
+      fireEvent.change(field, { target: { value: '29' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Set' }))
+      expect(d.onSetRung).toHaveBeenCalledWith(29)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('refuses a rung outside 1 to 30', () => {
+      const d = dev()
+      render(<SettingsSheet {...base} dev={d} />)
+      fireEvent.change(screen.getByRole('spinbutton', { name: 'Rung' }), { target: { value: '31' } })
+      expect(screen.getByRole('button', { name: 'Set' })).toBeDisabled()
+    })
+
+    it('resets game data on the second tap and closes', () => {
+      const d = dev()
+      const onOpenChange = vi.fn()
+      render(<SettingsSheet {...base} dev={d} onOpenChange={onOpenChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Reset game data' }))
+      expect(d.onReset).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Tap again to confirm' }))
+      expect(d.onReset).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('exits developer mode and closes', () => {
+      const d = dev()
+      const onOpenChange = vi.fn()
+      render(<SettingsSheet {...base} dev={d} onOpenChange={onOpenChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Exit developer mode' }))
+      expect(d.onExit).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+  })
+
   it('closes from Done', () => {
     const onOpenChange = vi.fn()
     render(<SettingsSheet {...base} onOpenChange={onOpenChange} />)

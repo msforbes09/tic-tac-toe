@@ -106,7 +106,8 @@ describe('App developer mode', () => {
   const tap = (name: RegExp | string) => fireEvent.click(screen.getByRole('button', { name }))
 
   /** The whole knock, from setup. Ends with the developer dialog open (or not) after the pause. */
-  const doKnock = () => {
+  /** Every tap of the knock, ending on the occupied centre, with fake timers left running for the wait. */
+  const knockTaps = () => {
     tap(/two player/i)
     tap(/versus bot/i)
     tap(/two player/i)
@@ -117,11 +118,45 @@ describe('App developer mode', () => {
     // The last knock is a tap on the occupied centre: it falls through the disabled cell to its wrapper.
     vi.useFakeTimers()
     fireEvent.click(screen.getByRole('button', { name: 'Cell 5, O' }).parentElement!)
+  }
+  const doKnock = () => {
+    knockTaps()
     act(() => {
       vi.advanceTimersByTime(KNOCK_DELAY_MS)
     })
     vi.useRealTimers()
   }
+
+  it('cancels the developer prompt when the wait is interrupted by a tap, and lands on setup', () => {
+    render(<App />)
+    knockTaps()
+    // Tapping any cell during the wait (they are disabled, so it reaches the wrapper) calls it off.
+    fireEvent.click(screen.getByRole('button', { name: 'Cell 1, X' }).parentElement!)
+    expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(KNOCK_DELAY_MS)
+    })
+    vi.useRealTimers()
+    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
+  })
+
+  it('cancels the developer prompt when Back is tapped during the wait', () => {
+    render(<App />)
+    knockTaps()
+    tap(/^← back$/i)
+    act(() => {
+      vi.advanceTimersByTime(KNOCK_DELAY_MS)
+    })
+    vi.useRealTimers()
+    expect(screen.getByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
+    expect(screen.queryByText('Developer mode')).not.toBeInTheDocument()
+  })
+
+  it('offers no developer section in Settings outside developer mode', () => {
+    render(<App />)
+    tap('Settings')
+    expect(screen.queryByText('Developer')).not.toBeInTheDocument()
+  })
   /** Enter developer mode; every dialog action lands on setup. */
   const enter = async () => {
     tap(/^enter$/i)
@@ -142,8 +177,10 @@ describe('App developer mode', () => {
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium · 11')).toBeInTheDocument()
 
-    // The chip opens the developer panel: set the rung, which applies from the next game.
+    // The chip opens Settings, whose Developer section sets the rung, which applies from the next game.
     tap('Bot · Medium · 11')
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByText('Developer')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('spinbutton', { name: /rung/i }), { target: { value: '29' } })
     tap(/^set$/i)
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
@@ -180,7 +217,7 @@ describe('App developer mode', () => {
     tap(/versus bot/i)
     tap(/start game/i)
     tap('Bot · Medium · 11')
-    tap(/^exit$/i)
+    tap(/^exit developer mode$/i)
     expect(await screen.findByRole('heading', { name: /tic-tac-toe/i })).toBeInTheDocument()
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()

@@ -17,7 +17,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (promotion, top, top held, lost top), storage. Fully tested.
 - `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones: `friendly` by default, `cocky` when the Aggressive bot switch is on. `src/lib/tone.ts` remembers the switch; `components/SettingsSheet.tsx` (gear on the setup screen) holds it and the nickname. Fully tested.
 - `src/lib/climb.ts` — the rung series for the History graph (`components/ClimbGraph.tsx`, a sparkline over three band lanes). Fully tested.
-- `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the dialog; the chip and setup show the rung while it is on. Developer mode is in-memory only and the knock is ignored while it is on.
+- `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the Enter/Cancel prompt; the developer tools (rung, reset, exit) are a section of `SettingsSheet`, and the chip and setup show the rung while it is on. A tap or Back during the two-second wait cancels the prompt. Developer mode is in-memory only and the knock is ignored while it is on.
 - `src/lib/history.ts` — history persistence over a Storage-like interface. Fully tested.
 - `src/lib/feedback.ts` — which sound/haptic a board change gets. Fully tested.
 - `src/platform/browserFeedback.ts` — Web Audio tones + Vibration API behind the `Feedback` interface. The only browser-API code outside components.

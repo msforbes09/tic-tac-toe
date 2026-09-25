@@ -124,6 +124,15 @@ describe('SetupScreen install card', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
+  it('is a centred modal: nothing behind it can be tapped until it is closed', () => {
+    render(
+      <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'prompt', onInstall: () => {}, onDismiss: () => {} }} />,
+    )
+    expect(screen.getByRole('alertdialog', { name: /add to home screen/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /start game/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start game/i, hidden: true })).toBeInTheDocument()
+  })
+
   it('explains the Share steps on iPhone instead of an Install button', () => {
     render(
       <SetupScreen onStart={() => {}} onOpenHistory={() => {}} install={{ kind: 'ios-steps', onInstall: () => {}, onDismiss: () => {} }} />,

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { Tone } from '@/lib/banter'
 import { NICKNAME_MAX, normalizeNickname, sanitizeNicknameInput } from '@/lib/identity'
+import { TOP_RUNG } from '@/lib/ladder'
 import { cn } from '@/lib/utils'
 
 export type SettingsSheetProps = {
@@ -15,18 +16,35 @@ export type SettingsSheetProps = {
   onSaveNickname: (name: string) => void
   tone: Tone
   onToneChange: (tone: Tone) => void
+  /** Developer mode only: the Developer section. Every action there closes the sheet. */
+  dev?: DevSection
 }
 
-/** Settings, from the gear on the setup screen: the nickname and the bot's attitude. */
-export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange }: SettingsSheetProps) {
+export type DevSection = {
+  rung: number | null
+  onSetRung: (rung: number) => void
+  onReset: () => void
+  onExit: () => void
+}
+
+/** Settings, from the gear on the setup screen: the nickname, the bot's attitude, and developer tools. */
+export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange, dev }: SettingsSheetProps) {
   const initial = nickname ?? suggestedNickname
   const [value, setValue] = useState(initial)
+  const [rung, setRung] = useState(String(dev?.rung ?? 1))
+  const [confirmReset, setConfirmReset] = useState(false)
   useEffect(() => {
-    if (open) setValue(initial)
-  }, [open, initial])
+    if (!open) return
+    setValue(initial)
+    setRung(String(dev?.rung ?? 1))
+    setConfirmReset(false)
+  }, [open, initial, dev?.rung])
   const aggressive = tone === 'cocky'
+  const parsedRung = Number(rung)
+  const validRung = Number.isInteger(parsedRung) && parsedRung >= 1 && parsedRung <= TOP_RUNG
 
   const save = () => onSaveNickname(normalizeNickname(value) ?? initial)
+  const close = () => onOpenChange(false)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -87,11 +105,63 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
           </button>
         </div>
 
-        <Button
-          variant="secondary"
-          className="min-h-12 w-full rounded-[16px] text-base font-medium"
-          onClick={() => onOpenChange(false)}
-        >
+        {dev && (
+          <div className="flex flex-col gap-3 rounded-[18px] border border-dashed border-border px-4 py-3">
+            <span className="font-heading text-[15px] font-medium">Developer</span>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>Rung</span>
+              <span className="flex items-center gap-2">
+                <input
+                  aria-label="Rung"
+                  type="number"
+                  min={1}
+                  max={TOP_RUNG}
+                  value={rung}
+                  onChange={(e) => setRung(e.target.value)}
+                  className="min-h-10 w-20 rounded-xl border border-input bg-background px-3 text-center tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <Button
+                  className="min-h-10 rounded-xl"
+                  disabled={!validRung}
+                  onClick={() => {
+                    dev.onSetRung(parsedRung)
+                    close()
+                  }}
+                >
+                  Set
+                </Button>
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="min-h-11 flex-1 rounded-[14px]"
+                onClick={() => {
+                  if (!confirmReset) setConfirmReset(true)
+                  else {
+                    dev.onReset()
+                    setConfirmReset(false)
+                    close()
+                  }
+                }}
+              >
+                {confirmReset ? 'Tap again to confirm' : 'Reset game data'}
+              </Button>
+              <Button
+                variant="ghost"
+                className="min-h-11 rounded-[14px] px-4"
+                onClick={() => {
+                  dev.onExit()
+                  close()
+                }}
+              >
+                Exit developer mode
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Button variant="secondary" className="min-h-12 w-full rounded-[16px] text-base font-medium" onClick={close}>
           Done
         </Button>
       </SheetContent>

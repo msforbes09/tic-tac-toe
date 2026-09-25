@@ -31,9 +31,10 @@ The last tap **overrides** the centre with X and **voids the game**: the status
 reads "Game voided", the board is disabled, no winner is declared (even though
 X now holds a diagonal), nothing is recorded, and the ladder does not move.
 New game clears it. Two seconds after that tap the **Developer mode** dialog
-opens with **Cancel** and **Enter**. Enter turns developer mode on. It lives
-in memory only, so it ends when the app is closed, and the knock is ignored
-while it is already on.
+opens with **Cancel** and **Enter**. Any board tap or **Back** during those
+two seconds calls the dialog off and lands on the setup screen. Enter turns
+developer mode on. It lives in memory only, so it ends when the app is
+closed, and the knock is ignored while it is already on.
 
 Occupied and disabled cells let taps fall through (`pointer-events: none`) to
 a wrapper that reports them, so the final tap can be seen without enabling
@@ -50,9 +51,10 @@ moves on filled squares.
 
 Nothing else changes for the player.
 
-## The developer panel
+## The developer section
 
-Opened from the chip. Title "Developer mode", then:
+Lives in **Settings** (the gear on the setup screen) while developer mode is
+on; the game chip opens Settings too. A dashed "Developer" box holds:
 
 - **Rung** — a number field (1–30) and **Set**. Saves the rung with the streak
   reset; it applies from the next game. Closes the panel.
@@ -63,10 +65,10 @@ Opened from the chip. Title "Developer mode", then:
   `ladders` rows. The token is checked against the ladder row or the player
   row. Series results, rooms, the player row, developer mode, and the online
   identity stay.
-- **Exit** turns developer mode off. **Done** closes the panel.
+- **Exit developer mode** turns it off.
 
-Every button in either dialog, Cancel and Done included, lands on the setup
-screen.
+Set, Reset and Exit close Settings and land on the setup screen; so do Enter
+and Cancel on the knock dialog.
 
 ## Modules
 
