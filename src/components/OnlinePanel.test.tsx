@@ -57,6 +57,12 @@ describe('OnlinePanel', () => {
     expect(screen.getByRole('button', { name: /bold corner/i })).not.toHaveTextContent('Your room')
   })
 
+  it('says the rooms are loading until the list has been read once', () => {
+    render(<OnlinePanel {...props({ rooms: null })} />)
+    expect(screen.getByText('Loading rooms…')).toBeInTheDocument()
+    expect(screen.queryByText('No open rooms yet. Create one!')).not.toBeInTheDocument()
+  })
+
   it('shows the empty state and creates a room', () => {
     const p = props({ rooms: [] })
     render(<OnlinePanel {...p} />)

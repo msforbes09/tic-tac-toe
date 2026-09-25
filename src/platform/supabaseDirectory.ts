@@ -20,7 +20,7 @@ export type QueryLike = PromiseLike<Response<unknown>> & {
 }
 export type ChangesChannelLike = {
   on(type: 'postgres_changes', filter: { event: string; schema: string; table: string; filter?: string }, callback: () => void): ChangesChannelLike
-  subscribe(): unknown
+  subscribe(onStatus?: (status: string) => void): unknown
 }
 export type DirectoryClientLike = {
   from(table: 'rooms' | 'results' | 'games' | 'ladders'): QueryLike
@@ -139,10 +139,23 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
     const channel = client
       .channel(`directory-${table}-${++channelSeq}`)
       .on('postgres_changes', { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) }, refetch)
-    channel.subscribe()
+    // Read now, and again whenever the channel joins (first time and after every reconnect), the
+    // browser comes back online, or the app returns to the foreground: a one-shot read at launch can
+    // fail quietly (an installed app opening before the network is up) and changes made while the
+    // socket was down never arrive as events.
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') refetch()
+    })
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refetch()
+    }
+    window.addEventListener('online', refetch)
+    document.addEventListener('visibilitychange', onVisible)
     refetch()
     return () => {
       live = false
+      window.removeEventListener('online', refetch)
+      document.removeEventListener('visibilitychange', onVisible)
       void client.removeChannel(channel)
     }
   }
