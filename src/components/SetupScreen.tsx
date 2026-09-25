@@ -1,3 +1,4 @@
+import { History, Settings as Gear, Trophy } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
 import {
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { KnockEvent } from '@/lib/knock'
 import { rungForSelection } from '@/lib/ladder'
+import { segmentItem, segmentTrack } from './segment'
 import { cn } from '@/lib/utils'
 import { SETUP_HINTS, type Tone } from '@/lib/banter'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
@@ -20,9 +22,10 @@ import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
 /**
  * Online is available when Supabase is configured and the phone has a connection; the app supplies
- * the panel shown under the mode toggle, and the reason when it is unavailable ("Not set up" by default).
+ * the panel shown under the mode toggle, the Create room handler for the bottom slot, and the reason
+ * when it is unavailable ("Not set up" by default).
  */
-export type OnlineSetup = { available: boolean; reason?: string; panel: ReactNode }
+export type OnlineSetup = { available: boolean; reason?: string; panel: ReactNode; onCreate?: () => void }
 
 /** The install nudge: a one-tap prompt where the browser offers one, manual steps on iPhone. */
 export type InstallOffer = { kind: 'prompt' | 'ios-steps'; onInstall: () => void; onDismiss: () => void }
@@ -47,7 +50,7 @@ export type SetupScreenProps = {
   tone?: Tone
   /** When set, a gear in the header opens Settings. */
   onOpenSettings?: () => void
-  /** When set, an Achievements button under History opens the sheet. */
+  /** When set, a trophy button in the header opens the sheet. */
   onOpenAchievements?: () => void
 }
 
@@ -63,12 +66,6 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: 'medium', label: 'Medium' },
   { value: 'hard', label: 'Hard' },
 ]
-
-const segmentItem =
-  'min-h-12 rounded-[14px] text-[15px] font-medium text-muted-foreground transition-[background-color,color,box-shadow] duration-150 ' +
-  'hover:bg-transparent hover:text-foreground ' +
-  'aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-[0_1px_2px_0_rgb(0_0_0/0.08),0_0_0_1px_var(--tile-edge)] ' +
-  'dark:aria-pressed:bg-card dark:aria-pressed:shadow-[0_0_0_1px_var(--tile-edge)]'
 
 function Field({
   label,
@@ -111,20 +108,32 @@ export function SetupScreen({
 
   return (
     <section className="relative flex flex-1 flex-col gap-8">
-      {onOpenSettings && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Settings"
-          onClick={onOpenSettings}
-          className="absolute right-0 top-2 size-11 rounded-full text-muted-foreground"
-        >
-          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-          </svg>
-        </Button>
-      )}
+      <div className="absolute inset-x-0 top-2 flex items-center justify-between">
+        <div className="flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="History"
+            onClick={() => {
+              onKnock?.('history:open')
+              onOpenHistory()
+            }}
+            className="size-11 rounded-full text-muted-foreground"
+          >
+            <History className="size-6" aria-hidden="true" />
+          </Button>
+          {onOpenAchievements && (
+            <Button variant="ghost" size="icon" aria-label="Achievements" onClick={onOpenAchievements} className="size-11 rounded-full text-muted-foreground">
+              <Trophy className="size-6" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+        {onOpenSettings && (
+          <Button variant="ghost" size="icon" aria-label="Settings" onClick={onOpenSettings} className="size-11 rounded-full text-muted-foreground">
+            <Gear className="size-6" aria-hidden="true" />
+          </Button>
+        )}
+      </div>
       <header className="flex flex-col items-center pt-8 text-center">
         {/* A three-tile motif stands in for an app icon: the product is the board. */}
         <div aria-hidden="true" className="mb-6 grid grid-cols-3 gap-1.5">
@@ -154,7 +163,7 @@ export function SetupScreen({
               }
             }}
             spacing={0}
-            className="grid w-full grid-cols-3 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
+            className={cn(segmentTrack, 'grid-cols-3')}
             aria-label="Game mode"
           >
             <ToggleGroupItem value="pvp" className={segmentItem} aria-label="Two player" onClick={() => onKnock?.('mode:pvp')}>
@@ -190,7 +199,7 @@ export function SetupScreen({
                 if (next) setDifficulty(next as Difficulty)
               }}
               spacing={0}
-              className="grid w-full grid-cols-3 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
+              className={cn(segmentTrack, 'grid-cols-3')}
               aria-label="Difficulty"
             >
               {DIFFICULTIES.map((d) => (
@@ -211,7 +220,7 @@ export function SetupScreen({
                 if (next) setSymbol(next as Player)
               }}
               spacing={0}
-              className="grid w-full grid-cols-2 gap-1 rounded-[18px] bg-muted p-1 dark:bg-muted/60"
+              className={cn(segmentTrack, 'grid-cols-2')}
               aria-label="Your symbol"
             >
               {(['X', 'O'] as const).map((p) => (
@@ -230,7 +239,11 @@ export function SetupScreen({
       </div>
 
       <div className="mt-auto flex flex-col gap-3">
-        {mode !== 'online' && (
+        {mode === 'online' ? (
+          <Button size="lg" className="min-h-14 w-full rounded-[18px] text-base font-medium" onClick={online.onCreate}>
+            Create room
+          </Button>
+        ) : (
           <Button
             size="lg"
             className="min-h-14 w-full rounded-[18px] text-base font-medium"
@@ -240,22 +253,6 @@ export function SetupScreen({
             }}
           >
             Start game
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="lg"
-          className="min-h-14 w-full rounded-[18px] text-base font-medium"
-          onClick={() => {
-            onKnock?.('history:open')
-            onOpenHistory()
-          }}
-        >
-          History
-        </Button>
-        {onOpenAchievements && (
-          <Button variant="outline" size="lg" className="min-h-14 w-full rounded-[18px] text-base font-medium" onClick={onOpenAchievements}>
-            Achievements
           </Button>
         )}
         {install && <InstallCard offer={install} />}
