@@ -212,8 +212,9 @@ body {
    Sheets and dialogs are portalled to the body, so they follow the card's shift by selector. */
 :root {
   --room-shift: 6vw;
-  --room-inset: 12px;
+  --room-inset: 20px;
   --room-radius: 28px;
+  --room-bezel: 6px;
 }
 
 /* No `position` here: the splash and interstitial are rooms too, and they stay fixed. */
@@ -296,14 +297,21 @@ body {
     /* Shifted by margin, not transform: a transformed column would become the containing
        block for the fixed splash and interstitial and pin them inside the card. */
     margin-right: calc(2 * var(--room-shift));
+    /* A hard bezel: a hairline at the glass, a dark band, a lit outer edge, then the float. */
     box-shadow:
-      inset 0 0 0 1px var(--tile-edge),
-      0 40px 80px -30px oklch(0 0 0 / 80%),
-      0 0 0 1px oklch(0 0 0 / 40%);
+      0 0 0 1px oklch(1 0 0 / 14%),
+      0 0 0 var(--room-bezel) oklch(0.11 0 0),
+      0 0 0 calc(var(--room-bezel) + 1px) oklch(1 0 0 / 10%),
+      0 40px 80px -30px oklch(0 0 0 / 85%);
+  }
+
+  /* Anything fixed and centred on the viewport (toast, bottom sheets) follows the card instead. */
+  .room-follow,
+  [data-slot='sheet-content'][data-side='bottom'] {
+    right: calc(2 * var(--room-shift));
   }
 
   [data-slot='sheet-content'][data-side='bottom'] {
-    right: calc(2 * var(--room-shift));
     margin-bottom: var(--room-inset);
     border-bottom-left-radius: var(--room-radius);
     border-bottom-right-radius: var(--room-radius);

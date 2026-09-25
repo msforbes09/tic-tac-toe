@@ -46,3 +46,10 @@ describe('AchievementIcon map', () => {
     for (const a of ACHIEVEMENTS) expect(ICONS[a.icon], a.icon).toBeDefined()
   })
 })
+
+describe('AchievementToast in the room', () => {
+  it('follows the card on wide screens instead of centring on the viewport', () => {
+    render(<AchievementToast queue={['hello-bot']} onDone={() => {}} feedback={{ play: () => {} }} />)
+    expect(screen.getByRole('status')).toHaveClass('room-follow')
+  })
+})

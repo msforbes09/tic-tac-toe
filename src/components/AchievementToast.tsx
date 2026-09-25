@@ -26,7 +26,7 @@ export function AchievementToast({ queue, onDone, feedback }: { queue: Achieveme
       role="status"
       aria-label={`Achievement unlocked: ${a.name}`}
       onClick={onDone}
-      className="toast-in fixed inset-x-0 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-[388px] cursor-pointer items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 shadow-lg"
+      className="toast-in room-follow fixed inset-x-0 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-[388px] cursor-pointer items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 shadow-lg"
       style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       <AchievementIcon id={id} className="size-7" />
