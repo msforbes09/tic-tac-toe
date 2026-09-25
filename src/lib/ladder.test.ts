@@ -66,12 +66,15 @@ describe('advance', () => {
     expect(advance(at(15, { streak: -2 }), 'loss', 0).rung).toBe(13)
   })
 
-  it('only drops into a lower band on the third loss in a row', () => {
+  it('only drops into a lower band on the second loss in a row', () => {
     expect(advance(at(11), 'loss', 0).rung).toBe(11)
-    expect(advance(at(11, { streak: -1 }), 'loss', 0).rung).toBe(11)
+    expect(advance(at(11, { streak: -1 }), 'loss', 0).rung).toBe(10)
     expect(advance(at(11, { streak: -2 }), 'loss', 0).rung).toBe(9)
+    expect(advance(at(12), 'loss', 0).rung).toBe(11)
     expect(advance(at(12, { streak: -1 }), 'loss', 0).rung).toBe(11)
     expect(advance(at(12, { streak: -2 }), 'loss', 0).rung).toBe(10)
+    // A draw in between breaks the count: back to the first loss.
+    expect(advance(advance(at(11, { streak: -1 }), 'draw', 0), 'loss', 0).rung).toBe(11)
   })
 
   it('counts draws at the top and dates the first one', () => {

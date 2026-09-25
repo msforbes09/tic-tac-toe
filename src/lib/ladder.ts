@@ -10,8 +10,8 @@ const BAND_SIZE = 10
 const BANDS: Difficulty[] = ['easy', 'medium', 'hard']
 /** From this many wins (or losses) in a row, each result moves two rungs instead of one. */
 const HOT_STREAK = 3
-/** Dropping into a lower band takes this many losses in a row. */
-const DEMOTION_LOSSES = 3
+/** Dropping into a lower band takes this many losses in a row (a draw breaks the run). */
+const DEMOTION_LOSSES = 2
 
 export type GameResult = 'win' | 'loss' | 'draw'
 export type Moment = 'promoted' | 'top' | 'top-held' | 'lost-top'

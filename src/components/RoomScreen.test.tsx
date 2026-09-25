@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RoomScreen } from './RoomScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
@@ -57,7 +57,7 @@ async function setup(withCat = false) {
 async function startSeries(a: ReturnType<typeof mount>) {
   fireEvent.click(a.button(/^challenge$/i)!)
   await flush()
-  fireEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+  fireEvent.click(screen.getByRole('button', { name: /^accept$/i, hidden: true }))
   await flush()
 }
 
@@ -88,16 +88,17 @@ describe('RoomScreen people and presence', () => {
 })
 
 describe('RoomScreen challenges', () => {
-  it('challenge → waiting with Cancel; decline clears it', async () => {
+  it('challenge → a waiting window with Cancel, over the room; decline clears it', async () => {
     const { a, b } = await setup()
     fireEvent.click(a.button(/^challenge$/i)!)
     await flush()
-    expect(a.el()).toHaveTextContent('Waiting for Bob…')
-    expect(a.button(/^cancel$/i)).toBeDefined()
+    const waiting = screen.getByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })
+    expect(waiting).toBeInTheDocument()
+    expect(within(waiting).getByRole('button', { name: 'Cancel', hidden: true })).toBeInTheDocument()
     expect(screen.getByText('Alice challenges you')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^decline$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^decline$/i, hidden: true }))
     await flush()
-    expect(a.el()).not.toHaveTextContent('Waiting for Bob…')
+    expect(screen.queryByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).not.toBeInTheDocument()
     expect(screen.queryByText('Alice challenges you')).not.toBeInTheDocument()
     void b
   })
@@ -106,10 +107,11 @@ describe('RoomScreen challenges', () => {
     const { a } = await setup()
     fireEvent.click(a.button(/^challenge$/i)!)
     await flush()
-    fireEvent.click(a.button(/^cancel$/i)!)
+    const waiting = screen.getByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })
+    fireEvent.click(within(waiting).getByRole('button', { name: 'Cancel', hidden: true }))
     await flush()
     expect(screen.queryByText('Alice challenges you')).not.toBeInTheDocument()
-    expect(a.el()).not.toHaveTextContent('Waiting for Bob…')
+    expect(screen.queryByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).not.toBeInTheDocument()
   })
 
   it('accept starts the series for both, shows the vs splash to the third member, and Watch joins it', async () => {
@@ -165,7 +167,7 @@ describe('RoomScreen challenge sounds and disconnects', () => {
     await flush()
     expect(b.played).toContainEqual({ kind: 'challenge' })
     expect(a.played).not.toContainEqual({ kind: 'challenge' })
-    fireEvent.click(screen.getByRole('button', { name: /^accept$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^accept$/i, hidden: true }))
     await flush()
     expect(a.played).toContainEqual({ kind: 'accepted' })
   })
@@ -174,10 +176,10 @@ describe('RoomScreen challenge sounds and disconnects', () => {
     const { a, b } = await setup()
     fireEvent.click(a.button(/^challenge$/i)!)
     await flush()
-    expect(a.el()).toHaveTextContent('Waiting for Bob…')
+    expect(screen.getByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).toBeInTheDocument()
     b.unmount()
     await flush()
-    expect(a.el()).not.toHaveTextContent('Waiting for Bob…')
+    expect(screen.queryByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).not.toBeInTheDocument()
     expect(a.el()).toHaveTextContent('Bob left before answering')
   })
 
@@ -200,10 +202,10 @@ describe('RoomScreen timeouts and deletion', () => {
     const { a } = await setup()
     fireEvent.click(a.button(/^challenge$/i)!)
     await flush()
-    expect(a.el()).toHaveTextContent('Waiting for Bob…')
+    expect(screen.getByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(CHALLENGE_TIMEOUT_MS))
     await flush()
-    expect(a.el()).not.toHaveTextContent('Waiting for Bob…')
+    expect(screen.queryByRole('alertdialog', { name: 'Waiting for Bob…', hidden: true })).not.toBeInTheDocument()
     expect(screen.queryByText('Alice challenges you')).not.toBeInTheDocument()
   })
 

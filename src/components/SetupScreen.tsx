@@ -1,15 +1,28 @@
 import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { KnockEvent } from '@/lib/knock'
 import { rungForSelection } from '@/lib/ladder'
 import { cn } from '@/lib/utils'
+import { SETUP_HINTS, type Tone } from '@/lib/banter'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
-/** Online is available when Supabase is configured; the app supplies the panel shown under the mode toggle. */
-export type OnlineSetup = { available: boolean; panel: ReactNode }
+/**
+ * Online is available when Supabase is configured and the phone has a connection; the app supplies
+ * the panel shown under the mode toggle, and the reason when it is unavailable ("Not set up" by default).
+ */
+export type OnlineSetup = { available: boolean; reason?: string; panel: ReactNode }
 
 /** The install nudge: a one-tap prompt where the browser offers one, manual steps on iPhone. */
 export type InstallOffer = { kind: 'prompt' | 'ios-steps'; onInstall: () => void; onDismiss: () => void }
@@ -30,6 +43,10 @@ export type SetupScreenProps = {
   dev?: { rung: number | null }
   /** Reports taps that are steps of the developer knock. */
   onKnock?: (event: KnockEvent) => void
+  /** The bot's tone, for the difficulty hints. */
+  tone?: Tone
+  /** When set, a gear in the header opens Settings. */
+  onOpenSettings?: () => void
 }
 
 /** "Difficulty · 25 → 20": the saved rung and, when the picked band would move it, where it lands. */
@@ -39,10 +56,10 @@ function devDifficultyLabel(rung: number | null, band: Difficulty): string {
   return lands === rung ? `Difficulty · ${current}` : `Difficulty · ${current} → ${lands}`
 }
 
-const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
-  { value: 'easy', label: 'Easy', hint: 'Go on, warm up.' },
-  { value: 'medium', label: 'Medium', hint: 'Blocks. Bites back.' },
-  { value: 'hard', label: 'Hard', hint: "Bring your best. It won't matter." },
+const DIFFICULTIES: { value: Difficulty; label: string }[] = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' },
 ]
 
 const segmentItem =
@@ -82,13 +99,29 @@ export function SetupScreen({
   onModeChange,
   dev,
   onKnock,
+  tone = 'friendly',
+  onOpenSettings,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
   const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
 
   return (
-    <section className="flex flex-1 flex-col gap-8">
+    <section className="relative flex flex-1 flex-col gap-8">
+      {onOpenSettings && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Settings"
+          onClick={onOpenSettings}
+          className="absolute right-0 top-2 size-11 rounded-full text-muted-foreground"
+        >
+          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+          </svg>
+        </Button>
+      )}
       <header className="flex flex-col items-center pt-8 text-center">
         {/* A three-tile motif stands in for an app icon: the product is the board. */}
         <div aria-hidden="true" className="mb-6 grid grid-cols-3 gap-1.5">
@@ -134,7 +167,9 @@ export function SetupScreen({
               disabled={!online.available}
             >
               Online
-              {!online.available && <span className="text-[11px] font-normal text-muted-foreground">Not set up</span>}
+              {!online.available && (
+                <span className="text-[11px] font-normal text-muted-foreground">{online.reason ?? 'Not set up'}</span>
+              )}
             </ToggleGroupItem>
           </ToggleGroup>
         </Field>
@@ -142,7 +177,7 @@ export function SetupScreen({
         {mode === 'bot' && (
           <Field
             label={dev ? devDifficultyLabel(dev.rung, difficulty) : 'Difficulty'}
-            hint={DIFFICULTIES.find((d) => d.value === difficulty)?.hint ?? ''}
+            hint={SETUP_HINTS[tone][difficulty]}
             className="rise-in"
           >
             <ToggleGroup
@@ -221,31 +256,28 @@ export function SetupScreen({
   )
 }
 
+/** The install nudge, in the middle of the screen; nothing behind it can be tapped until it is closed. */
 function InstallCard({ offer }: { offer: InstallOffer }) {
   return (
-    <div className="rise-in mt-1 flex flex-col gap-3 rounded-[18px] bg-muted/70 p-4 dark:bg-muted/50">
-      <div className="flex flex-col gap-1">
-        <span className="font-heading text-[15px] font-medium">Add to Home Screen</span>
-        <span className="text-sm text-muted-foreground">
-          {offer.kind === 'prompt'
-            ? 'Opens full screen like an app and works offline.'
-            : 'Tap Share, then add it to your Home Screen. It opens full screen and works offline.'}
-        </span>
-      </div>
-      <div className="flex gap-2">
-        {offer.kind === 'prompt' && (
-          <Button className="min-h-11 flex-1 rounded-[14px] text-[15px] font-medium" onClick={offer.onInstall}>
-            Install
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          className={cn('min-h-11 rounded-[14px] text-[15px]', offer.kind === 'prompt' ? 'px-4' : 'flex-1')}
-          onClick={offer.onDismiss}
-        >
-          Not now
-        </Button>
-      </div>
-    </div>
+    <AlertDialog open onOpenChange={(o) => !o && offer.onDismiss()}>
+      <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add to Home Screen</AlertDialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {offer.kind === 'prompt'
+              ? 'Opens full screen like an app and works offline.'
+              : 'Tap Share, then add it to your Home Screen. It opens full screen and works offline.'}
+          </p>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="min-h-11">Not now</AlertDialogCancel>
+          {offer.kind === 'prompt' && (
+            <AlertDialogAction className="min-h-11" onClick={offer.onInstall}>
+              Install
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

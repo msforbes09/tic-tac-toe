@@ -46,8 +46,11 @@ import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntri
 import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
 import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
+import { loadTone, saveTone } from '@/lib/tone'
+import { SettingsSheet } from '@/components/SettingsSheet'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
+import { useNetworkOnline } from '@/platform/network'
 import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
 import { shareLink, type ShareLink } from '@/platform/share'
 import { createSupabaseServices } from '@/platform/supabase'
@@ -163,29 +166,45 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [tone, setTone] = useState(() => loadTone(storage))
+  // Airplane mode and the like: Online is shown disabled until the connection is back.
+  const connected = useNetworkOnline()
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
   // In memory only, so it ends with the session; the knock is ignored while it is already on.
   const [devMode, setDevMode] = useState(false)
-  const [devDialog, setDevDialog] = useState<'enter' | 'panel' | null>(null)
+  const [devDialog, setDevDialog] = useState(false)
   const [knockProgress, setKnockProgress] = useState(0)
-  const [knockDone, setKnockDone] = useState(0)
+  // True during the two-second wait after the knock. Any tap or Back in that window calls it off.
+  const [knockPending, setKnockPending] = useState(false)
+  const cancelKnock = useCallback(() => {
+    setKnockPending(false)
+    setScreen({ kind: 'setup' })
+  }, [])
   const knock = useCallback(
     (event: KnockEvent): boolean => {
       if (devMode) return false
+      if (knockPending) {
+        cancelKnock()
+        return false
+      }
       const next = knockStep(knockProgress, event)
       const done = next === KNOCK.length
       setKnockProgress(done ? 0 : next)
-      if (done) setKnockDone((n) => n + 1)
+      if (done) setKnockPending(true)
       return done
     },
-    [knockProgress, devMode],
+    [knockProgress, knockPending, devMode, cancelKnock],
   )
   useEffect(() => {
-    if (knockDone === 0) return
-    const id = setTimeout(() => setDevDialog('enter'), KNOCK_DELAY_MS)
+    if (!knockPending) return
+    const id = setTimeout(() => {
+      setKnockPending(false)
+      setDevDialog(true)
+    }, KNOCK_DELAY_MS)
     return () => clearTimeout(id)
-  }, [knockDone])
+  }, [knockPending])
   // Developer reset: this device's games, ladder, and remembered setup, locally and in the cloud.
   const resetGameData = () => {
     for (const key of [HISTORY_KEY, LADDER_KEY, SETUP_KEY]) {
@@ -332,13 +351,13 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           settings={screen.settings}
           storage={storage}
           feedback={feedback}
-          onBack={() => setScreen({ kind: 'setup' })}
+          onBack={() => (knockPending ? cancelKnock() : setScreen({ kind: 'setup' }))}
           share={share}
           siteUrl={siteUrl}
           dev={devMode}
-          onOpenDev={() => setDevDialog('panel')}
           onKnock={knock}
           onRecorded={onRecorded}
+          tone={tone}
         />
       )}
       {screen.kind === 'room' && services && self && (
@@ -363,11 +382,14 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
             setScreen({ kind: 'game', settings: next })
           }}
           onOpenHistory={() => setHistoryOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          tone={tone}
           onModeChange={setSetupMode}
           dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
           onKnock={knock}
           online={{
-            available: services !== null,
+            available: services !== null && connected,
+            reason: services !== null && !connected ? 'Offline' : undefined,
             panel: services && (
               <>
                 {notice && (
@@ -409,18 +431,50 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         onKnock={knock}
       />
 
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        nickname={nickname}
+        suggestedNickname={suggestedNickname}
+        onSaveNickname={(name) => {
+          saveNickname(storage, name)
+          setNickname(name)
+        }}
+        tone={tone}
+        onToneChange={(next) => {
+          saveTone(storage, next)
+          setTone(next)
+        }}
+        // Developer tools, while developer mode is on. Each action lands on the setup screen.
+        dev={
+          devMode
+            ? {
+                rung: loadLadder(storage).rung,
+                onSetRung: (rung) => {
+                  saveLadder(storage, { ...loadLadder(storage), rung, streak: 0 })
+                  setScreen({ kind: 'setup' })
+                },
+                onReset: () => {
+                  resetGameData()
+                  setScreen({ kind: 'setup' })
+                },
+                onExit: () => {
+                  setDevMode(false)
+                  setScreen({ kind: 'setup' })
+                },
+              }
+            : undefined
+        }
+      />
+
       <DevDialog
-        mode={devDialog}
-        rung={loadLadder(storage).rung}
-        // Any action in the developer dialog lands on the setup screen.
+        open={devDialog}
+        // Enter or Cancel, either way the knock's voided game is left behind for the setup screen.
         onClose={() => {
-          setDevDialog(null)
+          setDevDialog(false)
           setScreen({ kind: 'setup' })
         }}
         onEnter={() => setDevMode(true)}
-        onSetRung={(rung) => saveLadder(storage, { ...loadLadder(storage), rung, streak: 0 })}
-        onReset={resetGameData}
-        onExit={() => setDevMode(false)}
       />
 
       <AlertDialog open={replacePrompt !== null} onOpenChange={(o) => !o && setReplacePrompt(null)}>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { ClimbGraph } from './ClimbGraph'
 import { Mark } from './Mark'
 import { TOP_SHARE_TEXT } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { climbSeries } from '@/lib/climb'
 import { botStats, loadHistory, winnerSeat, type GameRow, type HistoryEntry, type HistoryStorage } from '@/lib/history'
 import type { KnockEvent } from '@/lib/knock'
 import { loadLadder, type Ladder } from '@/lib/ladder'
@@ -41,7 +43,14 @@ export const CLOUD_LIMIT = 500
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
 /** Cloud rows and local entries meet here: a game from Player 1's side. */
-type Shown = { id: string; at: number; difficulty: Difficulty | null; outcome: 'won' | 'lost' | 'draw'; symbol: 'X' | 'O' }
+type Shown = {
+  id: string
+  at: number
+  difficulty: Difficulty | null
+  rung: number | null
+  outcome: 'won' | 'lost' | 'draw'
+  symbol: 'X' | 'O'
+}
 
 const fromEntry = (e: HistoryEntry): Shown => {
   const seat = winnerSeat(e)
@@ -49,11 +58,19 @@ const fromEntry = (e: HistoryEntry): Shown => {
     id: e.id,
     at: e.timestamp,
     difficulty: e.difficulty,
+    rung: e.rung ?? null,
     outcome: seat === null ? 'draw' : seat === 'p1' ? 'won' : 'lost',
     symbol: e.p1Symbol ?? 'X',
   }
 }
-const fromRow = (g: GameRow): Shown => ({ id: g.id, at: g.playedAt, difficulty: g.difficulty, outcome: g.outcome, symbol: g.symbol })
+const fromRow = (g: GameRow): Shown => ({
+  id: g.id,
+  at: g.playedAt,
+  difficulty: g.difficulty,
+  rung: g.rung,
+  outcome: g.outcome,
+  symbol: g.symbol,
+})
 
 /** botStats works on entries; rebuild the minimum it needs from what is shown. */
 const asEntries = (games: Shown[]): HistoryEntry[] =>
@@ -234,6 +251,7 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
     return directory.onMyResultsChange(deviceId, setSeries)
   }, [open, mode, deviceId, directory])
 
+  const climb = mode === 'bot' ? climbSeries(games) : []
   const outcomeLabel = (g: Shown) =>
     g.outcome === 'draw' ? 'Draw' : mode === 'pvp' ? (g.outcome === 'won' ? 'Player 1 won' : 'Player 2 won') : g.outcome === 'won' ? 'You won' : 'You lost'
 
@@ -241,6 +259,9 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        // A tap moves no focus (the default would focus a button deep in the list and scroll to it);
+        // keyboard users keep the default.
+        initialFocus={(openType) => openType === 'keyboard'}
         className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
         // Inline height: the sheet's own `data-[side=bottom]:h-auto` would beat a class, and without a
         // definite height the list's scroll area grows with its content instead of scrolling.
@@ -293,10 +314,24 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
             {mode !== 'online' && (
               <>
                 {mode === 'bot' && ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
-                {games.length > 0 && (
-                  <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
-                    {mode === 'bot' ? <BotRecordTable games={games} /> : <PvpTally games={games} />}
+                {mode === 'bot' && climb.length >= 2 ? (
+                  // The climb and the record side by side, one swipe apart.
+                  <div
+                    role="group"
+                    aria-label="Climb and record"
+                    className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    <ClimbGraph rungs={climb} className="w-full shrink-0 snap-center" />
+                    <div className="w-full shrink-0 snap-center rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                      <BotRecordTable games={games} />
+                    </div>
                   </div>
+                ) : (
+                  games.length > 0 && (
+                    <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                      {mode === 'bot' ? <BotRecordTable games={games} /> : <PvpTally games={games} />}
+                    </div>
+                  )
                 )}
                 {games.length === 0 ? (
                   <p className="py-6 text-center text-sm text-muted-foreground">{mode === 'bot' ? 'No bot games yet' : 'No two-player games yet'}</p>

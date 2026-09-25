@@ -93,6 +93,15 @@ describe('HistorySheet bot section', () => {
     expect(screen.getByRole('row', { name: 'Hard 0 1 0' })).toBeInTheDocument()
   })
 
+  it('opens at the top: nothing in the list is focused so it cannot scroll into view', async () => {
+    const storage = fakeStorage(Array.from({ length: 12 }, (_, i) => entry({ id: `g${i}`, timestamp: i })))
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    await act(async () => {})
+    await act(async () => {})
+    expect(screen.getByRole('button', { name: 'View more' })).not.toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Back' })).not.toHaveFocus()
+  })
+
   it('shows ten games at a time with View more and starts over when reopened', () => {
     const many = Array.from({ length: 25 }, (_, i) => entry({ id: `g${i}` }))
     const storage = fakeStorage(many)
@@ -221,6 +230,41 @@ describe('HistorySheet cloud rows', () => {
     render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} cloud={{ deviceId: 'me', directory: dir }} />)
     await act(async () => {})
     expect(screen.getByRole('listitem')).toHaveTextContent('You won')
+  })
+})
+
+describe('HistorySheet climb graph', () => {
+  it('draws the rungs of recent bot games, oldest first, in bot mode', () => {
+    const storage = fakeStorage([
+      entry({ id: 'a', timestamp: 1, rung: 11, outcome: 'X' }),
+      entry({ id: 'b', timestamp: 3, rung: 13, outcome: 'X' }),
+      entry({ id: 'c', timestamp: 2, rung: 12, outcome: 'draw' }),
+      entry({ id: 'old', timestamp: 0, outcome: 'O' }),
+    ])
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    const graph = screen.getByRole('img', { name: /your climb/i })
+    expect(graph).toHaveAccessibleDescription('Rungs 11, 12, 13')
+    expect(screen.getByText('Your climb')).toBeInTheDocument()
+    // The climb and the record sit side by side in one row that scrolls sideways.
+    const row = screen.getByRole('group', { name: 'Climb and record' })
+    expect(row).toContainElement(graph)
+    expect(row).toContainElement(screen.getByRole('table', { name: /record against the bot/i }))
+    expect(row.className).toMatch(/overflow-x-auto/)
+  })
+
+  it('needs at least two games with a rung', () => {
+    const storage = fakeStorage([entry({ id: 'a', rung: 11 }), entry({ id: 'old', outcome: 'O' })])
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.queryByRole('img', { name: /your climb/i })).not.toBeInTheDocument()
+  })
+
+  it('does not appear for two-player history', () => {
+    const storage = fakeStorage([
+      entry({ id: 'a', mode: 'pvp', difficulty: null, rung: 11 }),
+      entry({ id: 'b', mode: 'pvp', difficulty: null, rung: 12 }),
+    ])
+    render(<HistorySheet mode="pvp" open onOpenChange={() => {}} storage={storage} />)
+    expect(screen.queryByRole('img', { name: /your climb/i })).not.toBeInTheDocument()
   })
 })
 

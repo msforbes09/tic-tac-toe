@@ -235,7 +235,7 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
       </p>
 
       <div className="my-auto flex flex-col gap-5 pb-6">
-        <StatusBar state={state.game} message={status} />
+        <StatusBar state={state.game} message={status} mark={!waiting} />
         <div className="relative">
           <Board board={state.game.board} winningLine={state.game.winningLine} disabled={finished || !myTurn || waiting} onSelect={play} />
           {youWonGame && <Celebration />}

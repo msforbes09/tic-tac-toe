@@ -5,7 +5,8 @@ import { BOT_DELAY_MS, GameScreen } from './GameScreen'
 import type { Feedback, FeedbackEvent } from '@/lib/feedback'
 import type { Settings } from '@/lib/types'
 import { STORAGE_KEY, type HistoryEntry, type HistoryStorage } from '@/lib/history'
-import { LADDER_KEY } from '@/lib/ladder'
+import { LADDER_KEY, type Ladder } from '@/lib/ladder'
+import { BANTER } from '@/lib/banter'
 import { SETUP_KEY } from '@/lib/setup'
 import { chooseMove } from '@/lib/bot'
 
@@ -329,7 +330,8 @@ describe('GameScreen ladder', () => {
     const storage = seeded(3)
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
     expect(screen.getByText('Bot · Hard')).toBeInTheDocument()
-    expect(ladderIn(storage).rung).toBe(14)
+    // The nudge to 14 is only in memory until a game finishes; backing out would leave 3 saved.
+    expect(ladderIn(storage).rung).toBe(3)
     play(1, 2, 4)
     expect(screen.getByText('You lost')).toBeInTheDocument()
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
@@ -402,6 +404,9 @@ describe('GameScreen ladder', () => {
     expect(screen.getByText('That was the unbeatable bot.')).toBeInTheDocument()
     expect(screen.getByTestId('celebration')).toBeInTheDocument()
     expect(typeof ladderIn(storage).topHeldAt).toBe('number')
+    // The card is modal: the board and New game are out of reach until it is closed.
+    expect(screen.getByRole('alertdialog', { name: 'That was the unbeatable bot.' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'New game' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(share).toHaveBeenCalledWith('https://ttt.test/', 'I held the unbeatable tic-tac-toe bot to a draw. Your move.')
     fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }))
@@ -414,25 +419,37 @@ describe('GameScreen ladder', () => {
     view.unmount()
   })
 
-  it('nudges once, even under StrictMode which runs initialisers and effects twice', () => {
+  it('does not save the nudge until a game finishes, even under StrictMode which runs initialisers twice', () => {
     const storage = seeded(30)
-    render(
+    const view = render(
       <StrictMode>
         <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} />
       </StrictMode>,
     )
-    expect(ladderIn(storage).rung).toBe(22)
+    // Rung 30 picking Medium plays at 22: the chip shows the picked band and nothing is written yet.
+    expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(30)
+    view.unmount()
+    expect(ladderIn(storage).rung).toBe(30)
   })
 
-  it('shows the rung and streak on the chip in developer mode, and the chip opens the dev panel', () => {
-    const onOpenDev = vi.fn()
+  it('saves the nudged rung, moved by the result, once the first game finishes', () => {
+    // Rung 3 picking Hard plays at 14; the loss then saves 13, nudged once and moved once.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const storage = seeded(3)
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(13)
+    expect(storage.entries()[0]).toMatchObject({ rung: 14 })
+  })
+
+  it('shows the rung and streak on the chip in developer mode; the chip is never a button', () => {
     const storage = fakeStorage()
     storage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 2 }))
-    render(
-      <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} dev onOpenDev={onOpenDev} />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Bot · Medium · 17 · +2' }))
-    expect(onOpenDev).toHaveBeenCalledTimes(1)
+    render(<GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} dev />)
+    expect(screen.getByText('Bot · Medium · 17 · +2')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
   })
 
   it('shows no streak on the chip when there is none, and no chip button outside developer mode', () => {
@@ -474,8 +491,15 @@ describe('GameScreen ladder', () => {
   })
 
   it('starts a first-ever bot game at the bottom of the picked band', () => {
+    // Nothing is saved until the game ends; the recorded game shows the rung it was played at.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     const storage = fakeStorage()
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    expect(storage.getItem(LADDER_KEY)).toBeNull()
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(storage.entries()[0]).toMatchObject({ rung: 21 })
+    // A first loss at the band's bottom is held there, so 21 is what gets saved.
     expect(ladderIn(storage).rung).toBe(21)
   })
 
@@ -488,5 +512,87 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(29)
     fireEvent.click(screen.getByRole('button', { name: 'Take it back' }))
     expect(screen.getByRole('button', { name: 'New game' })).toBeInTheDocument()
+  })
+})
+
+describe('GameScreen banter', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+  const botTurn = () =>
+    act(() => {
+      vi.advanceTimersByTime(BOT_DELAY_MS)
+    })
+  const play = (...cells: number[]) => {
+    for (const n of cells) {
+      fireEvent.click(cell(n))
+      botTurn()
+    }
+  }
+  const seeded = (ladder: Partial<Ladder>) => {
+    const storage = fakeStorage()
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: null, streak: 0, topHeldAt: null, topHeldCount: 0, ...ladder }))
+    return storage
+  }
+
+  it('lets the bot comment on an ordinary win, in the band the game was played at, until New game', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(screen.getByText(BANTER.friendly.easy.win[0])).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
+  })
+
+  it('talks trash instead when the bot is aggressive', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} tone="cocky" />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText(BANTER.cocky.easy.win[0])).toBeInTheDocument()
+  })
+
+  it('comments on a loss', () => {
+    // Rung 3 picking Hard lands on 14, a Medium bot that wins fast with rng 0.
+    render(<GameScreen settings={hardBot} storage={seeded({ rung: 3 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(screen.getByText(BANTER.friendly.medium.loss[0])).toBeInTheDocument()
+  })
+
+  it('lets a ladder moment speak instead of the bot', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 10 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('Promoted to Medium')).toBeInTheDocument()
+    expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
+  })
+
+  it('says nothing after a two-player game', () => {
+    render(<GameScreen settings={pvp} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
+    for (const n of [1, 4, 2, 5, 3]) fireEvent.click(cell(n))
+    expect(screen.getByText('Player 1 wins!')).toBeInTheDocument()
+    for (const line of [...BANTER.friendly.easy.win, ...BANTER.friendly.easy.loss])
+      expect(screen.queryByText(line)).not.toBeInTheDocument()
+  })
+
+  it('shows a streak pill from the third straight win, and never for losses', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5, streak: 2 })} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.queryByText(/in a row/)).not.toBeInTheDocument()
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText('3 in a row')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    expect(screen.getByText('3 in a row')).toBeInTheDocument()
+  })
+
+  it('shows no streak pill for a losing streak', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5, streak: -3 })} feedback={recorder()} onBack={() => {}} />)
+    expect(screen.queryByText(/in a row/)).not.toBeInTheDocument()
   })
 })
