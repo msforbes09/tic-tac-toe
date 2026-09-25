@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chancesFor, chooseMove } from './bot'
+import { MAX_THINK_MS, chancesFor, chooseMove, thinkTime } from './bot'
 import { availableMoves, createBoard, getWinner, isGameOver, makeMove, nextPlayer } from './game'
 import type { Board, Player } from './types'
 
@@ -189,6 +189,47 @@ describe('the climb to the top', () => {
   it('a perfect player never beats rung 30', () => {
     for (let i = 0; i < 300; i++) {
       expect(playGame(30, 30, Math.random)).toBeNull()
+    }
+  })
+})
+
+describe('thinkTime', () => {
+  const open = b('....X....')
+  const forcedWin = b('OO.XX....') // O to move at cell 2 wins
+  const forcedBlock = b('XX..O....') // O to move at cell 2 blocks
+
+  it('snaps to a winning or blocking move at every band', () => {
+    for (const rung of [1, 15, 30]) {
+      expect(thinkTime(forcedWin, rung, 2, () => 1)).toBeLessThanOrEqual(320)
+      expect(thinkTime(forcedBlock, rung, 2, () => 1)).toBeLessThanOrEqual(320)
+    }
+  })
+
+  it('thinks longer the higher the band on the same quiet board', () => {
+    const mid = b('X...O.X..')
+    const easy = thinkTime(mid, 5, 1, () => 0.5)
+    const medium = thinkTime(mid, 15, 1, () => 0.5)
+    const hard = thinkTime(mid, 30, 1, () => 0.5)
+    expect(easy).toBeLessThan(medium)
+    expect(medium).toBeLessThan(hard)
+    expect(hard).toBeGreaterThanOrEqual(700)
+  })
+
+  it('thinks longer with more empty squares, and answers the opening quickly', () => {
+    const openBoard = thinkTime(b('X...O....'), 30, 8, () => 0.5)
+    const lateBoard = thinkTime(b('XOX.XO.O.'), 30, 3, () => 0.5)
+    const opening = thinkTime(open, 30, 0, () => 0.5)
+    expect(lateBoard).toBeLessThan(openBoard)
+    expect(opening).toBeLessThan(openBoard)
+  })
+
+  it('stays within bounds for every rung and roll', () => {
+    for (let rung = 1; rung <= 30; rung++) {
+      for (const roll of [0, 0.37, 0.99]) {
+        const t = thinkTime(b('X...O....'), rung, 8, () => roll)
+        expect(t).toBeGreaterThanOrEqual(150)
+        expect(t).toBeLessThanOrEqual(MAX_THINK_MS)
+      }
     }
   })
 })

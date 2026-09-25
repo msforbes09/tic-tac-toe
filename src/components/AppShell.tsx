@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react"
+import { Backdrop } from "@/components/Backdrop"
 
-// Phone-sized column on every viewport. On wide screens it sits centred on a muted backdrop.
+// Phone-sized column on every viewport. On wide screens it floats as a card in the room.
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh justify-center bg-muted">
+    <div className="room relative flex min-h-dvh justify-center bg-muted">
+      <Backdrop />
       <main
-        className="flex min-h-dvh w-full min-w-0 max-w-[420px] flex-col bg-background px-4 sm:border-x"
+        className="room-card relative bg-background flex min-h-dvh w-full max-w-[420px] min-w-0 flex-col px-4"
         style={{
-          paddingTop: 'max(1rem, env(safe-area-inset-top))',
-          paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          paddingTop: "max(1rem, env(safe-area-inset-top))",
+          paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
         }}
       >
         {children}

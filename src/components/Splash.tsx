@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Backdrop } from '@/components/Backdrop'
+import { Colophon } from '@/components/Colophon'
 import { Logo } from './Logo'
 import type { Feedback } from '@/lib/feedback'
 import { cn } from '@/lib/utils'
@@ -7,9 +9,6 @@ import { cn } from '@/lib/utils'
 export const SPLASH_HOLD_MS = 1800
 /** Length of the fade-out; matches `splash-out` in index.css. */
 export const SPLASH_FADE_MS = 360
-/** The year on the splash's copyright line; the build year, not the visitor's clock. */
-const COPYRIGHT_YEAR = 2026
-
 /**
  * Opening animation on every cold load: the logo's O and then X draw themselves in on the bare
  * background, the title rises, then the whole thing fades to reveal setup. It stays a phone-width column on wide
@@ -37,11 +36,12 @@ export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Fe
     <div
       role="status"
       aria-label="Tic-Tac-Toe"
-      className={cn('fixed inset-0 z-50 flex justify-center bg-muted', leaving && 'splash-leave')}
+      className={cn('room fixed inset-0 z-50 flex justify-center bg-muted', leaving && 'splash-leave')}
     >
+      <Backdrop chrome={false} />
       <div
         aria-hidden="true"
-        className="relative grid w-full max-w-[420px] place-items-center bg-background text-foreground sm:border-x"
+        className="room-card relative grid w-full max-w-[420px] place-items-center bg-background text-foreground"
       >
         <div className="flex -translate-y-[4vh] flex-col items-center">
           {/* The logo, bare on the background: the O draws itself first, then the X across it. */}
@@ -54,7 +54,7 @@ export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Fe
           </p>
         </div>
         <p data-testid="splash-footer" className="absolute bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground/70">
-          v{__APP_VERSION__} · © {COPYRIGHT_YEAR} iam4bs
+          <Colophon />
         </p>
       </div>
     </div>

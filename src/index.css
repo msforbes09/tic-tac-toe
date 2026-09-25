@@ -206,6 +206,154 @@ body {
     0 4px 12px -8px oklch(0 0 0 / 60%);
 }
 
+/* The room. On wide screens the phone column floats as a card a little left of centre, over
+   two slowly drifting glows in the mark colours and the logo drawn huge and faint (the X to the
+   card's left, the O to its lower right). Phones see none of this: the column fills the viewport.
+   Sheets and dialogs are portalled to the body, so they follow the card's shift by selector. */
+:root {
+  --room-shift: 6vw;
+  --room-inset: 20px;
+  --room-radius: 28px;
+  --room-bezel: 6px;
+}
+
+/* No `position` here: the splash and interstitial are rooms too, and they stay fixed. */
+.room {
+  isolation: isolate;
+  overflow: clip;
+}
+
+.room-backdrop {
+  display: none;
+}
+
+/* Wide AND tall: a phone held sideways is wide but stays a phone, and keeps the plain column. */
+@media (min-width: 640px) and (min-height: 500px) {
+  .room-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .room-glow {
+    position: absolute;
+    width: 70vmax;
+    height: 70vmax;
+    border-radius: 50%;
+    filter: blur(40px);
+    will-change: transform;
+  }
+  .room-glow-x {
+    left: -25vmax;
+    top: -30vmax;
+    background: radial-gradient(circle, color-mix(in oklch, var(--player-x) 38%, transparent) 0%, transparent 62%);
+    animation: room-drift-x 80s ease-in-out infinite alternate;
+  }
+  .room-glow-o {
+    right: -25vmax;
+    bottom: -30vmax;
+    background: radial-gradient(circle, color-mix(in oklch, var(--player-o) 38%, transparent) 0%, transparent 62%);
+    animation: room-drift-o 90s ease-in-out infinite alternate;
+  }
+
+  /* Placed by the X's centre (LOGO.x.cx / LOGO.size of the box) so the mark lands left of the card. */
+  .room-logo {
+    --room-logo-size: 2760px;
+    position: absolute;
+    width: var(--room-logo-size);
+    height: var(--room-logo-size);
+    left: calc(15vw - var(--room-logo-size) * 200 / 512);
+    top: calc(24vh - var(--room-logo-size) * 200 / 512);
+    opacity: 0.045;
+  }
+
+  .room-brand,
+  .room-colophon {
+    position: absolute;
+    right: 28px;
+    color: var(--muted-foreground);
+  }
+  /* Below about 720px the shifted card would paint over the corners, so they stay empty. */
+  @media (max-width: 719px) {
+    .room-brand,
+    .room-colophon {
+      display: none;
+    }
+  }
+  .room-brand {
+    top: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .room-colophon {
+    bottom: 20px;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .room-card {
+    margin-block: var(--room-inset);
+    min-height: calc(100dvh - 2 * var(--room-inset));
+    border-radius: var(--room-radius);
+    /* Shifted by margin, not transform: a transformed column would become the containing
+       block for the fixed splash and interstitial and pin them inside the card. */
+    margin-right: calc(2 * var(--room-shift));
+    /* A hard bezel: a hairline at the glass, a dark band, a lit outer edge, then the float. */
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 14%),
+      0 0 0 var(--room-bezel) oklch(0.11 0 0),
+      0 0 0 calc(var(--room-bezel) + 1px) oklch(1 0 0 / 10%),
+      0 40px 80px -30px oklch(0 0 0 / 85%);
+  }
+
+  /* Anything fixed and centred on the viewport (toast, bottom sheets) follows the card instead. */
+  .room-follow,
+  [data-slot='sheet-content'][data-side='bottom'] {
+    right: calc(2 * var(--room-shift));
+  }
+
+  /* The toast drops in below the card's top edge rather than over its bezel. */
+  .room-follow {
+    top: calc(var(--room-inset) + 0.75rem) !important;
+  }
+
+  [data-slot='sheet-content'][data-side='bottom'] {
+    margin-bottom: var(--room-inset);
+    border-bottom-left-radius: var(--room-radius);
+    border-bottom-right-radius: var(--room-radius);
+  }
+
+  [data-slot='dialog-content'],
+  [data-slot='alert-dialog-content'] {
+    left: calc(50% - var(--room-shift));
+  }
+}
+
+@keyframes room-drift-x {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 8vmax 6vmax;
+  }
+}
+
+@keyframes room-drift-o {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: -8vmax -6vmax;
+  }
+}
+
 /* The bot's turn: the O badge breathes while it "thinks". */
 .status-thinking {
   animation: status-thinking 1.1s ease-in-out infinite;

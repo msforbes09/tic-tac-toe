@@ -6,3 +6,5 @@ dist
 .claude/worktrees
 *.local.*
 .claude/settings.local.json
+e2e/artifacts
+playwright-report

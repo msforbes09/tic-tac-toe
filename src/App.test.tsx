@@ -282,7 +282,16 @@ describe('App splash', () => {
 describe('App install nudge', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    vi.useFakeTimers()
   })
+  afterEach(() => vi.useRealTimers())
+
+  /** Renders the app and lets the splash play out; the card waits for it. */
+  const open = (p: InstallPlatform) => {
+    const view = render(<App deps={{ install: p }} />)
+    act(() => vi.advanceTimersByTime(SPLASH_HOLD_MS + SPLASH_FADE_MS))
+    return view
+  }
 
   const platform = (over: Partial<InstallPlatform> = {}) => {
     const prompt = vi.fn<InstallPlatform['prompt']>().mockResolvedValue('accepted')
@@ -299,9 +308,16 @@ describe('App install nudge', () => {
     return { ...p, prompt }
   }
 
+  it('keeps the install card away until the splash has left', () => {
+    render(<App deps={{ install: platform() }} />)
+    expect(screen.queryByRole('alertdialog', { name: /add to home screen/i })).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(SPLASH_HOLD_MS + SPLASH_FADE_MS))
+    expect(screen.getByRole('alertdialog', { name: /add to home screen/i })).toBeInTheDocument()
+  })
+
   it('shows Install when the browser can prompt, and installs on tap', async () => {
     const p = platform()
-    render(<App deps={{ install: p }} />)
+    open(p)
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }))
     await act(async () => {})
     expect(p.prompt).toHaveBeenCalledTimes(1)
@@ -310,12 +326,12 @@ describe('App install nudge', () => {
 
   it('shows the iPhone steps and remembers Not now across visits', () => {
     const p = platform({ ios: true, onPromptAvailable: () => () => {} })
-    const first = render(<App deps={{ install: p }} />)
+    const first = open(p)
     expect(screen.getByText(/share/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /not now/i }))
     expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
     first.unmount()
-    render(<App deps={{ install: p }} />)
+    open(p)
     expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
   })
 
@@ -326,7 +342,7 @@ describe('App install nudge', () => {
 
   it('still offers Install in Settings after Not now, and not once installed', async () => {
     const p = platform()
-    render(<App deps={{ install: p }} />)
+    open(p)
     fireEvent.click(screen.getByRole('button', { name: /not now/i }))
     expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
