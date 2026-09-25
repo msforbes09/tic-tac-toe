@@ -178,6 +178,19 @@ describe('GameScreen versus bot', () => {
     expect(screen.getByText('Your move')).toBeInTheDocument()
   })
 
+  it('lets the hard bot think longer than the old fixed beat on a quiet board', () => {
+    render(<GameScreen settings={hardBot} storage={fakeStorage()} feedback={recorder()} onBack={() => {}} />)
+    fireEvent.click(cell(1))
+    act(() => {
+      vi.advanceTimersByTime(400)
+    })
+    expect(screen.getByText('Bot is thinking…')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(BOT_DELAY_MS - 400)
+    })
+    expect(screen.getByText('Your move')).toBeInTheDocument()
+  })
+
   it("plays feedback for the bot's move too", () => {
     const feedback = recorder()
     render(<GameScreen settings={hardBot} storage={fakeStorage()} feedback={feedback} onBack={() => {}} />)

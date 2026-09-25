@@ -76,3 +76,33 @@ export function chooseMove(board: Board, rung: number, rng: Rng = Math.random): 
   if (roll(best)) return pick(bestMoves(board, bot), rng)
   return pick(moves, rng)
 }
+
+/** The longest the bot ever appears to think, in ms. Screens advance their timers by this. */
+export const MAX_THINK_MS = 1600
+
+/** A winning or blocking move comes this fast at every band: 180 to 320 ms. */
+const SNAP = { min: 180, span: 140 }
+
+/** Quiet-position think ranges by band; the hard band visibly deliberates. */
+function thinkRange(rung: number): { min: number; max: number } {
+  const r = Math.min(30, Math.max(1, rung))
+  if (r <= 10) return { min: 300, max: 600 }
+  if (r <= 20) return { min: 450, max: 950 }
+  return { min: 700, max: MAX_THINK_MS }
+}
+
+/**
+ * How long the bot appears to think before playing `move`, in ms. A win or a block snaps at
+ * every band, so the pause reads as intelligence rather than lag. Otherwise the band sets the
+ * range, an open board stretches it, and the opening reply takes the short end.
+ */
+export function thinkTime(board: Board, rung: number, move: number, rng: Rng = Math.random): number {
+  const bot = nextPlayer(board)
+  const forced = winningMoves(board, bot).includes(move) || winningMoves(board, other(bot)).includes(move)
+  if (forced) return Math.round(SNAP.min + rng() * SNAP.span)
+  const { min, max } = thinkRange(rung)
+  const empties = availableMoves(board).length
+  if (empties >= 8) return Math.round(min + rng() * 100)
+  const openness = empties / 7
+  return Math.round(min + rng() * (max - min) * openness)
+}
