@@ -104,6 +104,9 @@ type AchievementsRow = { player_id: string; unlocks: unknown; progress: unknown;
 /** The badge column cannot hold undefined: this stands for "never chose", so the default is worn. */
 const DEFAULT_BADGE = 'default'
 
+/** A PostgREST filter value in double quotes; anyone can register any id, so escape it. */
+const quoted = (v: string) => `"${v.replace(/[\\"]/g, '\\$&')}"`
+
 const gameFromRow = (r: GameRowDb): GameRow => ({
   id: r.id, playerId: r.player_id, mode: r.mode, difficulty: r.difficulty, rung: r.rung, outcome: r.outcome, symbol: r.symbol, playedAt: Date.parse(r.played_at),
 })
@@ -232,8 +235,8 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
       let query = client.from('players').select('id,nickname,last_seen_at')
       // The cursor keeps the raw timestamp: a millisecond Date would drop Postgres's microseconds.
       if (cursor) {
-        const [at, id] = JSON.parse(cursor) as [string, string]
-        query = query.or(`last_seen_at.lt."${at}",and(last_seen_at.eq."${at}",id.lt."${id}")`)
+        const [at, id] = (JSON.parse(cursor) as [string, string]).map(quoted)
+        query = query.or(`last_seen_at.lt.${at},and(last_seen_at.eq.${at},id.lt.${id})`)
       }
       const rows = await unwrap<PlayerSeenRow[]>(
         query.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(PLAYERS_PAGE + 1),

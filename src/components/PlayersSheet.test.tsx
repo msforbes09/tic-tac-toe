@@ -53,6 +53,26 @@ describe('PlayersSheet', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
   })
 
+  it('drops a Show more page that lands after the sheet was closed and reopened', async () => {
+    let late: (page: PlayersPage) => void = () => {}
+    const listPlayers = vi
+      .fn()
+      .mockResolvedValueOnce({ players: [player(1, 1)], next: 'c1' })
+      .mockReturnValueOnce(new Promise<PlayersPage>((resolve) => (late = resolve)))
+      .mockResolvedValueOnce({ players: [player(9, 1)], next: 'c9' })
+    const dir = { listPlayers } as unknown as RoomDirectory
+    const view = (o: boolean) => <PlayersSheet open={o} onOpenChange={() => {}} connected cloud={{ deviceId: 'p1', directory: dir }} />
+    const { rerender } = render(view(true))
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }))
+    rerender(view(false))
+    rerender(view(true))
+    await act(async () => {})
+    await act(async () => late({ players: [player(2, 2)], next: null }))
+    expect(rows().map((r) => r.textContent)).toEqual([expect.stringContaining('Player 9')])
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeEnabled()
+  })
+
   it('says offline without asking the directory', async () => {
     const { dir, listPlayers } = directory()
     await open({ dir, connected: false })

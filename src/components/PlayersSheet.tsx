@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FloatingBack } from './FloatingBack'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -23,14 +23,19 @@ type List = { players: PlayerSeen[]; next: string | null } | 'loading' | 'failed
 export function PlayersSheet({ open, onOpenChange, connected, cloud }: PlayersSheetProps) {
   const [list, setList] = useState<List>('loading')
   const [more, setMore] = useState(false)
+  // Bumped on every opening, so a Show more page from an earlier one is dropped.
+  const opening = useRef(0)
   const directory = cloud?.directory
   const deviceId = cloud?.deviceId
 
-  // One load per opening; no live updates.
+  // One load per opening; no live updates. A player who comes online while the list is open moves
+  // above the cursor and shows up on the next opening, not on Show more.
   useEffect(() => {
     if (!open || !directory || !connected) return
     let cancelled = false
+    opening.current += 1
     setList('loading')
+    setMore(false)
     directory
       .listPlayers()
       .then((page) => !cancelled && setList(page))
@@ -42,14 +47,15 @@ export function PlayersSheet({ open, onOpenChange, connected, cloud }: PlayersSh
 
   const showMore = async () => {
     if (!directory || typeof list !== 'object' || !list.next) return
+    const asked = opening.current
     setMore(true)
     try {
       const page = await directory.listPlayers(list.next)
-      setList({ players: [...list.players, ...page.players], next: page.next })
+      if (asked === opening.current) setList({ players: [...list.players, ...page.players], next: page.next })
     } catch {
       // Leave the list as it is; Show more stays for another try.
     } finally {
-      setMore(false)
+      if (asked === opening.current) setMore(false)
     }
   }
 

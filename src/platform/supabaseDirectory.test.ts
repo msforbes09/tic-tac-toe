@@ -243,6 +243,12 @@ describe('createSupabaseDirectory', () => {
     expect(second.next).toBeNull()
   })
 
+  it('escapes quotes and backslashes in the player cursor', async () => {
+    const f = fakeClient([{ data: [], error: null }])
+    await createSupabaseDirectory(f.client).listPlayers(JSON.stringify(['t', 'a"b\\c']))
+    expect(f.calls).toContainEqual(['players', 'or', 'last_seen_at.lt."t",and(last_seen_at.eq."t",id.lt."a\\"b\\\\c")'])
+  })
+
   it('loads a ladder row and saves one through save_ladder', async () => {
     const f = fakeClient([
       { data: { player_id: 'dev', rung: 12, streak: 2, top_held_at: null, top_held_count: 0, updated_at: '2026-09-25T10:00:00.000Z' }, error: null },
