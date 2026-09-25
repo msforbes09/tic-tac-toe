@@ -1,0 +1,6 @@
+dist
+node_modules
+.claude/worktrees
+src/components/ui
+public
+package-lock.json
