@@ -180,6 +180,32 @@ body {
   outline-color: color-mix(in oklch, var(--player-x) 70%, var(--ring));
 }
 
+/* The one action on a screen: a raised pill with a glow in the two mark colours beneath it. */
+.cta {
+  background: linear-gradient(180deg, oklch(0.985 0 0), oklch(0.9 0 0));
+  color: var(--background);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 90%),
+    -10px 12px 32px -14px color-mix(in oklch, var(--player-x) 70%, transparent),
+    10px 12px 32px -14px color-mix(in oklch, var(--player-o) 70%, transparent),
+    0 8px 24px -12px oklch(0 0 0 / 60%);
+  transition:
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 150ms;
+}
+.cta:hover {
+  filter: brightness(1.04);
+}
+.cta:active {
+  transform: scale(0.98);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 70%),
+    -6px 6px 18px -12px color-mix(in oklch, var(--player-x) 60%, transparent),
+    6px 6px 18px -12px color-mix(in oklch, var(--player-o) 60%, transparent),
+    0 4px 12px -8px oklch(0 0 0 / 60%);
+}
+
 /* The bot's turn: the O badge breathes while it "thinks". */
 .status-thinking {
   animation: status-thinking 1.1s ease-in-out infinite;

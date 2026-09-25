@@ -1,4 +1,4 @@
-import { History, Settings as Gear, Trophy } from 'lucide-react'
+import { History, Settings as Gear, Sparkles, Trophy } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Mark } from './Mark'
 import {
@@ -52,6 +52,8 @@ export type SetupScreenProps = {
   onOpenSettings?: () => void
   /** When set, a trophy button in the header opens the sheet. */
   onOpenAchievements?: () => void
+  /** The band the saved ladder sits in, marked with a sparkle; none before any ladder exists. */
+  suggested?: Difficulty
 }
 
 /** "Difficulty · 25 → 20": the saved rung and, when the picked band would move it, where it lands. */
@@ -101,6 +103,7 @@ export function SetupScreen({
   tone = 'friendly',
   onOpenSettings,
   onOpenAchievements,
+  suggested,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
@@ -203,8 +206,11 @@ export function SetupScreen({
               aria-label="Difficulty"
             >
               {DIFFICULTIES.map((d) => (
-                <ToggleGroupItem key={d.value} value={d.value} className={segmentItem} aria-label={d.label}>
+                <ToggleGroupItem key={d.value} value={d.value} className={cn(segmentItem, 'relative')} aria-label={d.label}>
                   {d.label}
+                  {suggested === d.value && (
+                    <Sparkles role="img" aria-label="Suggested" className="absolute top-1.5 right-2 size-3.5 fill-current text-player-x" />
+                  )}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -240,13 +246,13 @@ export function SetupScreen({
 
       <div className="mt-auto flex flex-col gap-3">
         {mode === 'online' ? (
-          <Button size="lg" className="min-h-14 w-full rounded-[18px] text-base font-medium" onClick={online.onCreate}>
+          <Button size="lg" className="cta min-h-14 w-full rounded-[18px] text-base font-medium" onClick={online.onCreate}>
             Create room
           </Button>
         ) : (
           <Button
             size="lg"
-            className="min-h-14 w-full rounded-[18px] text-base font-medium"
+            className="cta min-h-14 w-full rounded-[18px] text-base font-medium"
             onClick={() => {
               onKnock?.('start')
               onStart({ mode, difficulty, p1Symbol: mode === 'bot' ? symbol : 'X' })

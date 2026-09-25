@@ -5,7 +5,9 @@ import {
   LADDER_KEY,
   TOP_RUNG,
   advance,
+  bandBottom,
   bandOf,
+  suggestedBand,
   loadLadder,
   momentAfter,
   rungForSelection,
@@ -184,5 +186,14 @@ describe('ladder timestamps', () => {
     expect(newerLadder(local, { ...cloud, updatedAt: 100 })).toBe(local)
     expect(newerLadder(local, { ...cloud, updatedAt: 50 })).toBe(local)
     expect(newerLadder(local, null)).toBe(local)
+  })
+})
+
+describe('suggestedBand', () => {
+  it('is the band the saved rung sits in, and null before any ladder exists', () => {
+    expect(suggestedBand(EMPTY_LADDER)).toBeNull()
+    expect(suggestedBand({ ...EMPTY_LADDER, rung: 1 })).toBe('easy')
+    expect(suggestedBand({ ...EMPTY_LADDER, rung: bandBottom('medium') })).toBe('medium')
+    expect(suggestedBand({ ...EMPTY_LADDER, rung: TOP_RUNG })).toBe('hard')
   })
 })

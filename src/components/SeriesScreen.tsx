@@ -298,19 +298,15 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
         </div>
       </div>
 
-      {isPlayer ? (
+      {isPlayer && (
         <Button
           size="lg"
           variant={phase === 'between' ? 'default' : 'outline'}
-          className={cn('min-h-14 w-full rounded-[18px] text-base font-semibold')}
+          className={cn('min-h-14 w-full rounded-[18px] text-base font-semibold', phase === 'between' && 'cta')}
           disabled={phase !== 'between'}
           onClick={nextGame}
         >
           Next game
-        </Button>
-      ) : (
-        <Button size="lg" variant="outline" className="min-h-14 w-full rounded-[18px] text-base font-semibold" onClick={() => onExit(null)}>
-          Back
         </Button>
       )}
 

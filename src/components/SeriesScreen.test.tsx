@@ -134,8 +134,9 @@ describe('SeriesScreen basics', () => {
     expect(a.el().querySelector('[data-testid="celebration"]')).toBeNull()
   })
 
-  it('the watcher can go back to the room', async () => {
+  it('the watcher can go back to the room from the header alone', async () => {
     const { c } = await trio()
+    expect(within(c.el()).getAllByRole('button', { name: /back/i })).toHaveLength(1)
     fireEvent.click(c.button(/back/i))
     expect(c.onExit).toHaveBeenCalledWith(null)
   })

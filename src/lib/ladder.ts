@@ -38,6 +38,11 @@ export function bandOf(rung: number): Difficulty {
   return BANDS[bandIndex(rung)]
 }
 
+/** The band the saved rung sits in, shown as the suggested difficulty; null before any ladder exists. */
+export function suggestedBand(ladder: Ladder): Difficulty | null {
+  return ladder.rung === null ? null : bandOf(ladder.rung)
+}
+
 export function bandBottom(band: Difficulty): number {
   return BANDS.indexOf(band) * BAND_SIZE + 1
 }

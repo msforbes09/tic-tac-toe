@@ -377,6 +377,22 @@ export function record(
   return { state: { ...state, progress, unlocks, updatedAt: now }, unlocked }
 }
 
+// ---- Completion ----------------------------------------------------------------------------------
+
+/** What each tier is worth towards the percent on the sheet. */
+export const TIER_POINTS: Record<Tier, number> = { bronze: 1, silver: 2, gold: 3, platinum: 4 }
+
+/** Points earned and available, weighted by tier, with the rounded percent. */
+export function completion(unlocks: Unlocks): { earned: number; total: number; percent: number } {
+  let earned = 0
+  let total = 0
+  for (const a of ACHIEVEMENTS) {
+    total += TIER_POINTS[a.tier]
+    if (unlocks[a.id] !== undefined) earned += TIER_POINTS[a.tier]
+  }
+  return { earned, total, percent: Math.round((earned / total) * 100) }
+}
+
 // ---- The sheet's list -----------------------------------------------------------------------------
 
 export type SortOrder = "recent" | "oldest" | "tier"
