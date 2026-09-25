@@ -30,12 +30,11 @@ describe('OnlinePanel', () => {
     expect(p.onSaveNickname).toHaveBeenCalledWith('Quiet Edge')
   })
 
-  it('shows who you are and lets you edit it', () => {
+  it('shows who you are; the nickname is changed from Settings, not here', () => {
     render(<OnlinePanel {...props()} />)
     expect(screen.queryByRole('textbox', { name: /nickname/i })).not.toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /edit nickname/i }))
-    expect(screen.getByRole('textbox', { name: /nickname/i })).toHaveValue('Alice')
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
   })
 
   it('lists rooms with live counts and enters one on tap', () => {
