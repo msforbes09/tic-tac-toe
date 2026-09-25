@@ -8,6 +8,8 @@ const O_STROKE_LEN = Math.round(2 * Math.PI * LOGO.o.r)
 
 /** When the X starts drawing; the O is drawn first and this leaves room for it. */
 const X_DELAY_MS = 520
+/** How long each arm of the X takes; the second arm starts only when the first is done. */
+const X_ARM_MS = 260
 
 /**
  * The app logo as inline SVG: the O, then the X on top with its arm crossing the ring.
@@ -30,7 +32,7 @@ export function Logo({ animate = false, className }: { animate?: boolean; classN
 
   const arm1 = `M${x.cx - x.arm} ${x.cy - x.arm} L${x.cx + x.arm} ${x.cy + x.arm}`
   const arm2 = `M${x.cx + x.arm} ${x.cy - x.arm} L${x.cx - x.arm} ${x.cy + x.arm}`
-  const armStyle = { '--mark-len': X_STROKE_LEN } as CSSProperties
+  const armStyle = { '--mark-len': X_STROKE_LEN, '--mark-duration': `${X_ARM_MS}ms` } as CSSProperties
 
   return (
     <svg
@@ -53,7 +55,7 @@ export function Logo({ animate = false, className }: { animate?: boolean; classN
         {/* Knockout: the crossing arm again in the background colour, wider, so it cuts a gap through the O. */}
         <path d={arm1} {...common} stroke="var(--background)" strokeWidth={LOGO.stroke + 2 * LOGO.gap} style={armStyle} />
         <path d={arm1} {...common} style={armStyle} />
-        <path d={arm2} {...common} style={{ ...armStyle, '--mark-delay': '110ms' } as CSSProperties} />
+        <path d={arm2} {...common} style={{ ...armStyle, '--mark-delay': `${X_ARM_MS}ms` } as CSSProperties} />
       </g>
     </svg>
   )
