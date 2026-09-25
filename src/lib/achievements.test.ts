@@ -14,6 +14,7 @@ import {
   isAchievementId,
   loadAchievements,
   merge,
+  readAchievementState,
   record,
   saveAchievements,
   wornBadge,
@@ -134,10 +135,38 @@ describe('record: ladder', () => {
     expect(run([game({ rungBefore: 10, rungAfter: 11 })]).unlocked).toContain('moving-up')
     expect(run([game({ rungBefore: 9, rungAfter: 10 })]).unlocked).not.toContain('moving-up')
     expect(run([game({ rungBefore: 29, rungAfter: 30 })]).unlocked).toContain('top-of-the-pack')
-    expect(run([game({ result: 'draw', rungBefore: 30, rungAfter: 30 })]).unlocked).toContain('the-immovable')
-    expect(run([game({ result: 'draw', rungBefore: 29, rungAfter: 29 })]).unlocked).not.toContain('the-immovable')
     expect(run([game({ rungBefore: 25, rungAfter: 26 })]).unlocked).toContain('deep-end')
     expect(run([game({ rungBefore: 24, rungAfter: 25 })]).unlocked).not.toContain('deep-end')
+  })
+
+  describe('the immovable', () => {
+    const topDraw = game({ result: 'draw', rungBefore: 30, rungAfter: 30 })
+    const unlocks = (events: AchievementEvent[]) => run(events).unlocked.includes('the-immovable')
+
+    it('needs three draws in a row at rung 30', () => {
+      expect(unlocks([topDraw, topDraw])).toBe(false)
+      expect(unlocks([topDraw, topDraw, topDraw])).toBe(true)
+      expect(unlocks(many(3, { result: 'draw', rungBefore: 29, rungAfter: 29 }))).toBe(false)
+    })
+
+    it('starts over after any other bot game', () => {
+      for (const other of [
+        game({ result: 'win', rungBefore: 30, rungAfter: 30 }),
+        game({ result: 'loss', rungBefore: 30, rungAfter: 29 }),
+        game({ result: 'draw', rungBefore: 29, rungAfter: 29 }),
+      ])
+        expect(unlocks([topDraw, topDraw, other, topDraw])).toBe(false)
+    })
+
+    it('ignores two-player and online games in between', () => {
+      const pvp = game({ mode: 'pvp', result: 'loss', band: undefined, rungBefore: undefined, rungAfter: undefined })
+      expect(unlocks([topDraw, pvp, topDraw, online({ result: 'loss' }), topDraw])).toBe(true)
+    })
+
+    it('reads a saved record without the count as zero', () => {
+      const { progress } = readAchievementState({ progress: { botDraws: 4 } })
+      expect(progress.topDrawStreak).toBe(0)
+    })
   })
 
   it('bounce back needs a win right after a loss at the top', () => {

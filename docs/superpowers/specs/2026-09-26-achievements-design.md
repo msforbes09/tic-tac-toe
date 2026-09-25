@@ -64,7 +64,7 @@ Rules of counting:
 | untouchable | gold | Untouchable | 10 games in a row without a loss | ShieldCheck | |
 | clean-sweep | gold | Clean Sweep | won a series 6–0 | Brush | |
 | top-of-the-pack | gold | Top of the Pack | reached rung 30 | Mountain | |
-| the-immovable | gold | The Immovable | held rung 30 to a draw | Anchor | yes |
+| the-immovable | gold | The Immovable | three draws in a row at rung 30 | Anchor | yes |
 | marathon | gold | Marathon | 500 games, any mode | Footprints | |
 | tiebreaker | gold | Tiebreaker | won a series in the tie breaker | Swords | yes |
 | two-hundred | gold | Two Hundred | 200 wins, bot and online | Crown | |
@@ -81,8 +81,10 @@ Detail rules:
 - **Bounce Back**: the previous bot game was a loss at rung 30 (the ladder was at 30
   before that loss) and this bot game is a win. The flag is cleared by any bot game.
 - **Deep End**: `rung before >= 25` and the bot game was won.
-- **Top of the Pack**: rung after is 30 and rung before is below 30. **The Immovable**: a
-  draw with rung before at 30.
+- **Top of the Pack**: rung after is 30 and rung before is below 30. **The Immovable**: three
+  bot draws in a row with rung before at 30 (`topDrawStreak`). Any other bot game (a win, a
+  loss, a draw below 30) resets the count; two-player and online games leave it alone. Players
+  who unlocked it under the old one-draw rule keep it.
 - **Comeback Kid**: at some point in the series the player's score was 3 or more behind;
   the referee's snapshots carry both scores after every game, so each player tracks
   `trailedBy3` from them while the series runs.
@@ -113,6 +115,7 @@ type Progress = {
   wins: Record<Mode, number>
   botWinsByBand: Record<Difficulty, number>
   botDraws: number
+  topDrawStreak: number
   promotions: number
   seriesPlayed: number
   seriesWon: number
