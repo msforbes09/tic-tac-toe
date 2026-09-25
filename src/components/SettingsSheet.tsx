@@ -37,7 +37,7 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
       >
         <SheetHeader className="p-0 text-left">
           <SheetTitle className="font-heading text-2xl font-semibold">Settings</SheetTitle>
-          <SheetDescription>Your name in rooms, and how the bot talks.</SheetDescription>
+          <SheetDescription>Make the game yours.</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-2">
@@ -79,17 +79,11 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
             aria-labelledby="settings-aggressive"
             onClick={() => onToneChange(aggressive ? 'friendly' : 'cocky')}
             className={cn(
-              'relative h-8 w-14 shrink-0 rounded-full transition-colors duration-150',
-              aggressive ? 'bg-player-o' : 'bg-input',
+              'box-border flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors duration-150',
+              aggressive ? 'justify-end bg-player-o' : 'justify-start bg-input',
             )}
           >
-            <span
-              aria-hidden="true"
-              className={cn(
-                'absolute top-1 size-6 rounded-full bg-background transition-transform duration-150',
-                aggressive ? 'translate-x-7' : 'translate-x-1',
-              )}
-            />
+            <span aria-hidden="true" className="size-6 shrink-0 rounded-full bg-background" />
           </button>
         </div>
 
