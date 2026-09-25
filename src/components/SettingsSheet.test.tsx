@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SettingsSheet } from './SettingsSheet'
 
@@ -113,5 +113,23 @@ describe('SettingsSheet', () => {
     render(<SettingsSheet {...base} onOpenChange={onOpenChange} />)
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('lets the player pick a badge from the unlocked ones or none', () => {
+    const onChange = vi.fn()
+    render(<SettingsSheet {...base} badge={{ unlocks: { 'hello-bot': 1, closer: 2 }, worn: 'closer', onChange }} />)
+    const group = screen.getByRole('radiogroup', { name: 'Badge' })
+    expect(within(group).getByRole('radio', { name: 'Closer' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(group).getByRole('radio', { name: 'Hello, Bot' })).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(within(group).getByRole('radio', { name: 'Hello, Bot' }))
+    expect(onChange).toHaveBeenCalledWith('hello-bot')
+    fireEvent.click(within(group).getByRole('radio', { name: 'None' }))
+    expect(onChange).toHaveBeenCalledWith(null)
+  })
+
+  it('says how to earn a badge when nothing is unlocked', () => {
+    render(<SettingsSheet {...base} badge={{ unlocks: {}, worn: null, onChange: vi.fn() }} />)
+    expect(screen.getByText('Unlock an achievement to wear a badge')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
   })
 })

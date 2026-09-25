@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { AchievementIcon } from './AchievementBadge'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ACHIEVEMENTS, achievementById, type AchievementId, type Unlocks } from '@/lib/achievements'
 import type { Tone } from '@/lib/banter'
 import { NICKNAME_MAX, normalizeNickname, sanitizeNicknameInput } from '@/lib/identity'
 import { TOP_RUNG } from '@/lib/ladder'
@@ -16,8 +18,16 @@ export type SettingsSheetProps = {
   onSaveNickname: (name: string) => void
   tone: Tone
   onToneChange: (tone: Tone) => void
+  /** The badge worn above the nickname online, picked from the unlocked achievements. */
+  badge?: BadgeSection
   /** Developer mode only: the Developer section. Every action there closes the sheet. */
   dev?: DevSection
+}
+
+export type BadgeSection = {
+  unlocks: Unlocks
+  worn: AchievementId | null
+  onChange: (badge: AchievementId | null) => void
 }
 
 export type DevSection = {
@@ -28,7 +38,7 @@ export type DevSection = {
 }
 
 /** Settings, from the gear on the setup screen: the nickname, the bot's attitude, and developer tools. */
-export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange, dev }: SettingsSheetProps) {
+export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange, badge, dev }: SettingsSheetProps) {
   const initial = nickname ?? suggestedNickname
   const [value, setValue] = useState(initial)
   const [rung, setRung] = useState(String(dev?.rung ?? 1))
@@ -107,6 +117,8 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
           </button>
         </div>
 
+        {badge && <BadgePicker {...badge} />}
+
         {dev && (
           <div className="flex flex-col gap-3 rounded-[18px] border border-dashed border-border px-4 py-3">
             <span className="font-heading text-[15px] font-medium">Developer</span>
@@ -168,5 +180,42 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
         </Button>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/** A row of the unlocked achievements plus None; the worn one is outlined. */
+function BadgePicker({ unlocks, worn, onChange }: BadgeSection) {
+  const unlocked = ACHIEVEMENTS.filter((a) => unlocks[a.id] !== undefined)
+  const tile = (on: boolean) =>
+    cn('flex size-12 shrink-0 items-center justify-center rounded-[14px] border', on ? 'border-player-o bg-player-o-soft' : 'border-input')
+  return (
+    <div className="flex flex-col gap-2">
+      <span id="settings-badge" className="font-heading text-[15px] font-medium">
+        Badge
+      </span>
+      <span className="text-sm text-muted-foreground">Shown above your name online.</span>
+      {unlocked.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Unlock an achievement to wear a badge</p>
+      ) : (
+        <div role="radiogroup" aria-labelledby="settings-badge" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button type="button" role="radio" aria-checked={worn === null} aria-label="None" onClick={() => onChange(null)} className={cn(tile(worn === null), 'text-muted-foreground')}>
+            –
+          </button>
+          {unlocked.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="radio"
+              aria-checked={worn === a.id}
+              aria-label={achievementById(a.id).name}
+              onClick={() => onChange(a.id)}
+              className={tile(worn === a.id)}
+            >
+              <AchievementIcon id={a.id} className="size-6" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
