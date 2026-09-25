@@ -9,6 +9,8 @@ export type FeedbackEvent =
   | { kind: 'start' }
   | { kind: 'challenge' }
   | { kind: 'accepted' }
+  /** An achievement unlocked: a short chime under the toast. */
+  | { kind: 'achievement' }
   /** The opening splash: plays with no user gesture, so implementations may have to drop it. */
   | { kind: 'splash' }
 

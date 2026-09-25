@@ -29,6 +29,8 @@ function notesFor(event: FeedbackEvent): Note[] {
       return [587, 740, 880].map((hz, i) => ({ hz, at: i * 0.11, length: 0.16 }))
     case 'accepted':
       return [740, 988].map((hz, i) => ({ hz, at: i * 0.09, length: 0.12 }))
+    case 'achievement':
+      return [784, 1175].map((hz, i) => ({ hz, at: i * 0.1, length: 0.18 }))
     case 'splash':
       // Timed to the Logo draw-in and the title's rise (see Splash.tsx): O, then X, then the start cue.
       return [
@@ -56,6 +58,8 @@ function vibrationFor(event: FeedbackEvent): number | number[] {
       return [60, 60, 60]
     case 'accepted':
       return 25
+    case 'achievement':
+      return [20, 40, 40]
     case 'splash':
       return 0 // Vibration needs a gesture too; nothing to gain.
   }
