@@ -225,6 +225,21 @@ describe('App developer mode', () => {
     expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
   })
 
+  it('the developer panel lists every player with when they were last seen', async () => {
+    const hash = async (t: string) => `h:${t}`
+    const dir = createFakeDirectory(hash)
+    await dir.savePlayer({ id: 'someone-else', nickname: 'Zed' }, 'token-zed')
+    render(<App deps={{ open: createFakeRealtime().open, directory: dir, hash }} />)
+    await act(async () => {})
+    doKnock()
+    await enter()
+    tap('Settings')
+    tap(/^players$/i)
+    expect(await screen.findByRole('heading', { name: 'Players' })).toBeInTheDocument()
+    expect(await screen.findByText('Zed')).toBeInTheDocument()
+    expect(screen.getByText('just now')).toBeInTheDocument()
+  })
+
   it('ignores the knock while developer mode is already on', async () => {
     render(<App />)
     doKnock()

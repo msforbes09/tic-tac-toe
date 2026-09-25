@@ -3,7 +3,7 @@ import type { GameRow } from '@/lib/history'
 import type { Ladder } from '@/lib/ladder'
 import type { SeriesResult } from '@/lib/room'
 import type { Mode } from '@/lib/types'
-import type { CloudLadder, PlayerRecord, RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
+import { PLAYERS_PAGE, type CloudLadder, type PlayerRecord, type RoomDirectory, type RoomRecord } from '@/lib/roomDirectory'
 
 type Response<T> = { data: T; error: { message: string } | null }
 
@@ -99,6 +99,7 @@ type GameRowDb = {
 }
 type LadderRow = { player_id: string; rung: number | null; streak: number; updated_at: string }
 type PlayerRow = { id: string; nickname: string }
+type PlayerSeenRow = PlayerRow & { last_seen_at: string }
 type AchievementsRow = { player_id: string; unlocks: unknown; progress: unknown; badge: string | null; updated_at: string }
 /** The badge column cannot hold undefined: this stands for "never chose", so the default is worn. */
 const DEFAULT_BADGE = 'default'
@@ -226,6 +227,23 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
     async loadPlayer(playerId) {
       const row = await unwrap<PlayerRow | null>(client.from('players').select('*').eq('id', playerId).maybeSingle())
       return row ? { id: row.id, nickname: row.nickname } : null
+    },
+    async listPlayers(cursor) {
+      let query = client.from('players').select('id,nickname,last_seen_at')
+      // The cursor keeps the raw timestamp: a millisecond Date would drop Postgres's microseconds.
+      if (cursor) {
+        const [at, id] = JSON.parse(cursor) as [string, string]
+        query = query.or(`last_seen_at.lt."${at}",and(last_seen_at.eq."${at}",id.lt."${id}")`)
+      }
+      const rows = await unwrap<PlayerSeenRow[]>(
+        query.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(PLAYERS_PAGE + 1),
+      )
+      const page = rows.slice(0, PLAYERS_PAGE)
+      const last = page[page.length - 1]
+      return {
+        players: page.map((r) => ({ id: r.id, nickname: r.nickname, lastSeenAt: Date.parse(r.last_seen_at) })),
+        next: rows.length > PLAYERS_PAGE ? JSON.stringify([last.last_seen_at, last.id]) : null,
+      }
     },
     async loadAchievements(playerId) {
       const row = await unwrap<AchievementsRow | null>(client.from('achievements').select('*').eq('player_id', playerId).maybeSingle())

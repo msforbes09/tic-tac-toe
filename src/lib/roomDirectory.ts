@@ -7,6 +7,12 @@ import type { Mode } from './types'
 export type RoomRecord = { id: string; name: string; creatorId: string; createdAt: number }
 export type PlayerRecord = { id: string; nickname: string }
 export type CloudLadder = Ladder & { playerId: string }
+/** A player row as developer mode lists it: when the device last opened the app online. */
+export type PlayerSeen = PlayerRecord & { lastSeenAt: number }
+/** `next` is the cursor for the following page; null on the last one. */
+export type PlayersPage = { players: PlayerSeen[]; next: string | null }
+
+export const PLAYERS_PAGE = 50
 
 /** Persistent rooms and series results. Newest first everywhere. */
 export type RoomDirectory = {
@@ -24,6 +30,8 @@ export type RoomDirectory = {
   savePlayer(player: PlayerRecord, token: string): Promise<void>
   /** This device's player row, or null when it has none (never registered, or the cloud was wiped). */
   loadPlayer(playerId: string): Promise<PlayerRecord | null>
+  /** Every player, most recently seen first, PLAYERS_PAGE at a time; pass the last page's `next` for more. */
+  listPlayers(cursor?: string | null): Promise<PlayersPage>
   loadAchievements(playerId: string): Promise<AchievementState | null>
   /** Insert or update the player's achievements; the token must match; an older updatedAt is ignored. */
   saveAchievements(playerId: string, token: string, state: AchievementState): Promise<void>
@@ -56,7 +64,7 @@ export function createFakeDirectory(
   const roomHandlers = new Set<(rooms: RoomRecord[]) => void>()
   const resultHandlers = new Map<string, Set<(results: SeriesResult[]) => void>>()
   const myHandlers = new Map<string, Set<(results: SeriesResult[]) => void>>()
-  const players: (PlayerRecord & { tokenHash: string })[] = []
+  const players: (PlayerSeen & { tokenHash: string })[] = []
   const games: GameRow[] = []
   const ladders = new Map<string, { ladder: Ladder; tokenHash: string }>()
   const achievements = new Map<string, { state: AchievementState; tokenHash: string }>()
@@ -89,9 +97,10 @@ export function createFakeDirectory(
       const tokenHash = await hash(token)
       const existing = players.find((p) => p.id === player.id)
       if (!existing) {
-        players.push({ ...player, tokenHash })
+        players.push({ ...player, lastSeenAt: Date.now(), tokenHash })
       } else if (existing.tokenHash === tokenHash) {
         existing.nickname = player.nickname
+        existing.lastSeenAt = Date.now()
       } else {
         throw new Error('player token does not match')
       }
@@ -99,6 +108,16 @@ export function createFakeDirectory(
     async loadPlayer(playerId) {
       const p = players.find((x) => x.id === playerId)
       return p ? { id: p.id, nickname: p.nickname } : null
+    },
+    async listPlayers(cursor) {
+      const sorted = players
+        .map(({ id, nickname, lastSeenAt }) => ({ id, nickname, lastSeenAt }))
+        .sort((a, b) => b.lastSeenAt - a.lastSeenAt || (a.id < b.id ? 1 : -1))
+      const [at, id] = cursor ? (JSON.parse(cursor) as [number, string]) : [Infinity, '']
+      const rest = sorted.filter((p) => p.lastSeenAt < at || (p.lastSeenAt === at && p.id < id))
+      const page = rest.slice(0, PLAYERS_PAGE)
+      const last = page[page.length - 1]
+      return { players: page, next: rest.length > PLAYERS_PAGE ? JSON.stringify([last.lastSeenAt, last.id]) : null }
     },
     async loadAchievements(playerId) {
       const entry = achievements.get(playerId)

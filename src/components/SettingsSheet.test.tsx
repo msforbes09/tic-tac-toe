@@ -65,7 +65,7 @@ describe('SettingsSheet', () => {
   })
 
   describe('developer section', () => {
-    const dev = () => ({ rung: 17, onSetRung: vi.fn(), onReset: vi.fn(), onExit: vi.fn() })
+    const dev = () => ({ rung: 17, onSetRung: vi.fn(), onReset: vi.fn(), onShowPlayers: vi.fn(), onExit: vi.fn() })
 
     it('sets the rung and closes', () => {
       const d = dev()
@@ -95,6 +95,15 @@ describe('SettingsSheet', () => {
       expect(d.onReset).not.toHaveBeenCalled()
       fireEvent.click(screen.getByRole('button', { name: 'Tap again to confirm' }))
       expect(d.onReset).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('opens the player list and closes', () => {
+      const d = dev()
+      const onOpenChange = vi.fn()
+      render(<SettingsSheet {...base} dev={d} onOpenChange={onOpenChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Players' }))
+      expect(d.onShowPlayers).toHaveBeenCalledTimes(1)
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 

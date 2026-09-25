@@ -63,6 +63,7 @@ import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
 import { LADDER_KEY, loadLadder, newerLadder, saveLadder, suggestedBand, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
 import { loadTone, saveTone } from '@/lib/tone'
+import { PlayersSheet } from '@/components/PlayersSheet'
 import { SettingsSheet } from '@/components/SettingsSheet'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
@@ -258,6 +259,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [achievementsOpen, setAchievementsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [playersOpen, setPlayersOpen] = useState(false)
   const [tone, setTone] = useState(() => loadTone(storage))
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
@@ -526,6 +528,13 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
 
       <AchievementsSheet open={achievementsOpen} onOpenChange={setAchievementsOpen} state={achievements} />
 
+      <PlayersSheet
+        open={devMode && playersOpen}
+        onOpenChange={setPlayersOpen}
+        connected={connected}
+        cloud={services ? { deviceId, directory: services.directory } : undefined}
+      />
+
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
@@ -555,6 +564,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
                   resetGameData()
                   setScreen({ kind: 'setup' })
                 },
+                onShowPlayers: () => setPlayersOpen(true),
                 onExit: () => {
                   setDevMode(false)
                   setScreen({ kind: 'setup' })

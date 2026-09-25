@@ -2,7 +2,7 @@ import type { GameRow } from './history'
 import { EMPTY_STATE } from './achievements'
 import { EMPTY_LADDER } from './ladder'
 import { describe, expect, it, vi } from 'vitest'
-import { createFakeDirectory } from './roomDirectory'
+import { PLAYERS_PAGE, createFakeDirectory } from './roomDirectory'
 import type { SeriesResult } from './room'
 
 const hash = async (t: string) => `h:${t}`
@@ -140,6 +140,29 @@ describe('fake room directory', () => {
     expect(await dir.loadPlayer('d1')).toBeNull()
     await dir.savePlayer({ id: 'd1', nickname: 'Ann' }, 't1')
     expect(await dir.loadPlayer('d1')).toEqual({ id: 'd1', nickname: 'Ann' })
+  })
+
+  it('lists players most recently seen first, a page at a time', async () => {
+    const dir = createFakeDirectory(hash)
+    const now = vi.spyOn(Date, 'now')
+    for (let i = 0; i < PLAYERS_PAGE + 2; i++) {
+      // Two players share each timestamp, so the id breaks the tie.
+      now.mockReturnValue(1000 + Math.floor(i / 2))
+      await dir.savePlayer({ id: `p${String(i).padStart(3, '0')}`, nickname: `N${i}` }, `t${i}`)
+    }
+    now.mockReturnValue(5000)
+    await dir.savePlayer({ id: 'p000', nickname: 'Back' }, 't0')
+    now.mockRestore()
+
+    const first = await dir.listPlayers()
+    expect(first.players).toHaveLength(PLAYERS_PAGE)
+    expect(first.players[0]).toEqual({ id: 'p000', nickname: 'Back', lastSeenAt: 5000 })
+    expect(first.players.slice(1, 3).map((p) => p.id)).toEqual(['p051', 'p050'])
+    expect(first.next).not.toBeNull()
+
+    const second = await dir.listPlayers(first.next)
+    expect(second.players.map((p) => p.id)).toEqual(['p002', 'p001'])
+    expect(second.next).toBeNull()
   })
 
   it('stores achievements per player behind the token, newest updatedAt wins, and reset removes them', async () => {

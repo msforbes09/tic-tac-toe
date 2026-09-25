@@ -38,6 +38,7 @@ export type DevSection = {
   rung: number | null
   onSetRung: (rung: number) => void
   onReset: () => void
+  onShowPlayers: () => void
   onExit: () => void
 }
 
@@ -180,6 +181,18 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
                 }}
               >
                 {confirmReset ? 'Tap again to confirm' : 'Reset game data'}
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="min-h-11 flex-1 rounded-[14px]"
+                onClick={() => {
+                  dev.onShowPlayers()
+                  close()
+                }}
+              >
+                Players
               </Button>
               <Button
                 variant="ghost"
