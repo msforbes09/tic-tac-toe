@@ -321,6 +321,25 @@ describe('App install nudge', () => {
     render(<App deps={{ install: platform({ standalone: true }) }} />)
     expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
   })
+
+  it('still offers Install in Settings after Not now, and not once installed', async () => {
+    const p = platform()
+    render(<App deps={{ install: p }} />)
+    fireEvent.click(screen.getByRole('button', { name: /not now/i }))
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(screen.getByText(/add to home screen/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }))
+    await act(async () => {})
+    expect(p.prompt).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+  })
+
+  it('has no install section in Settings when already installed', () => {
+    render(<App deps={{ install: platform({ standalone: true }) }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(screen.queryByText(/add to home screen/i)).not.toBeInTheDocument()
+  })
 })
 
 describe('App online rooms', () => {
