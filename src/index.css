@@ -311,6 +311,11 @@ body {
     right: calc(2 * var(--room-shift));
   }
 
+  /* The toast drops in below the card's top edge rather than over its bezel. */
+  .room-follow {
+    top: calc(var(--room-inset) + 0.75rem) !important;
+  }
+
   [data-slot='sheet-content'][data-side='bottom'] {
     margin-bottom: var(--room-inset);
     border-bottom-left-radius: var(--room-radius);

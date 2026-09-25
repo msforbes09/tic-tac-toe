@@ -62,8 +62,16 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 Binding rules live in `.claude/rules/` and load automatically: `tdd.md` (Red → Green →
 Refactor → Ship), `ddd.md`, `yagni.md`, `dry.md`, plus path-scoped rules for `src/lib`,
 `src/state`, `src/components/ui`, and `supabase/`. Subagents in `.claude/agents/`
-(implementor, code-reviewer, debugger, security-auditor) are pinned to Opus. Hooks in
-`.claude/hooks/` format with Prettier, run the sibling test on every edit, and block
+(implementor, code-reviewer, debugger, security-auditor, skeptic, qa-tester) are pinned to
+Opus. The app is mobile-first, so every check runs on phone first, desktop second: `skeptic`
+is a read-only reviewer that assumes the diff is broken and tries to prove it, run after the
+implementor and before the PR opens; `qa-tester` drives the app with Playwright (iPhone 14,
+Pixel 7, then 1440×900 and 2000×1188) against a list of acceptance claims, writes what it ran
+as a permanent spec under `e2e/`, and reports phone results before desktop, never fixing code.
+Both are mandatory for changes touching layout, overlays, or the online flow and optional for
+pure `src/lib` logic. `npm run e2e` runs the Playwright suite (`playwright.config.ts` starts
+the Vite server; CI's Linux run owns the screenshot baselines in `e2e/__snapshots__`). Hooks
+in `.claude/hooks/` format with Prettier, run the sibling test on every edit, and block
 `rm -rf`, force-push, pushes to `main`, and `.env` writes. `/commit` and the `release`
 skill cover the repo's git flow. `CLAUDE.local.md` is for personal notes and is gitignored.
 
@@ -81,4 +89,4 @@ GitHub Actions (`ci.yml`) only runs tests and the build.
 
 ## Commands
 
-- `npm run dev` / `npm test` / `npm run test:watch` / `npm run build`
+- `npm run dev` / `npm test` / `npm run test:watch` / `npm run build` / `npm run e2e`

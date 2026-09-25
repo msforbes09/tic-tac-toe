@@ -511,7 +511,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
               </>
             ),
           }}
-          install={installOffer}
+          install={splash ? undefined : installOffer}
         />
       )}
       <HistorySheet
