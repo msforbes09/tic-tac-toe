@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AchievementBadge } from './AchievementBadge'
 import { Interstitial } from './Interstitial'
 import { SeriesScreen } from './SeriesScreen'
 import {
@@ -12,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import type { AchievementEvent, AchievementId } from '@/lib/achievements'
 import type { Feedback } from '@/lib/feedback'
 import type { HistoryStorage } from '@/lib/history'
 import type { Connection, OpenChannel } from '@/lib/realtime'
@@ -44,6 +46,10 @@ export type RoomScreenProps = {
   feedback: Feedback
   /** Back to the list; the notice, if any, is shown there. */
   onLeave: (notice?: string) => void
+  /** The achievement this device wears above its name, sent with presence and challenges. */
+  badge?: AchievementId | null
+  /** Watching a series, and everything the series screen reports for a player. */
+  onAchievement?: (event: AchievementEvent) => void
   newId?: () => string
   now?: () => number
 }
@@ -74,12 +80,13 @@ export function ResultRow({ result }: { result: SeriesResult }) {
     <span
       data-winner={won ? 'true' : 'false'}
       className={cn(
-        'min-w-0 truncate text-[15px]',
-        side === 'right' && 'text-right',
+        'flex min-w-0 flex-col text-[15px]',
+        side === 'right' ? 'items-end text-right' : 'items-start',
         won ? 'font-semibold text-player-x' : 'text-muted-foreground',
       )}
     >
-      {player.nickname}
+      <AchievementBadge id={player.badge} />
+      <span className="max-w-full truncate">{player.nickname}</span>
     </span>
   )
   // Equal side columns keep the score centred whatever the names and tag measure.
@@ -101,7 +108,7 @@ export function ResultRow({ result }: { result: SeriesResult }) {
  * A room: who is here, who is playing whom, past results, and challenges. An accepted challenge
  * opens the series screen over the room; tapping a game in progress opens it as a watcher.
  */
-export function RoomScreen({ room, self, ownerToken, open, directory, storage, feedback, onLeave, newId = () => createId(8), now = Date.now }: RoomScreenProps) {
+export function RoomScreen({ room, self, ownerToken, open, directory, storage, feedback, onLeave, badge = null, onAchievement, newId = () => createId(8), now = Date.now }: RoomScreenProps) {
   const [roomConn, setRoomConn] = useState<Connection<RoomPresence> | null>(null)
   const [lobbyConn, setLobbyConn] = useState<Connection<LobbyPresence> | null>(null)
   const [members, setMembers] = useState<RoomPresence[]>([])
@@ -115,6 +122,10 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   const left = useRef(false)
   const latest = useRef({ activity, outgoing, incoming })
   latest.current = { activity, outgoing, incoming }
+  // What the room sees of us: the nickname plus the badge we wear.
+  const me = useMemo<SeriesPlayer>(() => (badge ? { ...self, badge } : self), [self, badge])
+  const meRef = useRef(me)
+  meRef.current = me
   const selfRef = useRef(self)
   selfRef.current = self
   const feedbackRef = useRef(feedback)
@@ -163,7 +174,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
             if (out && out.gameId === raw.gameId && out.player.deviceId === raw.from && act.kind === 'idle') {
               setOutgoing(null)
               feedbackRef.current.play({ kind: 'accepted' })
-              setActivity({ kind: 'series', role: 'referee', state: startSeries(room.id, raw.gameId, me, out.player) })
+              setActivity({ kind: 'series', role: 'referee', state: startSeries(room.id, raw.gameId, meRef.current, out.player) })
             } else {
               // A late accept for a challenge we withdrew: tell them so they do not sit in an empty series.
               c.send({ type: 'cancel', gameId: raw.gameId, from: me.deviceId })
@@ -217,8 +228,8 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
     if (!roomConn) return
     const status: MemberStatus = activity.kind === 'series' ? 'playing' : activity.kind === 'watching' ? 'watching' : 'idle'
     const gameId = activity.kind === 'idle' ? null : activity.state.gameId
-    roomConn.track({ deviceId: self.deviceId, nickname: self.nickname, status, gameId })
-  }, [roomConn, activity, self.deviceId, self.nickname])
+    roomConn.track({ deviceId: self.deviceId, nickname: self.nickname, status, gameId, ...(badge ? { badge } : {}) })
+  }, [roomConn, activity, self.deviceId, self.nickname, badge])
 
   // Results, live from the directory.
   useEffect(() => directory.onResultsChange(room.id, setResults), [directory, room.id])
@@ -280,9 +291,9 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   const challenge = (member: RoomPresence) => {
     if (!roomConn) return
     const gameId = newId()
-    const player = { deviceId: member.deviceId, nickname: member.nickname }
+    const player: SeriesPlayer = { deviceId: member.deviceId, nickname: member.nickname, ...(member.badge ? { badge: member.badge } : {}) }
     setOutgoing({ gameId, player })
-    roomConn.send({ type: 'challenge', gameId, from: self, to: member.deviceId })
+    roomConn.send({ type: 'challenge', gameId, from: me, to: member.deviceId })
   }
   const cancelChallenge = () => {
     if (outgoing) roomConn?.send({ type: 'cancel', gameId: outgoing.gameId, from: self.deviceId })
@@ -295,7 +306,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
       setOutgoing(null)
     }
     roomConn?.send({ type: 'accept', gameId: incoming.gameId, from: self.deviceId, to: incoming.player.deviceId })
-    setActivity({ kind: 'series', role: 'player', state: startSeries(room.id, incoming.gameId, incoming.player, self) })
+    setActivity({ kind: 'series', role: 'player', state: startSeries(room.id, incoming.gameId, incoming.player, me) })
     setIncoming(null)
   }
   const decline = () => {
@@ -304,6 +315,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
   }
   const watch = (pair: { gameId: string; players: SeriesPlayer[] }) => {
     setVsSplash(null)
+    onAchievement?.({ kind: 'watched' })
     setActivity({ kind: 'watching', state: startSeries(room.id, pair.gameId, pair.players[0], pair.players[1]) })
   }
   const deleteRoom = async () => {
@@ -342,7 +354,8 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
       <>
         <SeriesScreen
           key={activity.state.gameId}
-          self={self}
+          self={me}
+          onAchievement={onAchievement}
           role={activity.kind === 'series' ? activity.role : 'watcher'}
           initial={activity.state}
           open={open}
@@ -402,8 +415,8 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
         <Block title="Games in progress">
           {pairs.map((pair) => (
             <li key={pair.gameId} className="flex min-h-12 items-center justify-between gap-3 py-1.5">
-              <span className="font-medium">
-                {pair.players[0].nickname} vs {pair.players[1].nickname}
+              <span className="flex min-w-0 items-end gap-1.5 font-medium">
+                <Named player={pair.players[0]} /> <span>vs</span> <Named player={pair.players[1]} />
               </span>
               {!pair.players.some((p) => p.deviceId === self.deviceId) && (
                 <Button variant="outline" size="sm" className="min-h-10 rounded-[12px]" onClick={() => watch(pair)}>
@@ -419,6 +432,7 @@ export function RoomScreen({ room, self, ownerToken, open, directory, storage, f
         {[...members].sort((m, n) => Number(isYou(n)) - Number(isYou(m))).map((m) => (
           <li key={m.deviceId} className="flex min-h-12 items-center justify-between gap-3 py-1.5">
             <span className="flex min-w-0 flex-col">
+              <AchievementBadge id={m.badge} />
               <span className="truncate font-medium">{isYou(m) ? 'You' : m.nickname}</span>
               <span className="text-sm text-muted-foreground">{STATUS_LABEL[m.status]}</span>
             </span>
@@ -474,5 +488,15 @@ function Block({ title, empty, children }: { title: string; empty?: string; chil
       <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
       {empty ? <p className="py-1 text-sm text-muted-foreground">{empty}</p> : <ul className="divide-y divide-border/60">{children}</ul>}
     </div>
+  )
+}
+
+/** A nickname with its badge above, for the in-progress rows and splash titles. */
+function Named({ player }: { player: SeriesPlayer }) {
+  return (
+    <span className="inline-flex min-w-0 flex-col items-center leading-tight">
+      <AchievementBadge id={player.badge} />
+      <span className="truncate">{player.nickname}</span>
+    </span>
   )
 }

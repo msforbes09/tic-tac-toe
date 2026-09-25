@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { AchievementBadge } from './AchievementBadge'
 import { Board } from './Board'
 import { Celebration } from './Celebration'
 import { Interstitial } from './Interstitial'
@@ -14,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { isAchievementId, type AchievementId, type GameEvent, type SeriesEvent } from '@/lib/achievements'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import type { HistoryStorage } from '@/lib/history'
 import type { Connection, OpenChannel } from '@/lib/realtime'
@@ -50,10 +52,13 @@ export type SeriesScreenProps = {
   onResult?: (result: SeriesResult) => void
   /** Referee only: persist the result. */
   addResult: (result: SeriesResult) => Promise<void>
+  /** Players only: each finished game from this side, then the series. Watchers report nothing. */
+  onAchievement?: (event: GameEvent | SeriesEvent) => void
   now?: () => number
 }
 
 const otherSide = (side: SeriesSide): SeriesSide => (side === 'challenger' ? 'challenged' : 'challenger')
+const badgeOf = (p: SeriesPlayer): AchievementId | null => (isAchievementId(p.badge) ? p.badge : null)
 
 function resultCopy(result: SeriesResult, self: string): { title: string; subtitle: string } {
   const score = `${result.winnerScore}–${result.loserScore}`
@@ -69,7 +74,7 @@ function resultCopy(result: SeriesResult, self: string): { title: string; subtit
  * truth and broadcasts it; players send requests; watchers only receive. Presence drives the
  * grace period and the referee handover.
  */
-export function SeriesScreen({ self, role: initialRole, initial, open, feedback, onExit, onResult, addResult, now = Date.now }: SeriesScreenProps) {
+export function SeriesScreen({ self, role: initialRole, initial, open, feedback, onExit, onResult, addResult, onAchievement, now = Date.now }: SeriesScreenProps) {
   const [role, setRole] = useState<SeriesRole>(initialRole)
   const roleRef = useRef(role)
   roleRef.current = role
@@ -179,6 +184,47 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
     onResult?.(state.result)
   }, [state.result, role, addResult, onResult])
 
+  // Achievements, players only: each finished game once (by game number), then the series once.
+  // Trailing by 3 is remembered from the scores as they pass through, so a comeback can be told.
+  const reportedGame = useRef(0)
+  const trailedBy3 = useRef(false)
+  const seriesReported = useRef(false)
+  useEffect(() => {
+    if (!isPlayer || !mySide || !opponent) return
+    const mine = state.score[mySide]
+    const theirs = state.score[otherSide(mySide)]
+    if (theirs - mine >= 3) trailedBy3.current = true
+    if (state.game.status !== 'playing' && reportedGame.current !== state.gameNumber) {
+      reportedGame.current = state.gameNumber
+      const mySymbol = symbolOf(state.game, seatOfSide(mySide))
+      const result = state.game.status === 'draw' ? 'draw' : state.game.winner === mySymbol ? 'win' : 'loss'
+      onAchievement?.({
+        kind: 'game',
+        mode: 'online',
+        result,
+        board: state.game.board,
+        symbol: mySymbol,
+        finishedAt: now(),
+        opponentId: opponent.deviceId,
+        opponentBadge: badgeOf(opponent),
+      })
+    }
+    if (state.result && !seriesReported.current) {
+      seriesReported.current = true
+      onAchievement?.({
+        kind: 'series',
+        won: state.result.winner.deviceId === self.deviceId,
+        mine,
+        theirs,
+        trailedBy3: trailedBy3.current,
+        tieBreak: isTieBreak(state),
+        roomId: state.roomId,
+        opponentId: opponent.deviceId,
+        opponentBadge: badgeOf(opponent),
+      })
+    }
+  }, [state, isPlayer, mySide, opponent, onAchievement, now, self.deviceId])
+
   // Tie breaker splash when game 11 begins.
   useEffect(() => {
     if (isTieBreak(state) && !tieShown) {
@@ -210,6 +256,12 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
 
   const nameOf = (side: SeriesSide) => (mySide === side && isPlayer ? 'You' : playerOf(state, side).nickname)
   const seriesBar = `${nameOf('challenger')} ${state.score.challenger} · ${state.score.challenged} ${nameOf('challenged')}`
+  const named = (side: SeriesSide) => (
+    <span className="inline-flex flex-col items-center leading-tight">
+      <AchievementBadge id={playerOf(state, side).badge} />
+      <span>{nameOf(side)}</span>
+    </span>
+  )
   const gameLabel = isTieBreak(state) ? `Tie breaker · Game ${state.gameNumber}` : `Game ${state.gameNumber} of ${SERIES_GAMES}`
   const status = waiting ? `Waiting for ${opponent?.nickname}…` : seriesStatusText(state, isPlayer ? self.deviceId : null)
 
@@ -230,8 +282,11 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
         </span>
       </header>
 
-      <p aria-label="Series score" className="rounded-[18px] bg-muted/70 px-4 py-3 text-center text-lg font-semibold tabular-nums dark:bg-muted/50">
-        {seriesBar}
+      <p
+        aria-label={`Series score: ${seriesBar}`}
+        className="flex items-end justify-center gap-2 rounded-[18px] bg-muted/70 px-4 py-3 text-center text-lg font-semibold tabular-nums dark:bg-muted/50"
+      >
+        {named('challenger')} <span>{`${state.score.challenger} · ${state.score.challenged}`}</span> {named('challenged')}
       </p>
 
       <div className="my-auto flex flex-col gap-5 pb-6">
