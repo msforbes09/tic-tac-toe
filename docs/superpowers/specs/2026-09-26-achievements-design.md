@@ -221,9 +221,10 @@ are untouched by it, as today.
 
 `components/AchievementToast.tsx`, mounted once in `App` above every screen. `App`
 keeps a queue of unlocked ids; the toast shows the head for 3 s, then the next. Layout:
-a pill at the top under the safe area, icon in tier colour on the left, the name, and
-"Achievement unlocked" in small muted text. Slides in and out; reduced motion fades.
-`role="status"`. Tapping dismisses the current one. Feedback: a new `FeedbackEvent`
+a pill at the top under the safe area, icon in tier colour on the left, the name,
+"Achievement unlocked" in small muted text above it, and the description (up to two
+lines) below it. Slides in and out; reduced motion fades. `role="status"`, with the
+name and description in the accessible name. Tapping dismisses the current one. Feedback: a new `FeedbackEvent`
 `{ kind: 'achievement' }`, a short rising two-note chime and a light buzz in
 `browserFeedback`. Grand Master also fires the win confetti.
 
