@@ -15,7 +15,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
 - `src/lib/bot.ts` — the bot, by rung: win / block / best-move chances over memoised minimax. Depends only on game.ts. Fully tested, including a simulation that pins the hard band.
 - `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (promotion, top, top held, lost top), storage. Fully tested.
-- `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones (`friendly` ships, `cocky` kept for a later switch). Fully tested.
+- `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones: `friendly` by default, `cocky` when the Aggressive bot switch is on. `src/lib/tone.ts` remembers the switch; `components/SettingsSheet.tsx` (gear on the setup screen) holds it and the nickname. Fully tested.
 - `src/lib/climb.ts` — the rung series for the History graph (`components/ClimbGraph.tsx`, a sparkline over three band lanes). Fully tested.
 - `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the dialog; the chip and setup show the rung while it is on. Developer mode is in-memory only and the knock is ignored while it is on.
 - `src/lib/history.ts` — history persistence over a Storage-like interface. Fully tested.

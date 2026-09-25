@@ -527,6 +527,13 @@ describe('GameScreen banter', () => {
     expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
   })
 
+  it('talks trash instead when the bot is aggressive', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} tone="cocky" />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.getByText(BANTER.cocky.easy.win[0])).toBeInTheDocument()
+  })
+
   it('comments on a loss', () => {
     // Rung 3 picking Hard lands on 14, a Medium bot that wins fast with rng 0.
     render(<GameScreen settings={hardBot} storage={seeded({ rung: 3 })} feedback={recorder()} onBack={() => {}} />)

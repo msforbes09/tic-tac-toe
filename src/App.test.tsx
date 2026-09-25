@@ -49,6 +49,52 @@ describe('App', () => {
   })
 })
 
+describe('App settings', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  const flush = () => act(async () => {})
+  const openSettings = () => fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+
+  it('turns the aggressive bot on from Settings, changes the hints, and remembers it', () => {
+    const first = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    expect(screen.getByText('I block. Can you?')).toBeInTheDocument()
+    openSettings()
+    fireEvent.click(screen.getByRole('switch', { name: 'Aggressive bot' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+    first.unmount()
+
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /versus bot/i }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+  })
+
+  it('renames the player from Settings, locally and in the directory when online is set up', async () => {
+    const hash = async (t: string) => `h:${t}`
+    const dir = createFakeDirectory(hash)
+    const deps = { open: createFakeRealtime().open, directory: dir, hash, share: async () => 'copied' as const, newId: () => 'R' }
+    window.localStorage.setItem(NICKNAME_KEY, 'Alice')
+    render(<App deps={deps} />)
+    await flush()
+    openSettings()
+    const field = screen.getByRole('textbox', { name: 'Nickname' })
+    expect(field).toHaveValue('Alice')
+    fireEvent.change(field, { target: { value: 'Bob' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(window.localStorage.getItem(NICKNAME_KEY)).toBe('Bob')
+    expect(dir.players()).toEqual([{ id: expect.any(String), nickname: 'Bob' }])
+  })
+
+  it('has no Settings gear during a game', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+})
+
 describe('App developer mode', () => {
   beforeEach(() => {
     window.localStorage.clear()

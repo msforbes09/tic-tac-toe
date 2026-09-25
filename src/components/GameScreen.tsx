@@ -6,7 +6,7 @@ import { StatusBar } from './StatusBar'
 import { TopCard } from './TopCard'
 import { Button } from '@/components/ui/button'
 import { chooseMove } from '@/lib/bot'
-import { banterFor } from '@/lib/banter'
+import { banterFor, type Tone } from '@/lib/banter'
 import { feedbackForChange, type Feedback } from '@/lib/feedback'
 import { nextPlayer } from '@/lib/game'
 import { newEntryId, saveGame, type HistoryEntry, type HistoryStorage } from '@/lib/history'
@@ -44,6 +44,8 @@ export type GameScreenProps = {
   onKnock?: (event: KnockEvent) => boolean | void
   /** Every finished two-player or bot game, after it is saved locally; bot games bring the moved ladder. */
   onRecorded?: (entry: HistoryEntry, ladder: Ladder | null) => void
+  /** How the bot talks after a game. Friendly unless Settings says aggressive. */
+  tone?: Tone
 }
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
@@ -53,7 +55,19 @@ const NOTE_FOR: Partial<Record<Moment, (band: string) => string>> = {
   top: () => "Top of the pack. Nobody's above you now.",
 }
 
-export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl, dev, onOpenDev, onKnock, onRecorded }: GameScreenProps) {
+export function GameScreen({
+  settings,
+  storage,
+  feedback,
+  onBack,
+  share,
+  siteUrl,
+  dev,
+  onOpenDev,
+  onKnock,
+  onRecorded,
+  tone = 'friendly',
+}: GameScreenProps) {
   const [state, dispatch] = useReducer(gameReducer, settings, createGameState)
   const recordedBoard = useRef<BoardModel | null>(null)
   // Null until the first board is seen, so the opening board plays the start cue.
@@ -138,13 +152,13 @@ export function GameScreen({ settings, storage, feedback, onBack, share, siteUrl
       setLadder(next)
       setGamesPlayed((n) => n + 1)
       setMoment(what)
-      setBanter(banterFor(bandOf(rung), result))
+      setBanter(banterFor(bandOf(rung), result, Math.random, tone))
       if (what === 'top-held') setCardOpen(true)
       if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     }
     onRecorded?.(entry, next)
     dispatch({ type: 'RECORDED' })
-  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded])
+  }, [state.status, state.recorded, state.board, state.winner, state.p1Symbol, state.voided, settings, storage, ladder, rung, gamesPlayed, feedback, onRecorded, tone])
 
   const finished = state.status !== 'playing'
   // The chip says what you picked for the first game, then the band the rung is really in.

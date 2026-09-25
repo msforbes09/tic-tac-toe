@@ -168,4 +168,19 @@ describe('SetupScreen install card', () => {
     fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
     expect(screen.getByText('My best game. Ready?')).toBeInTheDocument()
   })
+
+  it('uses the cocky hints when the bot is aggressive', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} tone="cocky" />)
+    fireEvent.click(screen.getByRole('button', { name: /bot/i }))
+    expect(screen.getByText('Blocks. Bites back.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^hard$/i }))
+    expect(screen.getByText("Bring your best. It won't matter.")).toBeInTheDocument()
+  })
+
+  it('has a Settings button when there is somewhere for it to go', () => {
+    const onOpenSettings = vi.fn()
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} onOpenSettings={onOpenSettings} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(onOpenSettings).toHaveBeenCalled()
+  })
 })

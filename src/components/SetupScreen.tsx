@@ -5,7 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { KnockEvent } from '@/lib/knock'
 import { rungForSelection } from '@/lib/ladder'
 import { cn } from '@/lib/utils'
-import { SETUP_HINTS } from '@/lib/banter'
+import { SETUP_HINTS, type Tone } from '@/lib/banter'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
@@ -31,6 +31,10 @@ export type SetupScreenProps = {
   dev?: { rung: number | null }
   /** Reports taps that are steps of the developer knock. */
   onKnock?: (event: KnockEvent) => void
+  /** The bot's tone, for the difficulty hints. */
+  tone?: Tone
+  /** When set, a gear in the header opens Settings. */
+  onOpenSettings?: () => void
 }
 
 /** "Difficulty · 25 → 20": the saved rung and, when the picked band would move it, where it lands. */
@@ -40,10 +44,10 @@ function devDifficultyLabel(rung: number | null, band: Difficulty): string {
   return lands === rung ? `Difficulty · ${current}` : `Difficulty · ${current} → ${lands}`
 }
 
-const DIFFICULTIES: { value: Difficulty; label: string; hint: string }[] = [
-  { value: 'easy', label: 'Easy', hint: SETUP_HINTS.friendly.easy },
-  { value: 'medium', label: 'Medium', hint: SETUP_HINTS.friendly.medium },
-  { value: 'hard', label: 'Hard', hint: SETUP_HINTS.friendly.hard },
+const DIFFICULTIES: { value: Difficulty; label: string }[] = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' },
 ]
 
 const segmentItem =
@@ -83,13 +87,29 @@ export function SetupScreen({
   onModeChange,
   dev,
   onKnock,
+  tone = 'friendly',
+  onOpenSettings,
 }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>(initial.mode === 'online' && !online.available ? 'pvp' : initial.mode)
   const [difficulty, setDifficulty] = useState<Difficulty>(initial.difficulty)
   const [symbol, setSymbol] = useState<Player>(initial.p1Symbol)
 
   return (
-    <section className="flex flex-1 flex-col gap-8">
+    <section className="relative flex flex-1 flex-col gap-8">
+      {onOpenSettings && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Settings"
+          onClick={onOpenSettings}
+          className="absolute right-0 top-2 size-11 rounded-full text-muted-foreground"
+        >
+          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+          </svg>
+        </Button>
+      )}
       <header className="flex flex-col items-center pt-8 text-center">
         {/* A three-tile motif stands in for an app icon: the product is the board. */}
         <div aria-hidden="true" className="mb-6 grid grid-cols-3 gap-1.5">
@@ -143,7 +163,7 @@ export function SetupScreen({
         {mode === 'bot' && (
           <Field
             label={dev ? devDifficultyLabel(dev.rung, difficulty) : 'Difficulty'}
-            hint={DIFFICULTIES.find((d) => d.value === difficulty)?.hint ?? ''}
+            hint={SETUP_HINTS[tone][difficulty]}
             className="rise-in"
           >
             <ToggleGroup

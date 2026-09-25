@@ -131,8 +131,14 @@ Hard. No rung numbers are printed. Shown once two such games exist.
 
 ## Copy
 
-All bot copy lives in `src/lib/banter.ts` in two tones. `friendly` is what
-ships, for kids; `cocky` is kept for a later switch (see TODO).
+All bot copy lives in `src/lib/banter.ts` in two tones. `friendly` is the
+default, for kids; `cocky` is the **Aggressive bot** switch in Settings
+(`src/lib/tone.ts`, key `tic-tac-toe:tone`, off unless switched on).
+
+**Settings** (`components/SettingsSheet.tsx`): a gear at the top right of the
+setup screen, and nowhere else, opens a sheet with the nickname (same rules
+and save path as the online nickname sheet; prefilled with the random
+suggestion until one is chosen) and the Aggressive bot switch.
 
 Difficulty descriptions on setup:
 
@@ -183,8 +189,6 @@ Voided and two-player games get none. New game clears it.
 
 - **Account-based badge.** When the rooms work lands its device identity and
   Supabase tables, the badge can live there and show beside a nickname.
-- **Tone switch.** A setting (or developer-mode toggle) that swaps the
-  friendly bot copy for the cocky set already in `banter.ts`.
 - **Daily decay.** Each day without a bot game drops the rung by one.
 - **Achievements.** A small set beyond the top badge (first win at each
   band, a ten-win streak, a hundred games, held the top ten times), each with

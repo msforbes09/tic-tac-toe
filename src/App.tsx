@@ -46,6 +46,8 @@ import { STORAGE_KEY as HISTORY_KEY, gameRowFromEntry, markSynced, unsyncedEntri
 import { KNOCK, KNOCK_DELAY_MS, knockStep, type KnockEvent } from '@/lib/knock'
 import { LADDER_KEY, loadLadder, newerLadder, saveLadder, type Ladder } from '@/lib/ladder'
 import { SETUP_KEY, loadSetup, saveSetup } from '@/lib/setup'
+import { loadTone, saveTone } from '@/lib/tone'
+import { SettingsSheet } from '@/components/SettingsSheet'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
 import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
@@ -163,6 +165,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [suggestedNickname] = useState(() => randomName(random))
   const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [tone, setTone] = useState(() => loadTone(storage))
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
   // In memory only, so it ends with the session; the knock is ignored while it is already on.
@@ -339,6 +343,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           onOpenDev={() => setDevDialog('panel')}
           onKnock={knock}
           onRecorded={onRecorded}
+          tone={tone}
         />
       )}
       {screen.kind === 'room' && services && self && (
@@ -363,6 +368,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
             setScreen({ kind: 'game', settings: next })
           }}
           onOpenHistory={() => setHistoryOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          tone={tone}
           onModeChange={setSetupMode}
           dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
           onKnock={knock}
@@ -407,6 +414,22 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
         share={share}
         siteUrl={siteUrl}
         onKnock={knock}
+      />
+
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        nickname={nickname}
+        suggestedNickname={suggestedNickname}
+        onSaveNickname={(name) => {
+          saveNickname(storage, name)
+          setNickname(name)
+        }}
+        tone={tone}
+        onToneChange={(next) => {
+          saveTone(storage, next)
+          setTone(next)
+        }}
       />
 
       <DevDialog
