@@ -84,6 +84,8 @@ export function GameScreen({
   const [moment, setMoment] = useState<Moment | null>(null)
   // What the bot said about the last game; a ladder moment speaks instead when there is one.
   const [banter, setBanter] = useState<string | null>(null)
+  // What the bot said last, so it never says the same thing two games running.
+  const lastBanter = useRef<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
@@ -145,7 +147,9 @@ export function GameScreen({
       setLadder(next)
       setGamesPlayed((n) => n + 1)
       setMoment(what)
-      setBanter(banterFor(bandOf(rung), result, Math.random, tone))
+      const line = banterFor(bandOf(rung), result, Math.random, tone, lastBanter.current)
+      lastBanter.current = line
+      setBanter(line)
       if (what === 'top-held') setCardOpen(true)
       if (what && what !== 'lost-top') feedback.play({ kind: 'start' })
     }
