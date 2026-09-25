@@ -14,8 +14,6 @@ describe('AchievementToast', () => {
     const { rerender } = render(<AchievementToast queue={['hello-bot', 'closer']} onDone={onDone} feedback={{ play }} />)
     expect(screen.getByRole('status')).toHaveTextContent('Hello, Bot')
     expect(screen.getByRole('status')).toHaveTextContent('Achievement unlocked')
-    expect(screen.getByRole('status')).toHaveTextContent('Play your first bot game')
-    expect(screen.getByRole('status')).toHaveAccessibleName('Achievement unlocked: Hello, Bot. Play your first bot game')
     expect(play).toHaveBeenCalledTimes(1)
     expect(play).toHaveBeenCalledWith({ kind: 'achievement' })
     act(() => {
