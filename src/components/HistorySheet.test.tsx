@@ -236,6 +236,11 @@ describe('HistorySheet climb graph', () => {
     const graph = screen.getByRole('img', { name: /your climb/i })
     expect(graph).toHaveAccessibleDescription('Rungs 11, 12, 13')
     expect(screen.getByText('Your climb')).toBeInTheDocument()
+    // The climb and the record sit side by side in one row that scrolls sideways.
+    const row = screen.getByRole('group', { name: 'Climb and record' })
+    expect(row).toContainElement(graph)
+    expect(row).toContainElement(screen.getByRole('table', { name: /record against the bot/i }))
+    expect(row.className).toMatch(/overflow-x-auto/)
   })
 
   it('needs at least two games with a rung', () => {

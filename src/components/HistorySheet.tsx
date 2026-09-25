@@ -311,11 +311,24 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
             {mode !== 'online' && (
               <>
                 {mode === 'bot' && ladder && <TopBadge ladder={ladder} share={share} siteUrl={siteUrl} />}
-                {mode === 'bot' && climb.length >= 2 && <ClimbGraph rungs={climb} />}
-                {games.length > 0 && (
-                  <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
-                    {mode === 'bot' ? <BotRecordTable games={games} /> : <PvpTally games={games} />}
+                {mode === 'bot' && climb.length >= 2 ? (
+                  // The climb and the record side by side, one swipe apart.
+                  <div
+                    role="group"
+                    aria-label="Climb and record"
+                    className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    <ClimbGraph rungs={climb} className="w-[88%] shrink-0 snap-center" />
+                    <div className="w-[88%] shrink-0 snap-center rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                      <BotRecordTable games={games} />
+                    </div>
                   </div>
+                ) : (
+                  games.length > 0 && (
+                    <div className="rounded-[18px] bg-muted/70 px-4 py-2.5 dark:bg-muted/50">
+                      {mode === 'bot' ? <BotRecordTable games={games} /> : <PvpTally games={games} />}
+                    </div>
+                  )
                 )}
                 {games.length === 0 ? (
                   <p className="py-6 text-center text-sm text-muted-foreground">{mode === 'bot' ? 'No bot games yet' : 'No two-player games yet'}</p>

@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { TOP_RUNG } from '@/lib/ladder'
 import { CLIMB_LENGTH } from '@/lib/climb'
+import { cn } from '@/lib/utils'
 
 const W = 300
 const H = 96
@@ -15,7 +16,7 @@ const LANES: { label: string; className: string }[] = [
  * The climb: a sparkline of the rung over recent bot games, with the three bands as shaded lanes.
  * Rung numbers are never printed; the lanes tell the story.
  */
-export function ClimbGraph({ rungs }: { rungs: number[] }) {
+export function ClimbGraph({ rungs, className }: { rungs: number[]; className?: string }) {
   const descId = useId()
   const laneH = (H - PAD * 2) / LANES.length
   const x = (i: number) => PAD + (i * (W - PAD * 2)) / Math.max(1, rungs.length - 1)
@@ -24,7 +25,7 @@ export function ClimbGraph({ rungs }: { rungs: number[] }) {
   const last = rungs[rungs.length - 1]
 
   return (
-    <div className="flex flex-col gap-2 rounded-[18px] bg-muted/70 px-4 py-3 dark:bg-muted/50">
+    <div className={cn('flex flex-col gap-2 rounded-[18px] bg-muted/70 px-4 py-3 dark:bg-muted/50', className)}>
       <div className="flex items-baseline justify-between">
         <span className="font-heading text-[15px] font-medium">Your climb</span>
         <span className="text-sm text-muted-foreground">
