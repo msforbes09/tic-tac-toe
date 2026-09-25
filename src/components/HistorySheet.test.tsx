@@ -93,6 +93,15 @@ describe('HistorySheet bot section', () => {
     expect(screen.getByRole('row', { name: 'Hard 0 1 0' })).toBeInTheDocument()
   })
 
+  it('opens at the top: nothing in the list is focused so it cannot scroll into view', async () => {
+    const storage = fakeStorage(Array.from({ length: 12 }, (_, i) => entry({ id: `g${i}`, timestamp: i })))
+    render(<HistorySheet mode="bot" open onOpenChange={() => {}} storage={storage} />)
+    await act(async () => {})
+    await act(async () => {})
+    expect(screen.getByRole('button', { name: 'View more' })).not.toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Back' })).not.toHaveFocus()
+  })
+
   it('shows ten games at a time with View more and starts over when reopened', () => {
     const many = Array.from({ length: 25 }, (_, i) => entry({ id: `g${i}` }))
     const storage = fakeStorage(many)

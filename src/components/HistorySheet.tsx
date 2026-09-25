@@ -259,6 +259,9 @@ export function HistorySheet({ open, onOpenChange, storage, mode, cloud, online,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        // A tap moves no focus (the default would focus a button deep in the list and scroll to it);
+        // keyboard users keep the default.
+        initialFocus={(openType) => openType === 'keyboard'}
         className="mx-auto flex w-full max-w-[420px] flex-col rounded-t-[28px] px-5 pt-5"
         // Inline height: the sheet's own `data-[side=bottom]:h-auto` would beat a class, and without a
         // definite height the list's scroll area grows with its content instead of scrolling.

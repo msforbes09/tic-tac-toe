@@ -50,6 +50,8 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        // A tap moves no focus, so the nickname field does not pop the keyboard; keyboard users keep the default.
+        initialFocus={(openType) => openType === 'keyboard'}
         className="mx-auto flex w-full max-w-[420px] flex-col gap-6 rounded-t-[28px] px-5 pt-5"
         style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
