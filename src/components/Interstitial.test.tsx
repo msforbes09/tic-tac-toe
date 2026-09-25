@@ -47,3 +47,12 @@ describe('Interstitial', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 })
+
+describe('Interstitial backdrop', () => {
+  it('shares the room backdrop and card with the app shell', () => {
+    render(<Interstitial title="Alice vs Bob" onDone={() => {}} />)
+    const status = screen.getByRole('status')
+    expect(status.querySelector('[data-testid="backdrop"]')).not.toBeNull()
+    expect(status.querySelector('.max-w-\\[420px\\]')).toHaveClass('room-card')
+  })
+})

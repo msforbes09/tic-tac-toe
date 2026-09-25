@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from 'react'
+import { Backdrop } from '@/components/Backdrop'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -30,8 +31,9 @@ export function Interstitial({ title, subtitle, actions, durationMs = INTERSTITI
   }, [waitsForTap, durationMs, onDone])
 
   return (
-    <div role="status" className="fixed inset-0 z-50 flex justify-center bg-muted">
-      <div className="grid w-full max-w-[420px] place-items-center bg-background px-6 text-foreground sm:border-x">
+    <div role="status" className="room fixed inset-0 z-50 flex justify-center bg-muted">
+      <Backdrop />
+      <div className="room-card grid w-full max-w-[420px] place-items-center bg-background px-6 text-foreground">
         <div className="flex w-full -translate-y-[4vh] flex-col items-center gap-6 text-center">
           <p className="splash-rise text-4xl font-bold tracking-[-0.03em]" style={{ '--splash-delay': '0ms' } as CSSProperties}>
             {title}
