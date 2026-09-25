@@ -50,6 +50,7 @@ import { loadTone, saveTone } from '@/lib/tone'
 import { SettingsSheet } from '@/components/SettingsSheet'
 import type { Mode, Settings } from '@/lib/types'
 import { createBrowserFeedback } from '@/platform/browserFeedback'
+import { useNetworkOnline } from '@/platform/network'
 import { browserInstallPlatform, type InstallPlatform } from '@/platform/install'
 import { shareLink, type ShareLink } from '@/platform/share'
 import { createSupabaseServices } from '@/platform/supabase'
@@ -167,6 +168,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [tone, setTone] = useState(() => loadTone(storage))
+  // Airplane mode and the like: Online is shown disabled until the connection is back.
+  const connected = useNetworkOnline()
 
   // Developer mode: opened by the secret knock, a sequence of taps the screens report here.
   // In memory only, so it ends with the session; the knock is ignored while it is already on.
@@ -386,7 +389,8 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           dev={devMode ? { rung: loadLadder(storage).rung } : undefined}
           onKnock={knock}
           online={{
-            available: services !== null,
+            available: services !== null && connected,
+            reason: services !== null && !connected ? 'Offline' : undefined,
             panel: services && (
               <>
                 {notice && (

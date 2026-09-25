@@ -346,6 +346,30 @@ describe('App online rooms', () => {
     expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
   })
 
+  it('disables Online as Offline while the phone has no connection, and re-enables it when it returns', () => {
+    const { deps } = online()
+    const setOnLine = (value: boolean) => Object.defineProperty(window.navigator, 'onLine', { value, configurable: true })
+    setOnLine(false)
+    try {
+      render(<App deps={deps} />)
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
+      expect(screen.getByText('Offline')).toBeInTheDocument()
+      setOnLine(true)
+      act(() => {
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeEnabled()
+      expect(screen.queryByText('Offline')).not.toBeInTheDocument()
+      setOnLine(false)
+      act(() => {
+        window.dispatchEvent(new Event('offline'))
+      })
+      expect(screen.getByRole('button', { name: /^online$/i })).toBeDisabled()
+    } finally {
+      setOnLine(true)
+    }
+  })
+
   it('asks for a nickname the first time Online is picked and remembers it', async () => {
     const { deps } = online()
     const first = render(<App deps={deps} />)

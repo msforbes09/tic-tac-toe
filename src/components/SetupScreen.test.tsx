@@ -74,6 +74,13 @@ describe('SetupScreen online', () => {
     expect(screen.getByText('Not set up')).toBeInTheDocument()
   })
 
+  it('shows Online disabled as Offline when the phone has no connection', () => {
+    render(<SetupScreen onStart={() => {}} onOpenHistory={() => {}} online={{ available: false, reason: 'Offline', panel: null }} />)
+    expect(screen.getByRole('button', { name: /online/i })).toBeDisabled()
+    expect(screen.getByText('Offline')).toBeInTheDocument()
+    expect(screen.queryByText('Not set up')).not.toBeInTheDocument()
+  })
+
   it('replaces difficulty, symbol and Start with the online panel', () => {
     render(
       <SetupScreen

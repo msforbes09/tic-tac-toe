@@ -33,6 +33,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - `src/state/online.ts` — `onlineReducer(role)` for referee / player / watcher and `resolveRole`. Fully tested.
 - `src/platform/supabase*.ts` — the only files that import `@supabase/supabase-js`: realtime adapter, directory adapter, shared client.
 - `src/platform/share.ts` — Web Share / clipboard behind `ShareLink`.
+- `src/platform/network.ts` — `useNetworkOnline`, the online / offline events; setup shows Online as "Offline" while there is no connection.
 - `src/components/OnlinePanel.tsx`, `RoomScreen.tsx`, `SeriesScreen.tsx`, `NicknameSheet.tsx`, `Interstitial.tsx` — the online UI.
 - `supabase/schema.sql` — full schema for a fresh project (rooms, results, players, games, ladders, `delete_room`, `upsert_player`, `save_ladder`, `reset_player_data`); `supabase/migrations/` holds dated deltas for existing projects.
 - `src/components/` — React UI. `ui/` is shadcn-generated; don't hand-edit.

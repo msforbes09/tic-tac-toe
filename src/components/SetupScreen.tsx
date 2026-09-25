@@ -18,8 +18,11 @@ import { SETUP_HINTS, type Tone } from '@/lib/banter'
 import { DEFAULT_SETTINGS } from '@/lib/setup'
 import type { Difficulty, Mode, Player, Settings } from '@/lib/types'
 
-/** Online is available when Supabase is configured; the app supplies the panel shown under the mode toggle. */
-export type OnlineSetup = { available: boolean; panel: ReactNode }
+/**
+ * Online is available when Supabase is configured and the phone has a connection; the app supplies
+ * the panel shown under the mode toggle, and the reason when it is unavailable ("Not set up" by default).
+ */
+export type OnlineSetup = { available: boolean; reason?: string; panel: ReactNode }
 
 /** The install nudge: a one-tap prompt where the browser offers one, manual steps on iPhone. */
 export type InstallOffer = { kind: 'prompt' | 'ios-steps'; onInstall: () => void; onDismiss: () => void }
@@ -164,7 +167,9 @@ export function SetupScreen({
               disabled={!online.available}
             >
               Online
-              {!online.available && <span className="text-[11px] font-normal text-muted-foreground">Not set up</span>}
+              {!online.available && (
+                <span className="text-[11px] font-normal text-muted-foreground">{online.reason ?? 'Not set up'}</span>
+              )}
             </ToggleGroupItem>
           </ToggleGroup>
         </Field>
