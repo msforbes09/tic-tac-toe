@@ -7,13 +7,14 @@ const BANDS: Difficulty[] = ['easy', 'medium', 'hard']
 const RESULTS: GameResult[] = ['win', 'loss', 'draw']
 
 describe('banter pools', () => {
-  it('has ten lines for every tone, band and result', () => {
+  it('has ten lines for every tone, band and result, and twenty for a Hard draw', () => {
     for (const tone of TONES)
       for (const band of BANDS)
         for (const result of RESULTS) {
           const pool = BANTER[tone][band][result]
-          expect(pool, `${tone}/${band}/${result}`).toHaveLength(10)
-          expect(new Set(pool).size, `${tone}/${band}/${result} repeats`).toBe(10)
+          const expected = band === 'hard' && result === 'draw' ? 20 : 10
+          expect(pool, `${tone}/${band}/${result}`).toHaveLength(expected)
+          expect(new Set(pool).size, `${tone}/${band}/${result} repeats`).toBe(expected)
         }
   })
 
@@ -40,5 +41,13 @@ describe('banterFor', () => {
 
   it('always returns a member of the pool with Math.random', () => {
     for (let i = 0; i < 50; i++) expect(BANTER.friendly.medium.win).toContain(banterFor('medium', 'win'))
+  })
+
+  it('never repeats the line that was just shown', () => {
+    const pool = BANTER.friendly.easy.win
+    expect(banterFor('easy', 'win', () => 0, 'friendly', pool[0])).not.toBe(pool[0])
+    expect(banterFor('easy', 'win', () => 0, 'friendly', pool[0])).toBe(pool[1])
+    expect(banterFor('easy', 'win', () => 0.999, 'friendly', pool[9])).toBe(pool[8])
+    for (let i = 0; i < 100; i++) expect(banterFor('hard', 'draw', Math.random, 'cocky', BANTER.cocky.hard.draw[3])).not.toBe(BANTER.cocky.hard.draw[3])
   })
 })

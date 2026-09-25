@@ -77,6 +77,8 @@ export function GameScreen({
   const [moment, setMoment] = useState<Moment | null>(null)
   // What the bot said about the last game.
   const [banter, setBanter] = useState<string | null>(null)
+  // What the bot said last, so it never says the same thing two games running.
+  const lastBanter = useRef<string | null>(null)
 
   const botSymbol = settings.mode === 'bot' ? symbolOf(state, 'p2') : null
   const isBotTurn = botSymbol !== null && state.status === 'playing' && nextPlayer(state.board) === botSymbol
@@ -136,7 +138,9 @@ export function GameScreen({
       setLadder(next)
       setGamesPlayed((n) => n + 1)
       setMoment(momentAfter(ladder, next, result))
-      setBanter(banterFor(bandOf(rung), result, Math.random, tone))
+      const line = banterFor(bandOf(rung), result, Math.random, tone, lastBanter.current)
+      lastBanter.current = line
+      setBanter(line)
     }
     onRecorded?.(entry, next)
     onAchievement?.({

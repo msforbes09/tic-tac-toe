@@ -24,10 +24,9 @@ export function statusText(state: GameState, youSeat?: Seat): string {
   return seat === 'p1' ? 'Your move' : 'Bot is thinking…'
 }
 
-/** Which player the status line is about, for the accent mark. Null for a draw. */
+/** Whose turn the status line is about, for the accent mark. Null once the game is over, so the title sits centred. */
 function statusPlayer(state: GameState): Player | null {
-  if (state.status === 'draw') return null
-  if (state.status === 'won') return state.winner
+  if (state.status !== 'playing') return null
   return nextPlayer(state.board)
 }
 

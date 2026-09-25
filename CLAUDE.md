@@ -57,6 +57,12 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Missing → Online is shown disabled.
 - Scope is fixed by the specs; replay, undo, matchmaking, accounts, and chat are out.
 
+## Releases
+
+Every PR that releases `develop` to `main` bumps `package.json` `version`: patch for fixes and
+small work, minor for a major feature. The splash footer shows it (`__APP_VERSION__`, injected
+by vite.config.ts) with the copyright line.
+
 ## Hosting
 
 Cloudflare Pages builds `main` and PR previews from this repo (`npm run build` → `dist`,

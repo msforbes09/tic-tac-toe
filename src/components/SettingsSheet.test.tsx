@@ -108,6 +108,28 @@ describe('SettingsSheet', () => {
     })
   })
 
+  describe('install', () => {
+    it('offers Install when the browser can prompt', () => {
+      const onInstall = vi.fn()
+      render(<SettingsSheet {...base} install={{ kind: 'prompt', onInstall }} />)
+      expect(screen.getByText('Add to Home Screen')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Install' }))
+      expect(onInstall).toHaveBeenCalledTimes(1)
+    })
+
+    it('explains the Share steps on iPhone instead of an Install button', () => {
+      render(<SettingsSheet {...base} install={{ kind: 'ios-steps', onInstall: () => {} }} />)
+      expect(screen.getByText('Add to Home Screen')).toBeInTheDocument()
+      expect(screen.getByText(/share/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Install' })).not.toBeInTheDocument()
+    })
+
+    it('has no install section once installed', () => {
+      render(<SettingsSheet {...base} />)
+      expect(screen.queryByText('Add to Home Screen')).not.toBeInTheDocument()
+    })
+  })
+
   it('closes from Done', () => {
     const onOpenChange = vi.fn()
     render(<SettingsSheet {...base} onOpenChange={onOpenChange} />)

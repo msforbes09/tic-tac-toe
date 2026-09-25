@@ -53,3 +53,18 @@ describe('StatusBar message override', () => {
     expect(document.querySelector('[data-status-mark]')).toHaveAttribute('data-status-mark', 'X')
   })
 })
+
+describe('StatusBar finished games', () => {
+  it('drops the mark once the game is over so the title sits centred', () => {
+    let s = createGameState({ mode: 'bot', difficulty: 'easy', p1Symbol: 'X' })
+    for (const i of [0, 3, 1, 4, 2]) s = gameReducer(s, { type: 'MOVE', index: i })
+    render(<StatusBar state={s} />)
+    expect(screen.getByText('You win!')).toBeInTheDocument()
+    expect(document.querySelector('[data-status-mark]')).toBeNull()
+  })
+
+  it('keeps the mark while the game is on', () => {
+    render(<StatusBar state={createGameState({ mode: 'bot', difficulty: 'easy', p1Symbol: 'X' })} />)
+    expect(document.querySelector('[data-status-mark]')).toHaveAttribute('data-status-mark', 'X')
+  })
+})

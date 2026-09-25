@@ -20,6 +20,8 @@ export type SettingsSheetProps = {
   onToneChange: (tone: Tone) => void
   /** The badge worn above the nickname online, picked from the unlocked achievements. */
   badge?: BadgeSection
+  /** Until the app is installed: a one-tap Install where the browser offers one, the Share steps on iPhone. */
+  install?: InstallSection
   /** Developer mode only: the Developer section. Every action there closes the sheet. */
   dev?: DevSection
 }
@@ -29,6 +31,7 @@ export type BadgeSection = {
   worn: AchievementId | null
   onChange: (badge: AchievementId | null) => void
 }
+export type InstallSection = { kind: 'prompt' | 'ios-steps'; onInstall: () => void }
 
 export type DevSection = {
   rung: number | null
@@ -37,8 +40,8 @@ export type DevSection = {
   onExit: () => void
 }
 
-/** Settings, from the gear on the setup screen: the nickname, the bot's attitude, and developer tools. */
-export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange, badge, dev }: SettingsSheetProps) {
+export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname, onSaveNickname, tone, onToneChange, badge, install, dev }: SettingsSheetProps) {
+/** Settings, from the gear on the setup screen: the nickname, the bot's attitude, installing, and developer tools. */
   const initial = nickname ?? suggestedNickname
   const [value, setValue] = useState(initial)
   const [rung, setRung] = useState(String(dev?.rung ?? 1))
@@ -118,6 +121,21 @@ export function SettingsSheet({ open, onOpenChange, nickname, suggestedNickname,
         </div>
 
         {badge && <BadgePicker {...badge} />}
+        {install && (
+          <div className="flex items-center justify-between gap-4 rounded-[18px] bg-muted/70 px-4 py-3 dark:bg-muted/50">
+            <div className="flex flex-col">
+              <span className="font-heading text-[15px] font-medium">Add to Home Screen</span>
+              <span className="text-sm text-muted-foreground">
+                {install.kind === 'prompt' ? 'Opens full screen like an app and works offline.' : 'Tap Share, then Add to Home Screen.'}
+              </span>
+            </div>
+            {install.kind === 'prompt' && (
+              <Button className="min-h-11 shrink-0 rounded-[14px] px-4 text-[15px] font-medium" onClick={install.onInstall}>
+                Install
+              </Button>
+            )}
+          </div>
+        )}
 
         {dev && (
           <div className="flex flex-col gap-3 rounded-[18px] border border-dashed border-border px-4 py-3">

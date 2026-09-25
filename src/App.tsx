@@ -335,23 +335,21 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
   const [installed, setInstalled] = useState(false)
   const [dismissedAt, setDismissedAt] = useState(() => loadInstallDismissedAt(storage))
   useEffect(() => install.onPromptAvailable(setPromptAvailable), [install])
-  const nudge = installNudge({
-    standalone: install.standalone || installed,
-    promptAvailable,
-    ios: install.ios,
-    dismissedAt,
-    now: Date.now(),
-  })
+  const installState = { standalone: install.standalone || installed, promptAvailable, ios: install.ios, now: Date.now() }
+  const onInstall = () => {
+    void install.prompt().then((outcome) => {
+      if (outcome === 'accepted') setInstalled(true)
+    })
+  }
+  // The card on setup honours "Not now"; Settings keeps offering until the app is installed.
+  const nudge = installNudge({ ...installState, dismissedAt })
+  const settingsInstall = installNudge({ ...installState, dismissedAt: null })
   const installOffer =
     nudge === 'hidden'
       ? undefined
       : {
           kind: nudge,
-          onInstall: () => {
-            void install.prompt().then((outcome) => {
-              if (outcome === 'accepted') setInstalled(true)
-            })
-          },
+          onInstall,
           onDismiss: () => {
             const now = Date.now()
             saveInstallDismissedAt(storage, now)
@@ -543,6 +541,7 @@ export default function App({ deps = {} }: { deps?: AppDeps }) {
           setTone(next)
         }}
         badge={{ unlocks: achievements.unlocks, worn: wornBadge(achievements), onChange: setBadge }}
+        install={settingsInstall === 'hidden' ? undefined : { kind: settingsInstall, onInstall }}
         // Developer tools, while developer mode is on. Each action lands on the setup screen.
         dev={
           devMode

@@ -31,4 +31,16 @@ describe('Logo', () => {
     const delay = (m: HTMLElement) => parseInt(m.style.getPropertyValue('--logo-delay'))
     expect(delay(marks[0])).toBeLessThan(delay(marks[1]))
   })
+
+  it('when animated, the X’s second arm waits for the first arm to finish drawing', () => {
+    const { container } = render(<Logo animate />)
+    const arms = Array.from(container.querySelectorAll('[data-player="X"] path')).filter(
+      (p) => (p as SVGPathElement).getAttribute('stroke') !== 'var(--background)',
+    ) as HTMLElement[]
+    expect(arms).toHaveLength(2)
+    const ms = (v: string) => parseInt(v || '0')
+    const firstDuration = ms(arms[0].style.getPropertyValue('--mark-duration'))
+    expect(ms(arms[1].style.getPropertyValue('--mark-delay'))).toBeGreaterThanOrEqual(firstDuration)
+    expect(firstDuration).toBeGreaterThan(0)
+  })
 })

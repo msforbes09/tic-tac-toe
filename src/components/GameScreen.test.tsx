@@ -558,6 +558,20 @@ describe('GameScreen banter', () => {
     expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
   })
 
+  it('does not say the same thing two games in a row', () => {
+    render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} />)
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    const first = screen.getByText(BANTER.friendly.easy.win[0])
+    expect(first).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+    // Game 2: I hold X again and win the same way; Math.random still returns 0.
+    play(1, 5, 7)
+    fireEvent.click(cell(4))
+    expect(screen.queryByText(BANTER.friendly.easy.win[0])).not.toBeInTheDocument()
+    expect(screen.getByText(BANTER.friendly.easy.win[1])).toBeInTheDocument()
+  })
+
   it('talks trash instead when the bot is aggressive', () => {
     render(<GameScreen settings={easyBot('X')} storage={seeded({ rung: 5 })} feedback={recorder()} onBack={() => {}} tone="cocky" />)
     play(1, 5, 7)
