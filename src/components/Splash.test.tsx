@@ -49,3 +49,12 @@ describe('Splash', () => {
     expect(delay(marks[0])).toBeLessThan(delay(marks[1]))
   })
 })
+
+describe('Splash footer', () => {
+  it('shows the version from package.json and the iam4bs copyright, without the rise-in animation', () => {
+    render(<Splash onDone={() => {}} />)
+    const footer = screen.getByRole('status').querySelector('[data-testid="splash-footer"]')
+    expect(footer).toHaveTextContent(/^v\d+\.\d+\.\d+ · © \d{4} iam4bs$/)
+    expect(footer).not.toHaveClass('splash-rise')
+  })
+})

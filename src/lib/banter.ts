@@ -124,6 +124,16 @@ const FRIENDLY: Pools = {
       "Even at Hard. You're really good.",
       'Solid as a rock. Again?',
       'A tie against me? Brag about it!',
+      'Every square counted, and you found them all.',
+      'We both saw everything. That is rare.',
+      'No mistakes from either of us. Respect.',
+      'You read every trap. Proper Hard-level play.',
+      'A tie with the unbeatable bot is a win in disguise.',
+      'Steady hands. You never gave me a gap.',
+      'Perfect game from both sides. Once more?',
+      'Nothing got past you today.',
+      "You're playing like a champion up here.",
+      'Draw again? You have this figured out.',
     ],
   },
 }
@@ -241,6 +251,16 @@ const COCKY: Pools = {
       'Stalemate. Same as always.',
       'Well defended. Still standing.',
       "Again. I'm not tired.",
+      'A draw. You blinked first, but you blinked well.',
+      "Still can't beat me. Nobody can.",
+      'Even. As it should be.',
+      "I'll allow it.",
+      'Close the board, open another. Same result.',
+      "You've learned to not lose. Winning is a different class.",
+      'Textbook. Mine.',
+      'Draw number what, now?',
+      "Hold me all day. I'm not going anywhere.",
+      'Fine. Deal me in again.',
     ],
   },
 }
@@ -262,7 +282,15 @@ export const SETUP_HINTS: Record<Tone, Record<Difficulty, string>> = {
 }
 
 /** A line for the band the game was played at and how it went, chosen with `rng` in [0, 1). */
-export function banterFor(band: Difficulty, result: GameResult, rng: () => number = Math.random, tone: Tone = 'friendly'): string {
-  const pool = BANTER[tone][band][result]
+/** A line for the band and result, never the one shown last time (`avoid`) when the pool allows. */
+export function banterFor(
+  band: Difficulty,
+  result: GameResult,
+  rng: () => number = Math.random,
+  tone: Tone = 'friendly',
+  avoid: string | null = null,
+): string {
+  const full = BANTER[tone][band][result]
+  const pool = full.length > 1 ? full.filter((line) => line !== avoid) : full
   return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))]
 }
