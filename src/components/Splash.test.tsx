@@ -49,3 +49,11 @@ describe('Splash', () => {
     expect(delay(marks[0])).toBeLessThan(delay(marks[1]))
   })
 })
+
+describe('Splash footer', () => {
+  it('shows the version from package.json and the copyright line', () => {
+    render(<Splash onDone={() => {}} />)
+    const footer = screen.getByRole('status').querySelector('[data-testid="splash-footer"]')
+    expect(footer).toHaveTextContent(/^v\d+\.\d+\.\d+ · © \d{4} Arnel Forbes$/)
+  })
+})
