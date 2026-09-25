@@ -330,7 +330,8 @@ describe('GameScreen ladder', () => {
     const storage = seeded(3)
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
     expect(screen.getByText('Bot · Hard')).toBeInTheDocument()
-    expect(ladderIn(storage).rung).toBe(14)
+    // The nudge to 14 is only in memory until a game finishes; backing out would leave 3 saved.
+    expect(ladderIn(storage).rung).toBe(3)
     play(1, 2, 4)
     expect(screen.getByText('You lost')).toBeInTheDocument()
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
@@ -418,14 +419,29 @@ describe('GameScreen ladder', () => {
     view.unmount()
   })
 
-  it('nudges once, even under StrictMode which runs initialisers and effects twice', () => {
+  it('does not save the nudge until a game finishes, even under StrictMode which runs initialisers twice', () => {
     const storage = seeded(30)
-    render(
+    const view = render(
       <StrictMode>
         <GameScreen settings={{ ...hardBot, difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={() => {}} />
       </StrictMode>,
     )
-    expect(ladderIn(storage).rung).toBe(22)
+    // Rung 30 picking Medium plays at 22: the chip shows the picked band and nothing is written yet.
+    expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(30)
+    view.unmount()
+    expect(ladderIn(storage).rung).toBe(30)
+  })
+
+  it('saves the nudged rung, moved by the result, once the first game finishes', () => {
+    // Rung 3 picking Hard plays at 14; the loss then saves 13, nudged once and moved once.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const storage = seeded(3)
+    render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(ladderIn(storage).rung).toBe(13)
+    expect(storage.entries()[0]).toMatchObject({ rung: 14 })
   })
 
   it('shows the rung and streak on the chip in developer mode; the chip is never a button', () => {
@@ -475,8 +491,15 @@ describe('GameScreen ladder', () => {
   })
 
   it('starts a first-ever bot game at the bottom of the picked band', () => {
+    // Nothing is saved until the game ends; the recorded game shows the rung it was played at.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     const storage = fakeStorage()
     render(<GameScreen settings={hardBot} storage={storage} feedback={recorder()} onBack={() => {}} />)
+    expect(storage.getItem(LADDER_KEY)).toBeNull()
+    play(1, 2, 4)
+    expect(screen.getByText('You lost')).toBeInTheDocument()
+    expect(storage.entries()[0]).toMatchObject({ rung: 21 })
+    // A first loss at the band's bottom is held there, so 21 is what gets saved.
     expect(ladderIn(storage).rung).toBe(21)
   })
 

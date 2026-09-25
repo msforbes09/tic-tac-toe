@@ -23,7 +23,7 @@ they lose. The three visible levels stay; a hidden ladder does the work.
 - **Streaks.** From the third win in a row each win moves two rungs; likewise
   from the third loss in a row. A draw breaks the streak.
 - **Sticky bands.** A loss only drops the rung into a lower band when it is
-  the third loss in a row; before that it stops at the band's bottom rung.
+  the second loss in a row; before that it stops at the band's bottom rung.
   Any win that crosses up promotes at once.
 - Saved to `localStorage` under `tic-tac-toe:ladder`:
   `{ rung: number | null, streak: number, topHeldAt: number | null, topHeldCount: number }`.
@@ -42,6 +42,9 @@ Setup keeps its three buttons and preselects the band the saved rung is in
 - Picking any other band: the new rung is **halfway between the current rung
   and the middle of the picked band, rounded down**. The buttons nudge; they do
   not teleport.
+- The nudge is applied when the game screen opens (the bot plays it from the
+  first move) but is **only saved once that game finishes**, moved by its
+  result. Backing out before the end leaves the saved rung untouched.
 
 | Rung | Picks | Halfway to | Lands on |
 |------|-------|-----------:|---------:|

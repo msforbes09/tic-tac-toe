@@ -72,19 +72,14 @@ export function GameScreen({
   const previousBoard = useRef<BoardModel | null>(null)
 
   // The ladder, for bot games: resolved once from the saved rung and the picked band, then moved
-  // after each finished game. The bot plays the rung the game started on.
-  // Resolved without writing, so StrictMode's second run of the initialiser sees the same storage;
-  // the effect below persists it, and is idempotent.
+  // after each finished game. The bot plays the rung the game started on. The nudge from the picked
+  // band lives in memory only until a game finishes: backing out before then leaves the saved rung.
   const [ladder, setLadder] = useState<Ladder | null>(() => {
     if (settings.mode !== 'bot') return null
     const saved = loadLadder(storage)
     return { ...saved, rung: rungForSelection(saved.rung, settings.difficulty) }
   })
   const rung = ladder?.rung ?? 1
-  useEffect(() => {
-    if (ladder) saveLadder(storage, ladder)
-    // Only the resolved starting rung; later moves save themselves as they happen.
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [gamesPlayed, setGamesPlayed] = useState(0)
   const [moment, setMoment] = useState<Moment | null>(null)
   // What the bot said about the last game; a ladder moment speaks instead when there is one.
