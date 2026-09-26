@@ -273,7 +273,7 @@ describe('HistorySheet climb graph', () => {
 describe('HistorySheet badge', () => {
   it('shows no top-of-the-pack badge any more; achievements carry it', () => {
     const storage = fakeStorage([entry({ id: 'a' })])
-    storage.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0, topHeldAt: 1, topHeldCount: 3 }))
+    storage.setItem(LADDER_KEY, JSON.stringify({ rung: 30, streak: 0 }))
     render(<HistorySheet mode="bot" open={true} onOpenChange={() => {}} storage={storage} />)
     expect(screen.queryByText('Top of the pack')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()

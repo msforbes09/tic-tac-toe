@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { EMPTY_PROGRESS, EMPTY_STATE } from '@/lib/achievements'
 import { createSupabaseDirectory, type DirectoryClientLike } from './supabaseDirectory'
+import { PLAYERS_PAGE } from '@/lib/roomDirectory'
 
 type Response = { data: unknown; error: { message: string } | null }
 
@@ -218,6 +219,36 @@ describe('createSupabaseDirectory', () => {
     expect(await dir.resetPlayerData('dev', 'wrong')).toBe(false)
   })
 
+  it('lists players a page at a time, keyed on the raw last-seen time and id', async () => {
+    const seen = (i: number) => `2026-09-26T10:00:00.${String(999 - i).padStart(3, '0')}123+00:00`
+    const rows = Array.from({ length: PLAYERS_PAGE + 1 }, (_, i) => ({ id: `p${i}`, nickname: `N${i}`, last_seen_at: seen(i) }))
+    const f = fakeClient([
+      { data: rows, error: null },
+      { data: [rows[0]], error: null },
+    ])
+    const dir = createSupabaseDirectory(f.client)
+    const first = await dir.listPlayers()
+    expect(first.players).toHaveLength(PLAYERS_PAGE)
+    expect(first.players[0]).toEqual({ id: 'p0', nickname: 'N0', lastSeenAt: Date.parse(seen(0)) })
+    expect(f.calls).toEqual([
+      ['players', 'select', 'id,nickname,last_seen_at'],
+      ['players', 'order', 'last_seen_at', { ascending: false }],
+      ['players', 'order', 'id', { ascending: false }],
+      ['players', 'limit', PLAYERS_PAGE + 1],
+    ])
+    f.calls.length = 0
+    const last = seen(PLAYERS_PAGE - 1)
+    const second = await dir.listPlayers(first.next)
+    expect(f.calls).toContainEqual(['players', 'or', `last_seen_at.lt."${last}",and(last_seen_at.eq."${last}",id.lt."p${PLAYERS_PAGE - 1}")`])
+    expect(second.next).toBeNull()
+  })
+
+  it('escapes quotes and backslashes in the player cursor', async () => {
+    const f = fakeClient([{ data: [], error: null }])
+    await createSupabaseDirectory(f.client).listPlayers(JSON.stringify(['t', 'a"b\\c']))
+    expect(f.calls).toContainEqual(['players', 'or', 'last_seen_at.lt."t",and(last_seen_at.eq."t",id.lt."a\\"b\\\\c")'])
+  })
+
   it('loads a ladder row and saves one through save_ladder', async () => {
     const f = fakeClient([
       { data: { player_id: 'dev', rung: 12, streak: 2, top_held_at: null, top_held_count: 0, updated_at: '2026-09-25T10:00:00.000Z' }, error: null },
@@ -225,16 +256,16 @@ describe('createSupabaseDirectory', () => {
       { data: null, error: null },
     ])
     const dir = createSupabaseDirectory(f.client)
-    expect(await dir.loadLadder('dev')).toEqual({ playerId: 'dev', rung: 12, streak: 2, topHeldAt: null, topHeldCount: 0, updatedAt: Date.parse('2026-09-25T10:00:00.000Z') })
+    expect(await dir.loadLadder('dev')).toEqual({ playerId: 'dev', rung: 12, streak: 2, updatedAt: Date.parse('2026-09-25T10:00:00.000Z') })
     expect(f.calls).toEqual([
       ['ladders', 'select', '*'],
       ['ladders', 'eq', 'player_id', 'dev'],
       ['ladders', 'maybeSingle'],
     ])
     expect(await dir.loadLadder('nobody')).toBeNull()
-    await dir.saveLadder('dev', 'tok', { rung: 13, streak: 3, topHeldAt: 5000, topHeldCount: 1, updatedAt: 6000 })
+    await dir.saveLadder('dev', 'tok', { rung: 13, streak: 3, updatedAt: 6000 })
     expect(f.client.rpc).toHaveBeenCalledWith('save_ladder', {
-      p_id: 'dev', p_token: 'tok', p_rung: 13, p_streak: 3, p_top_held_at: new Date(5000).toISOString(), p_top_held_count: 1, p_updated_at: new Date(6000).toISOString(),
+      p_id: 'dev', p_token: 'tok', p_rung: 13, p_streak: 3, p_top_held_at: null, p_top_held_count: 0, p_updated_at: new Date(6000).toISOString(),
     })
   })
 

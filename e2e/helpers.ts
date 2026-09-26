@@ -41,7 +41,7 @@ export const card = (page: Page) => page.locator("main.room-card")
 /** Plays one bot game by tapping the first free cell until the game ends. */
 export async function playBotGame(page: Page) {
   await page.getByRole("button", { name: "Start game" }).click()
-  const finished = page.locator("button.cta", { hasText: /New game|Take it back/ })
+  const finished = page.locator("button.cta", { hasText: "New game" })
   for (let turn = 0; turn < 9 && !(await finished.isVisible()); turn++) {
     const free = page
       .getByRole("button", { name: /^Cell \d, empty$/ })

@@ -14,22 +14,17 @@ const HOT_STREAK = 3
 const DEMOTION_LOSSES = 2
 
 export type GameResult = 'win' | 'loss' | 'draw'
-export type Moment = 'promoted' | 'top' | 'top-held' | 'lost-top'
 
 export type Ladder = {
   rung: number | null
   /** Consecutive wins (positive) or losses (negative). A draw resets it. */
   streak: number
-  /** When rung 30 was first held to a draw; null until then. */
-  topHeldAt: number | null
-  /** How many draws at rung 30 so far. */
-  topHeldCount: number
   /** When the ladder last moved; 0 for data saved before the cloud copy existed. */
   updatedAt: number
 }
 
 export const LADDER_KEY = 'tic-tac-toe:ladder'
-export const EMPTY_LADDER: Ladder = { rung: null, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 0 }
+export const EMPTY_LADDER: Ladder = { rung: null, streak: 0, updatedAt: 0 }
 
 const clamp = (rung: number) => Math.min(TOP_RUNG, Math.max(1, rung))
 const bandIndex = (rung: number) => Math.min(BANDS.length - 1, Math.floor((clamp(rung) - 1) / BAND_SIZE))
@@ -53,21 +48,11 @@ export function bandMiddle(band: Difficulty): number {
 
 /**
  * The ladder after a finished bot game. Win up, loss down, draw stays, with two-rung steps on a
- * hot streak and a band only lost on the third straight loss. Draws at the top are counted.
+ * hot streak and a band only lost on the third straight loss.
  */
 export function advance(ladder: Ladder, result: GameResult, now: number): Ladder {
   const rung = ladder.rung ?? 1
-  if (result === 'draw') {
-    const held = rung === TOP_RUNG
-    return {
-      ...ladder,
-      rung,
-      streak: 0,
-      topHeldAt: held ? (ladder.topHeldAt ?? now) : ladder.topHeldAt,
-      topHeldCount: held ? ladder.topHeldCount + 1 : ladder.topHeldCount,
-      updatedAt: now,
-    }
-  }
+  if (result === 'draw') return { ...ladder, rung, streak: 0, updatedAt: now }
   if (result === 'win') {
     const streak = ladder.streak > 0 ? ladder.streak + 1 : 1
     return { ...ladder, rung: clamp(rung + (streak >= HOT_STREAK ? 2 : 1)), streak, updatedAt: now }
@@ -94,20 +79,8 @@ export function rungForSelection(current: number | null, band: Difficulty): numb
   return Math.floor((current + bandMiddle(band)) / 2)
 }
 
-/** What a finished bot game deserves beyond its result, given the ladder before and after it. */
-export function momentAfter(before: Ladder, after: Ladder, result: GameResult): Moment | null {
-  const from = before.rung ?? 1
-  const to = after.rung ?? 1
-  if (result === 'draw') return from === TOP_RUNG && before.topHeldAt === null ? 'top-held' : null
-  if (result === 'loss') return from === TOP_RUNG ? 'lost-top' : null
-  if (to === TOP_RUNG && from < TOP_RUNG) return 'top'
-  if (bandIndex(to) > bandIndex(from)) return 'promoted'
-  return null
-}
-
 const isRung = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= TOP_RUNG
 const isTime = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
 
 export function loadLadder(storage: HistoryStorage): Ladder {
   try {
@@ -117,8 +90,6 @@ export function loadLadder(storage: HistoryStorage): Ladder {
     return {
       rung: isRung(v.rung) ? v.rung : null,
       streak: Number.isInteger(v.streak) ? (v.streak as number) : 0,
-      topHeldAt: isTime(v.topHeldAt) ? v.topHeldAt : null,
-      topHeldCount: isCount(v.topHeldCount) ? v.topHeldCount : 0,
       updatedAt: isTime(v.updatedAt) ? v.updatedAt : 0,
     }
   } catch {
