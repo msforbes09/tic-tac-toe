@@ -209,6 +209,8 @@ export function GameScreen({
   // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
   const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
+    // A game that ended under the Resign dialog leaves the flag set; it must not carry over.
+    setConfirmResign(false)
     setBanter(null)
     dispatch({ type: "NEW_GAME" })
   }
@@ -225,12 +227,12 @@ export function GameScreen({
           {resigned ? "← Resign" : "← Back"}
         </Button>
         {hotStreak > 0 && (
-          <span className="bg-player-o-soft text-player-o mr-2 ml-auto rounded-full px-3 py-1 text-[13px] font-medium">
+          <span className="bg-player-o-soft text-player-o mr-2 ml-auto shrink-0 rounded-full px-3 py-1 text-[13px] font-medium whitespace-nowrap">
             <span aria-hidden="true">🔥 </span>
             {hotStreak} in a row
           </span>
         )}
-        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[13px] font-medium">
+        <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1 text-[13px] font-medium whitespace-nowrap">
           {badge}
         </span>
       </header>

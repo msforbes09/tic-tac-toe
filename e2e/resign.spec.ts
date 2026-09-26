@@ -73,6 +73,15 @@ async function headerFit(page: Page, info: TestInfo) {
   expect(box.x, "Resign left vs viewport").toBeGreaterThanOrEqual(-0.5)
   for (const o of others)
     expect(box.right, `Resign right vs "${o.text}" left`).toBeLessThanOrEqual(o.box.x + 0.5)
+  // The pill and the chip stay on one line each.
+  for (let i = 0; i < (await spans.count()); i++) {
+    const spanLines = await spans.nth(i).evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+    })
+    expect(spanLines, `"${others[i].text}" line count`).toBe(1)
+  }
   expect(vp.scrollWidth, "document.scrollWidth vs innerWidth").toBeLessThanOrEqual(vp.width)
 }
 
@@ -202,6 +211,24 @@ const claims = () => {
 test.describe("phone", () => {
   test.skip(({ isMobile }) => !isMobile, "phone profiles only")
   claims()
+
+  test('claim 2 at 320px: "← Resign" fits beside the streak pill and the Medium chip', async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem("seeded")) {
+        localStorage.setItem("tic-tac-toe:ladder", JSON.stringify({ rung: 12, streak: 5, updatedAt: Date.now() }))
+        sessionStorage.setItem("seeded", "1")
+      }
+    })
+    await openApp(page)
+    await button(page, "Versus bot").click()
+    await button(page, "Medium").click()
+    await button(page, "Start game").click()
+    await expect(page.getByText("5 in a row")).toBeVisible()
+    await reachBothMoved(page)
+    await expect(topLeft(page)).toHaveText("← Resign")
+    await headerFit(page, info)
+  })
 })
 
 test.describe("desktop", () => {

@@ -568,6 +568,23 @@ describe('GameScreen ladder', () => {
       expect(onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'game', result: 'loss', rungBefore: 12, rungAfter: 11 }))
     })
 
+    it('a game that ends under the dialog does not bring the dialog back in the next game', () => {
+      const { storage } = start()
+      play(1, 2)
+      fireEvent.click(cell(4))
+      // Resign while the bot thinks; its reply ends the game with the dialog still open.
+      fireEvent.click(screen.getByRole('button', { name: '← Resign' }))
+      expect(screen.getByText('Resign this game?')).toBeInTheDocument()
+      botTurn()
+      expect(screen.getByText('You lost')).toBeInTheDocument()
+      expect(storage.entries()).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: 'New game' }))
+      botTurn()
+      fireEvent.click(screen.getAllByRole('button', { name: /^Cell \d, empty$/ })[0])
+      expect(screen.getByRole('button', { name: '← Resign' })).toBeInTheDocument()
+      expect(screen.queryByText('Resign this game?')).not.toBeInTheDocument()
+    })
+
     it('Back before the bot has answered records nothing', () => {
       const { storage, onAchievement, onBack } = start()
       fireEvent.click(cell(1))
