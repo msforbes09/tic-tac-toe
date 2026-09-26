@@ -73,6 +73,15 @@ async function headerFit(page: Page, info: TestInfo) {
   expect(box.x, "Resign left vs viewport").toBeGreaterThanOrEqual(-0.5)
   for (const o of others)
     expect(box.right, `Resign right vs "${o.text}" left`).toBeLessThanOrEqual(o.box.x + 0.5)
+  // The pill and the chip stay on one line each.
+  for (let i = 0; i < (await spans.count()); i++) {
+    const spanLines = await spans.nth(i).evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+    })
+    expect(spanLines, `"${others[i].text}" line count`).toBe(1)
+  }
   expect(vp.scrollWidth, "document.scrollWidth vs innerWidth").toBeLessThanOrEqual(vp.width)
 }
 
@@ -119,7 +128,7 @@ const claims = () => {
   }, info) => {
     await startBotGame(page)
     await reachBothMoved(page)
-    await expect(topLeft(page)).toHaveText("Resign")
+    await expect(topLeft(page)).toHaveText("← Resign")
     await expect(newGame(page)).toBeDisabled()
     await headerFit(page, info)
   })
@@ -138,17 +147,24 @@ const claims = () => {
     await startBotGame(page)
     await expect(page.getByText("5 in a row")).toBeVisible()
     await reachBothMoved(page)
-    await expect(topLeft(page)).toHaveText("Resign")
+    await expect(topLeft(page)).toHaveText("← Resign")
     await expect(newGame(page)).toBeDisabled()
     await headerFit(page, info)
   })
 
-  test('claim 3: "tapping Resign returns to the setup screen; History (bot mode) then shows the game as a loss"', async ({
+  test('claim 3: "tapping Resign asks first, then Yes, resign returns to the setup screen; History (bot mode) then shows the game as a loss"', async ({
     page,
   }) => {
     await startBotGame(page)
     await reachBothMoved(page)
+    // Resign asks first: Keep playing stays in the game, Yes, resign leaves.
     await topLeft(page).click()
+    await expect(page.getByRole("alertdialog")).toContainText("Resign this game?")
+    await button(page, "Keep playing").click()
+    await expect(page.getByRole("alertdialog")).toBeHidden()
+    await expect(topLeft(page)).toHaveText("← Resign")
+    await topLeft(page).click()
+    await button(page, "Yes, resign").click()
     await expect(button(page, "Start game")).toBeVisible()
     await expect(button(page, "Versus bot")).toHaveAttribute("aria-pressed", "true")
     await button(page, "History").click()
@@ -195,6 +211,24 @@ const claims = () => {
 test.describe("phone", () => {
   test.skip(({ isMobile }) => !isMobile, "phone profiles only")
   claims()
+
+  test('claim 2 at 320px: "← Resign" fits beside the streak pill and the Medium chip', async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem("seeded")) {
+        localStorage.setItem("tic-tac-toe:ladder", JSON.stringify({ rung: 12, streak: 5, updatedAt: Date.now() }))
+        sessionStorage.setItem("seeded", "1")
+      }
+    })
+    await openApp(page)
+    await button(page, "Versus bot").click()
+    await button(page, "Medium").click()
+    await button(page, "Start game").click()
+    await expect(page.getByText("5 in a row")).toBeVisible()
+    await reachBothMoved(page)
+    await expect(topLeft(page)).toHaveText("← Resign")
+    await headerFit(page, info)
+  })
 })
 
 test.describe("desktop", () => {

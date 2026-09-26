@@ -3,6 +3,16 @@ import { Board } from "./Board"
 import { Celebration } from "./Celebration"
 import { ScoreBar } from "./ScoreBar"
 import { StatusBar } from "./StatusBar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import type { GameEvent } from "@/lib/achievements"
 import { chooseMove, MAX_THINK_MS, thinkTime } from "@/lib/bot"
@@ -82,6 +92,7 @@ export function GameScreen({
   const [gamesPlayed, setGamesPlayed] = useState(0)
   // What the bot said about the last game.
   const [banter, setBanter] = useState<string | null>(null)
+  const [confirmResign, setConfirmResign] = useState(false)
   // What the bot said last, so it never says the same thing two games running.
   const lastBanter = useRef<string | null>(null)
 
@@ -198,6 +209,8 @@ export function GameScreen({
   // Three straight wins or more get a pill; losing streaks stay the ladder's secret.
   const hotStreak = ladder && streak >= 3 ? streak : 0
   const newGame = () => {
+    // A game that ended under the Resign dialog leaves the flag set; it must not carry over.
+    setConfirmResign(false)
     setBanter(null)
     dispatch({ type: "NEW_GAME" })
   }
@@ -208,21 +221,18 @@ export function GameScreen({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            if (resigned) record(resigned)
-            onBack()
-          }}
+          onClick={() => (resigned ? setConfirmResign(true) : onBack())}
           className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]"
         >
-          {resigned ? "Resign" : "← Back"}
+          {resigned ? "← Resign" : "← Back"}
         </Button>
         {hotStreak > 0 && (
-          <span className="bg-player-o-soft text-player-o mr-2 ml-auto rounded-full px-3 py-1 text-[13px] font-medium">
+          <span className="bg-player-o-soft text-player-o mr-2 ml-auto shrink-0 rounded-full px-3 py-1 text-[13px] font-medium whitespace-nowrap">
             <span aria-hidden="true">🔥 </span>
             {hotStreak} in a row
           </span>
         )}
-        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[13px] font-medium">
+        <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1 text-[13px] font-medium whitespace-nowrap">
           {badge}
         </span>
       </header>
@@ -252,6 +262,28 @@ export function GameScreen({
       >
         New game
       </Button>
+
+      {/* Same wording as the online series, for one game. */}
+      <AlertDialog open={confirmResign && resigned !== null} onOpenChange={setConfirmResign}>
+        <AlertDialogContent className="max-w-[calc(100%-2rem)] rounded-[24px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resign this game?</AlertDialogTitle>
+            <AlertDialogDescription>It counts as a loss.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Keep playing</AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11"
+              onClick={() => {
+                if (resigned) record(resigned)
+                onBack()
+              }}
+            >
+              Yes, resign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }

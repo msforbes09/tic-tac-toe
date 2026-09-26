@@ -145,7 +145,7 @@ describe('SeriesScreen basics', () => {
 describe('SeriesScreen resign and result', () => {
   it('Resign asks first, then ends the series for everyone with the result splash', async () => {
     const { a, b, c } = await trio()
-    fireEvent.click(b.button(/^resign$/i))
+    fireEvent.click(b.button(/^← resign$/i))
     expect(screen.getByText('Resign the series?')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /yes, resign/i }))
     await flush()
@@ -295,7 +295,7 @@ describe('SeriesScreen achievements', () => {
 
   it('a resigned series is one series event and no game event, and remembers having trailed by 3', async () => {
     const { a, b } = await trio(at({ gameNumber: 4, score: { challenger: 0, challenged: 3, draws: 0 } }))
-    fireEvent.click(b.button(/^resign$/i))
+    fireEvent.click(b.button(/^← resign$/i))
     fireEvent.click(screen.getByRole('button', { name: /yes, resign/i }))
     await flush()
     expect(a.onAchievement).toHaveBeenCalledTimes(1)

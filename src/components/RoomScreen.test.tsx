@@ -146,7 +146,7 @@ describe('RoomScreen challenges', () => {
   it('a finished series shows up in Results after Back to room', async () => {
     const { a, b } = await setup()
     await startSeries(a)
-    fireEvent.click(b.button(/^resign$/i)!)
+    fireEvent.click(b.button(/^← resign$/i)!)
     fireEvent.click(screen.getByRole('button', { name: /yes, resign/i }))
     await flush()
     fireEvent.click(a.button(/back to room/i)!)

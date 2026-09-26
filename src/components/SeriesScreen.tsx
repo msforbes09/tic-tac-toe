@@ -271,7 +271,7 @@ export function SeriesScreen({ self, role: initialRole, initial, open, feedback,
       <header className="flex items-center justify-between">
         {isPlayer ? (
           <Button variant="ghost" size="sm" onClick={() => setConfirmResign(true)} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
-            Resign
+            ← Resign
           </Button>
         ) : (
           <Button variant="ghost" size="sm" onClick={() => onExit(null)} className="-ml-2 min-h-11 rounded-xl px-2.5 text-[15px]">
