@@ -3,7 +3,7 @@ import type { GameRow } from '@/lib/history'
 import type { Ladder } from '@/lib/ladder'
 import type { SeriesResult } from '@/lib/room'
 import type { Mode } from '@/lib/types'
-import type { CloudLadder, PlayerRecord, RoomDirectory, RoomRecord } from '@/lib/roomDirectory'
+import { PLAYERS_PAGE, type CloudLadder, type PlayerRecord, type RoomDirectory, type RoomRecord } from '@/lib/roomDirectory'
 
 type Response<T> = { data: T; error: { message: string } | null }
 
@@ -97,11 +97,15 @@ type GameRowDb = {
   symbol: GameRow['symbol']
   played_at: string
 }
-type LadderRow = { player_id: string; rung: number | null; streak: number; top_held_at: string | null; top_held_count: number; updated_at: string }
+type LadderRow = { player_id: string; rung: number | null; streak: number; updated_at: string }
 type PlayerRow = { id: string; nickname: string }
+type PlayerSeenRow = PlayerRow & { last_seen_at: string }
 type AchievementsRow = { player_id: string; unlocks: unknown; progress: unknown; badge: string | null; updated_at: string }
 /** The badge column cannot hold undefined: this stands for "never chose", so the default is worn. */
 const DEFAULT_BADGE = 'default'
+
+/** A PostgREST filter value in double quotes; anyone can register any id, so escape it. */
+const quoted = (v: string) => `"${v.replace(/[\\"]/g, '\\$&')}"`
 
 const gameFromRow = (r: GameRowDb): GameRow => ({
   id: r.id, playerId: r.player_id, mode: r.mode, difficulty: r.difficulty, rung: r.rung, outcome: r.outcome, symbol: r.symbol, playedAt: Date.parse(r.played_at),
@@ -113,8 +117,6 @@ const ladderFromRow = (r: LadderRow): CloudLadder => ({
   playerId: r.player_id,
   rung: r.rung,
   streak: r.streak,
-  topHeldAt: r.top_held_at === null ? null : Date.parse(r.top_held_at),
-  topHeldCount: r.top_held_count,
   updatedAt: Date.parse(r.updated_at),
 })
 
@@ -229,6 +231,23 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
       const row = await unwrap<PlayerRow | null>(client.from('players').select('*').eq('id', playerId).maybeSingle())
       return row ? { id: row.id, nickname: row.nickname } : null
     },
+    async listPlayers(cursor) {
+      let query = client.from('players').select('id,nickname,last_seen_at')
+      // The cursor keeps the raw timestamp: a millisecond Date would drop Postgres's microseconds.
+      if (cursor) {
+        const [at, id] = (JSON.parse(cursor) as [string, string]).map(quoted)
+        query = query.or(`last_seen_at.lt.${at},and(last_seen_at.eq.${at},id.lt.${id})`)
+      }
+      const rows = await unwrap<PlayerSeenRow[]>(
+        query.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(PLAYERS_PAGE + 1),
+      )
+      const page = rows.slice(0, PLAYERS_PAGE)
+      const last = page[page.length - 1]
+      return {
+        players: page.map((r) => ({ id: r.id, nickname: r.nickname, lastSeenAt: Date.parse(r.last_seen_at) })),
+        next: rows.length > PLAYERS_PAGE ? JSON.stringify([last.last_seen_at, last.id]) : null,
+      }
+    },
     async loadAchievements(playerId) {
       const row = await unwrap<AchievementsRow | null>(client.from('achievements').select('*').eq('player_id', playerId).maybeSingle())
       if (!row) return null
@@ -260,8 +279,9 @@ export function createSupabaseDirectory(client: DirectoryClientLike): RoomDirect
         p_token: token,
         p_rung: ladder.rung,
         p_streak: ladder.streak,
-        p_top_held_at: ladder.topHeldAt === null ? null : new Date(ladder.topHeldAt).toISOString(),
-        p_top_held_count: ladder.topHeldCount,
+        // The app no longer tracks draws at the top; save_ladder still takes these until a cleanup migration.
+        p_top_held_at: null,
+        p_top_held_count: 0,
         p_updated_at: new Date(ladder.updatedAt).toISOString(),
       })
       if (error) throw new Error(error.message)

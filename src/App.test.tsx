@@ -194,13 +194,13 @@ describe('App developer mode', () => {
   })
 
   it('the developer panel can reset game data, locally and in the cloud, and exit developer mode', async () => {
-    window.localStorage.setItem('tic-tac-toe:ladder', JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    window.localStorage.setItem('tic-tac-toe:ladder', JSON.stringify({ rung: 17, streak: 0, updatedAt: 1 }))
     window.localStorage.setItem(DEVICE_KEY, 'device-0001')
     window.localStorage.setItem(PLAYER_TOKEN_KEY, 'token-0000000001')
     const hash = async (t: string) => `h:${t}`
     const dir = createFakeDirectory(hash)
     await dir.addGames([{ id: 'g1', playerId: 'device-0001', mode: 'bot', difficulty: 'medium', rung: 17, outcome: 'won', symbol: 'X', playedAt: 1 }])
-    await dir.saveLadder('device-0001', 'token-0000000001', { rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 })
+    await dir.saveLadder('device-0001', 'token-0000000001', { rung: 17, streak: 0, updatedAt: 1 })
     render(<App deps={{ open: createFakeRealtime().open, directory: dir, hash }} />)
     await act(async () => {})
     doKnock()
@@ -223,6 +223,21 @@ describe('App developer mode', () => {
     tap(/start game/i)
     expect(screen.getByText('Bot · Medium')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Bot ·/ })).toBeNull()
+  })
+
+  it('the developer panel lists every player with when they were last seen', async () => {
+    const hash = async (t: string) => `h:${t}`
+    const dir = createFakeDirectory(hash)
+    await dir.savePlayer({ id: 'someone-else', nickname: 'Zed' }, 'token-zed')
+    render(<App deps={{ open: createFakeRealtime().open, directory: dir, hash }} />)
+    await act(async () => {})
+    doKnock()
+    await enter()
+    tap('Settings')
+    tap(/^players$/i)
+    expect(await screen.findByRole('heading', { name: 'Players' })).toBeInTheDocument()
+    expect(await screen.findByText('Zed')).toBeInTheDocument()
+    expect(screen.getByText('just now')).toBeInTheDocument()
   })
 
   it('ignores the knock while developer mode is already on', async () => {
@@ -503,13 +518,13 @@ describe('App online rooms', () => {
 
   it('adopts a newer cloud ladder on launch and ignores an older one', async () => {
     const { deps, dir } = online()
-    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 7, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 100 }))
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 7, streak: 0, updatedAt: 100 }))
     const first = render(<App deps={deps} />)
     await flush()
     const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
     const token = window.localStorage.getItem('tic-tac-toe:player-token') ?? ''
     first.unmount()
-    await dir.saveLadder(me, token, { rung: 12, streak: 2, topHeldAt: null, topHeldCount: 0, updatedAt: 200 })
+    await dir.saveLadder(me, token, { rung: 12, streak: 2, updatedAt: 200 })
     render(<App deps={deps} />)
     await flush()
     await flush()
@@ -523,8 +538,8 @@ describe('App online rooms', () => {
     const me = window.localStorage.getItem('tic-tac-toe:device') ?? ''
     const token = window.localStorage.getItem('tic-tac-toe:player-token') ?? ''
     seed.unmount()
-    await dir.saveLadder(me, token, { rung: 3, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 50 })
-    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 20, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 500 }))
+    await dir.saveLadder(me, token, { rung: 3, streak: 0, updatedAt: 50 })
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 20, streak: 0, updatedAt: 500 }))
     render(<App deps={deps} />)
     await flush()
     await flush()
@@ -714,7 +729,7 @@ describe('App achievements', () => {
     window.localStorage.setItem(PLAYER_TOKEN_KEY, 'token-0000000002')
     window.localStorage.setItem(REGISTERED_KEY, '1')
     window.localStorage.setItem(NICKNAME_KEY, 'Alice')
-    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, updatedAt: 1 }))
     saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 1 }, updatedAt: 3 })
     render(<App deps={deps} />)
     await flush()
@@ -731,7 +746,7 @@ describe('App achievements', () => {
 
   it('does not wipe a device that never registered', async () => {
     const { deps } = online()
-    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, topHeldAt: null, topHeldCount: 0, updatedAt: 1 }))
+    window.localStorage.setItem(LADDER_KEY, JSON.stringify({ rung: 17, streak: 0, updatedAt: 1 }))
     saveAchievements(window.localStorage, { ...EMPTY_STATE, unlocks: { 'hello-bot': 1 }, updatedAt: 3 })
     render(<App deps={deps} />)
     await flush()

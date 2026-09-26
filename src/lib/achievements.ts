@@ -80,7 +80,7 @@ const CATALOGUE = [
     "Mountain",
     false,
   ],
-  ["the-immovable", "gold", "The Immovable", "Hold the unbeatable bot to a draw", "Anchor", true],
+  ["the-immovable", "gold", "The Immovable", "Hold the unbeatable bot to three draws in a row", "Anchor", true],
   ["marathon", "gold", "Marathon", "Play 500 games", "Footprints", false],
   ["tiebreaker", "gold", "Tiebreaker", "Win a series in the tie breaker", "Swords", true],
   ["two-hundred", "gold", "Two Hundred", "Win 200 games against the bot or online", "Crown", false],
@@ -112,6 +112,8 @@ export type Progress = {
   wins: Record<Mode, number>
   botWinsByBand: Record<Difficulty, number>
   botDraws: number
+  /** Bot draws in a row at rung 30; any other bot game resets it. */
+  topDrawStreak: number
   promotions: number
   seriesPlayed: number
   seriesWon: number
@@ -148,6 +150,7 @@ export const EMPTY_PROGRESS: Progress = {
   wins: { pvp: 0, bot: 0, online: 0 },
   botWinsByBand: { easy: 0, medium: 0, hard: 0 },
   botDraws: 0,
+  topDrawStreak: 0,
   promotions: 0,
   seriesPlayed: 0,
   seriesWon: 0,
@@ -234,6 +237,7 @@ function applyGame(p: Progress, e: GameEvent): Progress {
   }
   if (e.mode === "bot") {
     if (e.result === "draw") next.botDraws = p.botDraws + 1
+    next.topDrawStreak = e.result === "draw" && e.rungBefore === TOP_RUNG ? p.topDrawStreak + 1 : 0
     if (e.result === "win" && e.band)
       next.botWinsByBand = { ...p.botWinsByBand, [e.band]: p.botWinsByBand[e.band] + 1 }
     if (
@@ -336,9 +340,7 @@ const RULES: Record<Exclude<AchievementId, "grand-master">, Rule> = {
   "top-of-the-pack": onGame(
     (e) => e.mode === "bot" && e.rungAfter === TOP_RUNG && (e.rungBefore ?? TOP_RUNG) < TOP_RUNG,
   ),
-  "the-immovable": onGame(
-    (e) => e.mode === "bot" && e.result === "draw" && e.rungBefore === TOP_RUNG,
-  ),
+  "the-immovable": (p) => p.topDrawStreak >= 3,
   marathon: (p) => totalGames(p) >= 500,
   tiebreaker: onSeries((e) => e.won && e.decided && e.tieBreak),
   "two-hundred": (p) => rankedWins(p) >= 200,
@@ -508,6 +510,7 @@ function readProgress(v: unknown): Progress {
     wins: counts(v.wins, e.wins),
     botWinsByBand: counts(v.botWinsByBand, e.botWinsByBand),
     botDraws: count(v.botDraws, 0),
+    topDrawStreak: count(v.topDrawStreak, 0),
     promotions: count(v.promotions, 0),
     seriesPlayed: count(v.seriesPlayed, 0),
     seriesWon: count(v.seriesWon, 0),

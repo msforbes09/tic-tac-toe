@@ -15,12 +15,12 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 
 - `src/lib/game.ts` — pure board logic. No React. Fully tested.
 - `src/lib/bot.ts` — the bot, by rung: win / block / best-move chances over memoised minimax. Depends only on game.ts. Fully tested, including a simulation that pins the hard band.
-- `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, moments (only lost-top still drives UI: the Take it back label), storage. Fully tested.
+- `src/lib/ladder.ts` — the hidden 30-rung ladder: bands, streaks, nudges from setup, storage. Fully tested.
 - `src/lib/achievements.ts` — the 41-achievement catalogue, the flat `Progress` record, `record(state, event, now)` (one event in, new unlocks out), `defaultBadge` / `wornBadge`, `merge` (local + cloud), storage. Fully tested. `listAchievements` orders and filters the sheet's rows. `completion` weighs the percent by tier. `components/AchievementsSheet.tsx` lists them (hidden ones stay secret until unlocked or tapped; sort and filter live in a popup). Every sheet closes from `FloatingBack.tsx` and a tap outside; the one action on a screen wears the `cta` class from `index.css`, `AchievementToast.tsx` is the unlock toast, `AchievementBadge.tsx` the icon worn above a name.
 - `src/lib/reset.ts` — the full reset: a device that registered and finds no player row wipes its local game data (`WIPE_KEYS`) on launch. Fully tested.
 - `src/lib/banter.ts` — what the bot says after a game and the setup hints, ten lines per band and result, in two tones: `friendly` by default, `cocky` when the Aggressive bot switch is on. `src/lib/tone.ts` remembers the switch; `components/SettingsSheet.tsx` (gear on the setup screen) holds it and the nickname. Fully tested.
 - `src/lib/climb.ts` — the rung series for the History graph (`components/ClimbGraph.tsx`, a sparkline over three band lanes). Fully tested.
-- `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the Enter/Cancel prompt; the developer tools (rung, reset, exit) are a section of `SettingsSheet`, and the chip and setup show the rung while it is on. A tap or Back during the two-second wait cancels the prompt. Developer mode is in-memory only and the knock is ignored while it is on.
+- `src/lib/knock.ts` — the secret knock that opens developer mode (a tap sequence across setup, History, and the board). Fully tested. `components/DevDialog.tsx` is the Enter/Cancel prompt; the developer tools (rung, reset, players, exit) are a section of `SettingsSheet`; Players opens `components/PlayersSheet.tsx`, every `players` row most recently seen first, 50 a page (`RoomDirectory.listPlayers`, keyset cursor), labelled by `src/lib/lastSeen.ts`, and the chip and setup show the rung while it is on. A tap or Back during the two-second wait cancels the prompt. Developer mode is in-memory only and the knock is ignored while it is on.
 - `src/lib/history.ts` — history persistence over a Storage-like interface. Fully tested.
 - `src/lib/feedback.ts` — which sound/haptic a board change gets. Fully tested.
 - `src/platform/browserFeedback.ts` — Web Audio tones + Vibration API behind the `Feedback` interface. The only browser-API code outside components.
@@ -47,6 +47,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 
 - Board: `Cell[]` length 9, row-major. X always moves first.
 - Seats `p1` (you / Player 1) and `p2` (bot / Player 2) trade X between games: winner takes X, a draw swaps. The bot plays whichever side is to move.
+- Once each side has moved in a bot game, it is played out or resigned (`resign` in `state/reducer.ts`): New game is disabled (the reducer ignores `NEW_GAME`) and Back reads Resign, which records an ordinary loss in history, the ladder, and achievements before leaving. Before that, Back costs nothing.
 - Bot difficulty is a rung (1..30) resolved by `GameScreen` from the saved ladder and the picked band; the chip shows the picked band for the first game, then the band the rung is in. The rung is never shown; setup marks the band it sits in with a sparkle (`suggestedBand`). See `docs/superpowers/specs/2026-09-25-adaptive-bot-design.md`.
 - lib/ and state/ never import React or touch the DOM.
 - TDD for all logic: failing test first, minimal code, refactor.

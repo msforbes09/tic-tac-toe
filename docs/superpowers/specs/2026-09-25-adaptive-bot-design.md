@@ -26,7 +26,8 @@ they lose. The three visible levels stay; a hidden ladder does the work.
   the second loss in a row; before that it stops at the band's bottom rung.
   Any win that crosses up promotes at once.
 - Saved to `localStorage` under `tic-tac-toe:ladder`:
-  `{ rung: number | null, streak: number, topHeldAt: number | null, topHeldCount: number }`.
+  `{ rung: number | null, streak: number, updatedAt: number }`. Ladders saved
+  with the old `topHeldAt` / `topHeldCount` fields load without them.
   `streak` is consecutive wins (positive) or losses (negative). Missing or
   invalid data reads as the empty ladder.
 - New players have no rung. Their **first bot game starts at the bottom** of the
@@ -88,22 +89,23 @@ so the climb from 21 to 30 is nine wins spread over roughly a hundred games
 for someone who never slips, far fewer for the bot's usual opponents. The
 anchors, the monotonic shape, and the simulation bounds are the contract.
 
-## The moments
+## Resigning
 
-Computed as a pure function of (rung before, rung after, result). Since
-`2026-09-26-achievements-design.md` the only one with any fanfare of its own is:
+Once each side has moved, a bot game is played out or resigned. New game is
+disabled until it ends (the reducer ignores `NEW_GAME`), and Back reads
+**Resign**: it records an ordinary loss (history, ladder, achievements) and
+leaves. Before both sides have moved, Back leaves and records nothing. A voided
+game (developer knock) is never resigned.
 
-- **Lost the top** — a loss at rung 30 (which drops to 29). The New game
-  button reads **Take it back** for that one game.
+## Moments (removed)
 
-Promotion, reaching rung 30, and holding it to a draw are achievements now
-(Moving Up, Top of the Pack, The Immovable): the unlock toast is the fanfare, the
-achievements sheet is the record, and the badge worn online replaces the History
-badge. `topHeldAt` and `topHeldCount` are still kept on the ladder. The status
-line's second line, the top card, the share text, and the History badge are gone.
-
-Losing at 30 drops to 29. The relabel after a nudged first game is never a
-moment.
+The ladder no longer has moments. Promotion, reaching rung 30, and holding it to
+draws are achievements (Moving Up, Top of the Pack, The Immovable): the unlock
+toast is the fanfare, the achievements sheet is the record, and the badge worn
+online replaces the History badge. The last moment, "Take it back" after a loss
+at rung 30, is gone too: the button always reads New game. The ladder no longer
+keeps `topHeldAt` / `topHeldCount`; the `ladders` columns stay in the database,
+and `save_ladder` is sent null and 0 until a cleanup migration drops them.
 
 ## History
 
@@ -135,7 +137,7 @@ Difficulty descriptions on setup:
 
 **Banter.** After every finished bot game the second status line carries one
 line from the bot, picked at random from ten per band and result (the band the
-game was played at). A ladder moment (promotion, top) takes that line instead.
+game was played at).
 Voided and two-player games get none. New game clears it.
 
 **Streak pill.** From the third straight win, a pill beside the chip reads
@@ -144,20 +146,19 @@ Voided and two-player games get none. New game clears it.
 ## Modules
 
 - `src/lib/ladder.ts` — rungs, bands, `rungAfter`, `rungForSelection`,
-  `momentAfter`, load/save over `HistoryStorage`. No React.
+  load/save over `HistoryStorage`. No React.
 - `src/lib/bot.ts` — `chancesFor(rung)`, `chooseMove(board, rung, rng)`,
   memoised minimax with random tie-breaks.
 - `src/components/GameScreen.tsx` — owns the rung for the session: resolves it
   on mount from the saved ladder and the picked band, feeds it to the bot,
   advances it after each finished bot game, saves ladder and setup band,
-  records the rung in history, shows moments.
+  records the rung in history.
 - `src/components/StatusBar.tsx` — optional second line (now only the banter).
 
 ## Tests
 
 - Ladder: band edges, `rungAfter` clamping, `rungForSelection` for every case
-  in the table plus same-band and first-game, `momentAfter` for promoted / top /
-  top held / held again / demotion, load/save round trip and bad data.
+  in the table plus same-band and first-game, load/save round trip and bad data.
 - Bot: `chancesFor` at every anchor and monotonic between them; rung 1 is
   uniform random; rung 11 always wins and blocks; rung 30 never loses in
   exhaustive play (existing test, now against rung 30); random tie-breaks
@@ -165,7 +166,7 @@ Voided and two-player games get none. New game clears it.
   2000 games wins between 3% and 20% and never loses, and versus rung 30
   never wins.
 - Components: chip shows the picked band for the first game and the real band
-  after; Take it back after a loss at 30; achievement events carry the rungs;
+  after; a loss at 30 offers a plain New game; achievement events carry the rungs;
   setup shows the
   new descriptions and preselects the band.
 
