@@ -119,7 +119,7 @@ const claims = () => {
   }, info) => {
     await startBotGame(page)
     await reachBothMoved(page)
-    await expect(topLeft(page)).toHaveText("Resign")
+    await expect(topLeft(page)).toHaveText("← Resign")
     await expect(newGame(page)).toBeDisabled()
     await headerFit(page, info)
   })
@@ -138,17 +138,24 @@ const claims = () => {
     await startBotGame(page)
     await expect(page.getByText("5 in a row")).toBeVisible()
     await reachBothMoved(page)
-    await expect(topLeft(page)).toHaveText("Resign")
+    await expect(topLeft(page)).toHaveText("← Resign")
     await expect(newGame(page)).toBeDisabled()
     await headerFit(page, info)
   })
 
-  test('claim 3: "tapping Resign returns to the setup screen; History (bot mode) then shows the game as a loss"', async ({
+  test('claim 3: "tapping Resign asks first, then Yes, resign returns to the setup screen; History (bot mode) then shows the game as a loss"', async ({
     page,
   }) => {
     await startBotGame(page)
     await reachBothMoved(page)
+    // Resign asks first: Keep playing stays in the game, Yes, resign leaves.
     await topLeft(page).click()
+    await expect(page.getByRole("alertdialog")).toContainText("Resign this game?")
+    await button(page, "Keep playing").click()
+    await expect(page.getByRole("alertdialog")).toBeHidden()
+    await expect(topLeft(page)).toHaveText("← Resign")
+    await topLeft(page).click()
+    await button(page, "Yes, resign").click()
     await expect(button(page, "Start game")).toBeVisible()
     await expect(button(page, "Versus bot")).toHaveAttribute("aria-pressed", "true")
     await button(page, "History").click()

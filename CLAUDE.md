@@ -47,7 +47,7 @@ Vite + React 19 + TypeScript, Tailwind v4, shadcn/ui, Vitest + RTL.
 
 - Board: `Cell[]` length 9, row-major. X always moves first.
 - Seats `p1` (you / Player 1) and `p2` (bot / Player 2) trade X between games: winner takes X, a draw swaps. The bot plays whichever side is to move.
-- Once each side has moved in a bot game, it is played out or resigned (`resign` in `state/reducer.ts`): New game is disabled (the reducer ignores `NEW_GAME`) and Back reads Resign, which records an ordinary loss in history, the ladder, and achievements before leaving. Before that, Back costs nothing.
+- Once each side has moved in a bot game, it is played out or resigned (`resign` in `state/reducer.ts`): New game is disabled (the reducer ignores `NEW_GAME`) and Back reads ← Resign, which asks first (Resign this game? / Keep playing / Yes, resign, as online) and then records an ordinary loss in history, the ladder, and achievements before leaving. Before that, Back costs nothing.
 - Bot difficulty is a rung (1..30) resolved by `GameScreen` from the saved ladder and the picked band; the chip shows the picked band for the first game, then the band the rung is in. The rung is never shown; setup marks the band it sits in with a sparkle (`suggestedBand`). See `docs/superpowers/specs/2026-09-25-adaptive-bot-design.md`.
 - lib/ and state/ never import React or touch the DOM.
 - TDD for all logic: failing test first, minimal code, refactor.

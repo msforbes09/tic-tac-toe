@@ -541,13 +541,26 @@ describe('GameScreen ladder', () => {
       botTurn()
       expect(screen.getByRole('button', { name: 'New game' })).toBeDisabled()
       expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Resign' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '← Resign' })).toBeInTheDocument()
     })
 
-    it('Resign records a loss and leaves', () => {
+    it('Resign asks first; Keep playing changes nothing', () => {
+      const { storage, onBack } = start()
+      play(1)
+      fireEvent.click(screen.getByRole('button', { name: '← Resign' }))
+      expect(screen.getByText('Resign this game?')).toBeInTheDocument()
+      expect(screen.getByText('It counts as a loss.')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }))
+      expect(screen.queryByText('Resign this game?')).not.toBeInTheDocument()
+      expect(onBack).not.toHaveBeenCalled()
+      expect(storage.entries()).toEqual([])
+    })
+
+    it('Yes, resign records a loss and leaves', () => {
       const { storage, onAchievement, onBack } = start()
       play(1)
-      fireEvent.click(screen.getByRole('button', { name: 'Resign' }))
+      fireEvent.click(screen.getByRole('button', { name: '← Resign' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }))
       expect(onBack).toHaveBeenCalled()
       expect(storage.entries()).toHaveLength(1)
       expect(storage.entries()[0]).toMatchObject({ mode: 'bot', outcome: 'O', p1Symbol: 'X', rung: 12 })
