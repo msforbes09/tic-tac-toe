@@ -92,7 +92,7 @@ results    id uuid pk, room_id text fk→rooms on delete cascade,
   Entering sudden death shows the **Tie breaker** interstitial.
 - **Next game** is enabled only when the current game is finished. Either
   player can press it.
-- **Resign** (header, with confirmation) ends the series at once as a loss
+- **← Resign** (header, with confirmation) ends the series at once as a loss
   for the resigner, whatever the score.
 - When the series is decided the referee inserts the result, broadcasts
   `series-ended` on the room channel, and both players' button becomes
