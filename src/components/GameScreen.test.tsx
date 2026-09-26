@@ -524,6 +524,55 @@ describe('GameScreen ladder', () => {
     expect(ladderIn(storage).rung).toBe(21)
   })
 
+  describe('leaving mid-way resigns', () => {
+    const start = (onBack = vi.fn()) => {
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+      const storage = seeded(12)
+      const onAchievement = vi.fn()
+      render(<GameScreen settings={{ ...easyBot('X'), difficulty: 'medium' }} storage={storage} feedback={recorder()} onBack={onBack} onAchievement={onAchievement} />)
+      return { storage, onAchievement, onBack }
+    }
+
+    it('once each side has moved, disables New game and turns Back into Resign', () => {
+      start()
+      fireEvent.click(cell(1))
+      expect(screen.getByRole('button', { name: 'New game' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
+      botTurn()
+      expect(screen.getByRole('button', { name: 'New game' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Resign' })).toBeInTheDocument()
+    })
+
+    it('Resign records a loss and leaves', () => {
+      const { storage, onAchievement, onBack } = start()
+      play(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Resign' }))
+      expect(onBack).toHaveBeenCalled()
+      expect(storage.entries()).toHaveLength(1)
+      expect(storage.entries()[0]).toMatchObject({ mode: 'bot', outcome: 'O', p1Symbol: 'X', rung: 12 })
+      expect(ladderIn(storage).rung).toBe(11)
+      expect(onAchievement).toHaveBeenCalledWith(expect.objectContaining({ kind: 'game', result: 'loss', rungBefore: 12, rungAfter: 11 }))
+    })
+
+    it('Back before the bot has answered records nothing', () => {
+      const { storage, onAchievement, onBack } = start()
+      fireEvent.click(cell(1))
+      fireEvent.click(screen.getByRole('button', { name: /back/i }))
+      expect(onBack).toHaveBeenCalled()
+      expect(storage.entries()).toEqual([])
+      expect(onAchievement).not.toHaveBeenCalled()
+    })
+
+    it('a finished game offers New game and Back again', () => {
+      start()
+      play(1, 2, 4)
+      expect(screen.getByText('You lost')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'New game' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
+    })
+  })
+
   it('offers a plain new game after a loss at rung 30', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0)
     const storage = seeded(30)

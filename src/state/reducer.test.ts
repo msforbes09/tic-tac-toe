@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canSeatMove, createGameState, gameReducer, snapshotOf, type GameState } from './reducer'
+import { canSeatMove, createGameState, gameReducer, resign, snapshotOf, type GameState } from './reducer'
 import type { Settings } from '@/lib/types'
 import type { Snapshot } from '@/lib/room'
 
@@ -146,6 +146,34 @@ describe('score', () => {
   it('does not change when a game is abandoned', () => {
     const s = gameReducer(play(createGameState(settings), 0, 1), { type: 'NEW_GAME' })
     expect(s.score).toEqual({ p1: 0, p2: 0, draws: 0 })
+  })
+})
+
+describe('resign (leaving a bot game mid-way)', () => {
+  const bot: Settings = { mode: 'bot', difficulty: 'easy', p1Symbol: 'X' }
+
+  it('is a loss to the bot once each side has moved', () => {
+    const r = resign(play(createGameState(bot), 0, 4))
+    expect(r).toMatchObject({ status: 'won', winner: 'O', winningLine: null, recorded: false, score: { p1: 0, p2: 1, draws: 0 } })
+    expect(r!.board).toEqual(play(createGameState(bot), 0, 4).board)
+  })
+
+  it('credits the bot whichever symbol it plays', () => {
+    expect(resign(play(createGameState({ ...bot, p1Symbol: 'O' }), 0, 4))?.winner).toBe('X')
+  })
+
+  it('does not count before both sides have moved, after the end, when voided, or outside bot games', () => {
+    expect(resign(createGameState(bot))).toBeNull()
+    expect(resign(play(createGameState(bot), 0))).toBeNull()
+    expect(resign(play(createGameState(bot), 0, 3, 1, 4, 2))).toBeNull()
+    expect(resign(gameReducer(play(createGameState(bot), 0, 4), { type: 'OVERRIDE', index: 0 }))).toBeNull()
+    expect(resign(play(createGameState(settings), 0, 4))).toBeNull()
+  })
+
+  it('ignores NEW_GAME once the game would have to be resigned', () => {
+    const midway = play(createGameState(bot), 0, 4)
+    expect(gameReducer(midway, { type: 'NEW_GAME' })).toBe(midway)
+    expect(gameReducer(play(createGameState(bot), 0), { type: 'NEW_GAME' }).board).toEqual(Array(9).fill(null))
   })
 })
 

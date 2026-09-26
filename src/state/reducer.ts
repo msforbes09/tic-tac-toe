@@ -84,11 +84,27 @@ export function canSeatMove(state: GameState, seat: Seat): boolean {
   return state.status === 'playing' && seatOf(state, nextPlayer(state.board)) === seat
 }
 
-/** Winner takes X next game; a draw swaps; an abandoned game changes nothing. */
+/** Winner takes X next game; a draw swaps; a game left before it counts changes nothing. */
 function nextP1Symbol(state: GameState): Player {
   if (state.status === 'won' && state.winner) return seatOf(state, state.winner) === 'p1' ? 'X' : 'O'
   if (state.status === 'draw') return other(state.p1Symbol)
   return state.p1Symbol
+}
+
+/**
+ * Resigning a bot game: a loss to the bot, once each side has moved. Null when leaving costs
+ * nothing (no bot, not playing, voided, or a side has yet to move).
+ */
+export function resign(state: GameState): GameState | null {
+  if (state.settings.mode !== 'bot' || state.status !== 'playing' || state.voided) return null
+  if (!state.board.includes('X') || !state.board.includes('O')) return null
+  return {
+    ...state,
+    status: 'won',
+    winner: symbolOf(state, 'p2'),
+    winningLine: null,
+    score: { ...state.score, p2: state.score.p2 + 1 },
+  }
 }
 
 function isLegalMove(state: GameState, index: number): boolean {
@@ -125,6 +141,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, board, voided: true }
     }
     case 'NEW_GAME':
+      // A bot game that would have to be resigned is not thrown away; it is played out or resigned.
+      if (resign(state)) return state
       return freshGame(state.settings, nextP1Symbol(state), state.score)
     case 'RECORDED':
       return { ...state, recorded: true }

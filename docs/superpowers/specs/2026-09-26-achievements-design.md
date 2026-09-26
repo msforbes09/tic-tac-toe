@@ -83,7 +83,7 @@ Detail rules:
 - **Deep End**: `rung before >= 25` and the bot game was won.
 - **Top of the Pack**: rung after is 30 and rung before is below 30. **The Immovable**: three
   bot draws in a row with rung before at 30 (`topDrawStreak`). Any other bot game (a win, a
-  loss, a draw below 30) resets the count; two-player and online games leave it alone. Players
+  loss or resignation, a draw below 30) resets the count; two-player and online games leave it alone. Players
   who unlocked it under the old one-draw rule keep it.
 - **Comeback Kid**: at some point in the series the player's score was 3 or more behind;
   the referee's snapshots carry both scores after every game, so each player tracks

@@ -89,6 +89,14 @@ so the climb from 21 to 30 is nine wins spread over roughly a hundred games
 for someone who never slips, far fewer for the bot's usual opponents. The
 anchors, the monotonic shape, and the simulation bounds are the contract.
 
+## Resigning
+
+Once each side has moved, a bot game is played out or resigned. New game is
+disabled until it ends (the reducer ignores `NEW_GAME`), and Back reads
+**Resign**: it records an ordinary loss (history, ladder, achievements) and
+leaves. Before both sides have moved, Back leaves and records nothing. A voided
+game (developer knock) is never resigned.
+
 ## Moments (removed)
 
 The ladder no longer has moments. Promotion, reaching rung 30, and holding it to
