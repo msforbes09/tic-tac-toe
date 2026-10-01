@@ -2,7 +2,7 @@ import { useCurrentFrame } from "remotion"
 import { Column, heading, Shot } from "../components/Shot"
 import { type Layout, TYPE, zones } from "../layout"
 import { rise } from "../motion"
-import { BEATS } from "../timeline"
+import type { Beats } from "../timeline"
 import { COLOR } from "../tokens"
 
 const line = {
@@ -45,7 +45,17 @@ const PILLS = [
 ]
 
 // Shot 6: three pills, one per claim, each rising with its words; earlier pills stay.
-export function Shot6Free({ layout, from, to }: { layout: Layout; from: number; to: number }) {
+export function Shot6Free({
+  layout,
+  from,
+  to,
+  beats,
+}: {
+  layout: Layout
+  from: number
+  to: number
+  beats: Beats
+}) {
   const frame = useCurrentFrame()
   const size = TYPE[layout].chip
   return (
@@ -62,7 +72,7 @@ export function Shot6Free({ layout, from, to }: { layout: Layout; from: number; 
               background: COLOR.card,
               border: `2px solid ${COLOR.border}`,
               borderRadius: 999,
-              ...rise(frame, from + BEATS.pills[i]),
+              ...rise(frame, beats.pills[i]),
             }}
           >
             <svg width={size * 1.1} height={size * 1.1} viewBox="0 0 100 100">

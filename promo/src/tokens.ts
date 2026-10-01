@@ -11,10 +11,6 @@ export const COLOR = {
   muted: "#a1a1a1",
   x: "#8fa8ff",
   o: "#ff9f7a",
-  bronze: "#cd7f32",
-  silver: "#b8c0c8",
-  gold: "#f2c14e",
-  platinum: "#9fe3ff",
 }
 
 export const FONT = {

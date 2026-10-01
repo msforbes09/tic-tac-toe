@@ -24,7 +24,7 @@ export function rise(frame: number, inAt: number, outAt = Infinity): CSSProperti
 }
 
 // Pops from `scale` to 1 and fades in over 8 frames.
-export function pop(frame: number, at: number, from = 0.9): CSSProperties {
+export function pop(frame: number, at: number, from = 0.9): { opacity: number; transform: string } {
   const p = enter(frame, at, 8)
   return { opacity: p, transform: `scale(${from + (1 - from) * p})` }
 }

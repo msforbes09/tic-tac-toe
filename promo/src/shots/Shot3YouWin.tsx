@@ -5,7 +5,6 @@ import { Toast } from "../components/Toast"
 import { type Layout, zones } from "../layout"
 import { BOT_LINES } from "../script"
 import { TOAST_EXIT, WIN } from "../timeline"
-import { tailX } from "./Shot2TalksBack"
 
 // Shot 3: X takes the diagonal on the board (GameBoard draws the moves), confetti bursts, the bot
 // shrugs it off, and the achievement toast drops in.
@@ -33,13 +32,7 @@ export function Shot3YouWin({
         at={WIN.at}
         spread={board.w * 0.6}
       />
-      <Bubble
-        layout={layout}
-        text={BOT_LINES["bot-02"]}
-        popAt={bubbleAt}
-        exitAt={bubbleExit}
-        tailX={tailX(layout)}
-      />
+      <Bubble layout={layout} text={BOT_LINES["bot-02"]} popAt={bubbleAt} exitAt={bubbleExit} />
       <Toast layout={layout} at={toastAt} exitAt={TOAST_EXIT} />
     </Shot>
   )

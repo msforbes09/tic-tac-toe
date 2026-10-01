@@ -1,11 +1,11 @@
 import { interpolate, useCurrentFrame } from "remotion"
 import type { Box } from "../layout"
 import { enter, pop } from "../motion"
-import type { Move } from "../timeline"
+import type { Move, WIN } from "../timeline"
 import { COLOR } from "../tokens"
 import { Mark } from "./Mark"
 
-type Win = { cells: number[]; at: number }
+type Win = typeof WIN
 
 const STRIKE_FRAMES = 15
 const PULSE_FRAMES = 19

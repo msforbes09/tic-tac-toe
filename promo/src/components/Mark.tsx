@@ -1,10 +1,8 @@
 import { useCurrentFrame } from "remotion"
+import { DRAW } from "../draw"
 import { enter } from "../motion"
 import type { Player } from "../timeline"
 import { COLOR } from "../tokens"
-
-const ARM_FRAMES = 8
-const O_FRAMES = 10
 
 // An X or O drawn as a stroke from `at` (X: two 8-frame arms, one after the other; O: 10 frames).
 export function Mark({ player, at, size }: { player: Player; at: number; size: number }) {
@@ -26,7 +24,7 @@ export function Mark({ player, at, size }: { player: Player; at: number; size: n
             x2={76}
             y2={76}
             {...common}
-            strokeDashoffset={1 - enter(frame, at, ARM_FRAMES)}
+            strokeDashoffset={1 - enter(frame, at, DRAW.arm)}
           />
           <line
             x1={76}
@@ -34,7 +32,7 @@ export function Mark({ player, at, size }: { player: Player; at: number; size: n
             x2={24}
             y2={76}
             {...common}
-            strokeDashoffset={1 - enter(frame, at + ARM_FRAMES, ARM_FRAMES)}
+            strokeDashoffset={1 - enter(frame, at + DRAW.arm, DRAW.arm)}
           />
         </g>
       ) : (
@@ -45,7 +43,7 @@ export function Mark({ player, at, size }: { player: Player; at: number; size: n
           stroke={COLOR.o}
           transform="rotate(-90 50 50)"
           {...common}
-          strokeDashoffset={1 - enter(frame, at, O_FRAMES)}
+          strokeDashoffset={1 - enter(frame, at, DRAW.o)}
         />
       )}
     </svg>

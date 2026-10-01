@@ -1,4 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion"
+import { UNLOCK } from "../brand"
 import { type Layout, TOAST_DROP, TYPE, zones } from "../layout"
 import { enter, exit } from "../motion"
 import { COLOR, FONT } from "../tokens"
@@ -40,7 +41,7 @@ export function Toast({ layout, at, exitAt }: { layout: Layout; at: number; exit
         }}
       >
         <svg width={icon} height={icon} viewBox="0 0 100 100" style={{ flex: "none" }}>
-          <circle cx={50} cy={50} r={46} fill={COLOR.bronze} />
+          <circle cx={50} cy={50} r={46} fill={UNLOCK.color} />
           <path
             d="M30 52 L44 66 L71 37"
             fill="none"
@@ -73,7 +74,7 @@ export function Toast({ layout, at, exitAt }: { layout: Layout; at: number; exit
               lineHeight: 1.15,
             }}
           >
-            Beat the Machine
+            {UNLOCK.name}
           </span>
           <span
             style={{
@@ -84,7 +85,7 @@ export function Toast({ layout, at, exitAt }: { layout: Layout; at: number; exit
               lineHeight: 1.2,
             }}
           >
-            Beat the bot for the first time
+            {UNLOCK.description}
           </span>
         </div>
       </div>

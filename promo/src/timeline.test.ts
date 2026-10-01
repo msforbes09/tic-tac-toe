@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 import measured from "../../docs/promo/audio/durations.json"
+import type { Span } from "./alignment"
+import { DRAW } from "./draw"
+import type { Sentence } from "./script"
 import { type Measured, buildTimeline, clipEnd, soundCues } from "./timeline"
 
 // Every take lasting exactly its storyboard target (section 4).
@@ -24,9 +27,14 @@ const targets: Measured = {
   "bot-02": { seconds: 0.9, speech: [0, 0.9] },
 }
 
-const with3 = (s3: [number, number]): Measured => ({
+const withSentence = (key: Sentence, span: Span): Measured => ({
   ...targets,
-  narration: { ...targets.narration, sentences: { ...targets.narration.sentences, "3": s3 } },
+  narration: { ...targets.narration, sentences: { ...targets.narration.sentences, [key]: span } },
+})
+
+const withBot = (key: "bot-01" | "bot-02", speech: Span): Measured => ({
+  ...targets,
+  [key]: { seconds: speech[1], speech },
 })
 
 const STORYBOARD_SHOTS = {
@@ -96,14 +104,12 @@ describe("buildTimeline with the measured takes", () => {
   })
 
   it('ends bot-01 by the end of shot 2, at least 6 frames after "Now it talks back."', () => {
-    const s3End = t.narration["3"].from + t.narration["3"].trimAfter - t.narration["3"].trimBefore
-    const bot1End = t.bot1.from + t.bot1.trimAfter
-    expect(t.bot1.from - s3End).toBeGreaterThanOrEqual(6)
-    expect(bot1End).toBeLessThanOrEqual(204)
+    expect(t.bot1.from - clipEnd(t.narration["3"])).toBeGreaterThanOrEqual(6)
+    expect(clipEnd(t.bot1)).toBeLessThanOrEqual(204)
   })
 
   it("ends bot-02 before the toast chime", () => {
-    expect(t.bot2.from + t.bot2.trimAfter).toBeLessThan(t.toast)
+    expect(clipEnd(t.bot2)).toBeLessThan(t.toast)
   })
 
   it("clears the second bubble out of the toast zone before the toast drops", () => {
@@ -113,31 +119,46 @@ describe("buildTimeline with the measured takes", () => {
 
 describe("buildTimeline rules", () => {
   it("pushes a sentence that would start inside the previous one", () => {
-    const long = buildTimeline({
-      ...targets,
-      narration: {
-        ...targets.narration,
-        sentences: { ...targets.narration.sentences, "4a": [11.0, 14.2] },
-      },
-    })
+    const long = buildTimeline(withSentence("4a", [11.0, 14.2]))
     expect(long.narration["4b"].from).toBe(328 + 96)
     expect(long.shots["4b"]).toBe(328 + 96 - 4)
   })
 
+  it("measures a bot line by its speech, not by where the speech ends in the file", () => {
+    const t = buildTimeline(withBot("bot-01", [0.2, 1.4]))
+    expect(t.bot1).toEqual({ from: 165, trimBefore: 6, trimAfter: 42 })
+  })
+
   it('refuses a bot-01 that cannot fit after "Now it talks back."', () => {
-    expect(() => buildTimeline(with3([3.9, 5.9]))).toThrow("bot-01")
+    expect(() => buildTimeline(withSentence("3", [3.9, 5.9]))).toThrow("bot-01")
+  })
+
+  it("refuses a sentence 2 that runs into shot 2", () => {
+    expect(() => buildTimeline(withSentence("2", [1.8, 4.0]))).toThrow("sentence 2")
+  })
+
+  it("refuses a take that would grow shot 3 past 120 frames", () => {
+    expect(() => buildTimeline(withSentence("3", [3.9, 11.0]))).toThrow("shot 3")
   })
 
   it("refuses a take that leaves the logo less than 2 s", () => {
-    expect(() =>
-      buildTimeline({
-        ...targets,
-        narration: {
-          ...targets.narration,
-          sentences: { ...targets.narration.sentences, "7": [24.2, 28.6] },
-        },
-      }),
-    ).toThrow("shot 8")
+    expect(() => buildTimeline(withSentence("7", [24.2, 28.6]))).toThrow("shot 8")
+  })
+
+  it("refuses a narration that runs past frame 900", () => {
+    expect(() => buildTimeline(withSentence("8", [27.0, 30.5]))).toThrow("frame 900")
+  })
+
+  it("refuses a bot-02 so long that the toast gets no hold", () => {
+    expect(() => buildTimeline(withBot("bot-02", [0, 2.5]))).toThrow("toast")
+  })
+})
+
+describe("beats", () => {
+  it("lands the logo's start cue on the frame its X finishes drawing", () => {
+    const t = buildTimeline(targets)
+    expect(t.beats.logoDone).toBe(t.beats.logo + DRAW.o + 2 * DRAW.arm)
+    expect(soundCues(t)).toContainEqual({ at: t.beats.logoDone, cue: "start" })
   })
 })
 

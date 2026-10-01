@@ -1,4 +1,4 @@
-import { Audio, Sequence, staticFile } from "remotion"
+import { Html5Audio, Sequence, staticFile } from "remotion"
 import { VOLUME, musicVolume } from "./mix"
 import { type Clip, type Timeline, clipEnd, soundCues } from "./timeline"
 
@@ -6,7 +6,7 @@ import { type Clip, type Timeline, clipEnd, soundCues } from "./timeline"
 function Voice({ file, clip, volume }: { file: string; clip: Clip; volume: number }) {
   return (
     <Sequence from={clip.from} durationInFrames={clipEnd(clip) - clip.from} layout="none">
-      <Audio src={staticFile(file)} trimBefore={clip.trimBefore} volume={volume} />
+      <Html5Audio src={staticFile(file)} trimBefore={clip.trimBefore} volume={volume} />
     </Sequence>
   )
 }
@@ -15,7 +15,7 @@ function Voice({ file, clip, volume }: { file: string; clip: Clip; volume: numbe
 export function Soundtrack({ timeline }: { timeline: Timeline }) {
   return (
     <>
-      <Audio
+      <Html5Audio
         src={staticFile("music-dim-light.mp3")}
         volume={(f) => musicVolume(f, timeline.speech)}
       />
@@ -26,7 +26,7 @@ export function Soundtrack({ timeline }: { timeline: Timeline }) {
       <Voice file="bot-02.mp3" clip={timeline.bot2} volume={VOLUME["bot-02"]} />
       {soundCues(timeline).map(({ at, cue }) => (
         <Sequence key={`${cue}-${at}`} from={at} layout="none">
-          <Audio src={staticFile(`tones/${cue}.wav`)} volume={VOLUME.tones} />
+          <Html5Audio src={staticFile(`tones/${cue}.wav`)} volume={VOLUME.tones} />
         </Sequence>
       ))}
     </>

@@ -1,20 +1,10 @@
 import { useCurrentFrame } from "remotion"
+import { LOGO } from "../brand"
+import { DRAW } from "../draw"
 import { enter } from "../motion"
 import { COLOR } from "../tokens"
 
-// The app's logo geometry (src/lib/logo.ts, copied by hand so the game stays untouched): an O bottom-right
-// and an X top-left overlapping, with a background-coloured gap cut where the X's arm crosses the ring.
-const LOGO = {
-  size: 512,
-  stroke: 44,
-  gap: 9,
-  x: { cx: 200, cy: 200, arm: 90 },
-  o: { cx: 330, cy: 330, r: 90 },
-}
-const O_FRAMES = 10
-const ARM_FRAMES = 8
-
-// Draws O first (from `at`), then each X arm, as the splash does; the X completes at `at + 26`.
+// The app's logo (geometry pinned in brand.ts). Draws O first (from `at`), then each X arm, as the splash does; the X completes at `at + 26`.
 export function Logo({ at, size }: { at: number; size: number }) {
   const frame = useCurrentFrame()
   const { x, o } = LOGO
@@ -26,8 +16,8 @@ export function Logo({ at, size }: { at: number; size: number }) {
   const common = { fill: "none", strokeWidth: LOGO.stroke, strokeLinecap: "round" as const }
   const arm1 = `M${x.cx - x.arm} ${x.cy - x.arm} L${x.cx + x.arm} ${x.cy + x.arm}`
   const arm2 = `M${x.cx + x.arm} ${x.cy - x.arm} L${x.cx - x.arm} ${x.cy + x.arm}`
-  const arm1At = at + O_FRAMES
-  const arm2At = arm1At + ARM_FRAMES
+  const arm1At = at + DRAW.o
+  const arm2At = arm1At + DRAW.arm
 
   return (
     <svg
@@ -43,17 +33,17 @@ export function Logo({ at, size }: { at: number; size: number }) {
         transform={`rotate(-90 ${o.cx} ${o.cy})`}
         stroke={COLOR.o}
         {...common}
-        {...draw(at, O_FRAMES)}
+        {...draw(at, DRAW.o)}
       />
       <path
         d={arm1}
         {...common}
         stroke={COLOR.background}
         strokeWidth={LOGO.stroke + 2 * LOGO.gap}
-        {...draw(arm1At, ARM_FRAMES)}
+        {...draw(arm1At, DRAW.arm)}
       />
-      <path d={arm1} {...common} stroke={COLOR.x} {...draw(arm1At, ARM_FRAMES)} />
-      <path d={arm2} {...common} stroke={COLOR.x} {...draw(arm2At, ARM_FRAMES)} />
+      <path d={arm1} {...common} stroke={COLOR.x} {...draw(arm1At, DRAW.arm)} />
+      <path d={arm2} {...common} stroke={COLOR.x} {...draw(arm2At, DRAW.arm)} />
     </svg>
   )
 }

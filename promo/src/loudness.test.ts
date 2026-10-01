@@ -43,6 +43,10 @@ describe("loudness", () => {
     expect(() => parseLoudnorm("no json here")).toThrow("loudnorm")
   })
 
+  it("fails loudly when the measurement lacks a value the second pass needs", () => {
+    expect(() => parseLoudnorm(STDERR.replace(/\s*"input_lra" : "6.10",/, ""))).toThrow("input_lra")
+  })
+
   it("builds the measuring pass and the correcting pass from the first measurement", () => {
     expect(measureFilter()).toBe("loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json")
     expect(secondPassFilter(parseLoudnorm(STDERR))).toBe(

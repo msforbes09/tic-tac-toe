@@ -1,28 +1,30 @@
 import { interpolate, useCurrentFrame } from "remotion"
+import { boardGeometry } from "./Board"
+import { OBadge } from "./OBadge"
 import { type Layout, TYPE, zones } from "../layout"
 import { enter, exit } from "../motion"
 import { COLOR, FONT } from "../tokens"
 
 const BREATH_FRAMES = 33 // the app's 1.1 s "thinking" breath
 
-// The bot's speech bubble above the board, its tail pointing down at `tailX` (the O in cell 0).
+// The bot's speech bubble above the board, its tail pointing down at the O in cell 0.
 export function Bubble({
   layout,
   text,
   popAt,
   exitAt,
-  tailX,
   breathe = false,
 }: {
   layout: Layout
   text: string
   popAt: number
   exitAt: number
-  tailX: number
   breathe?: boolean
 }) {
   const frame = useCurrentFrame()
   const zone = zones(layout).bubble
+  const board = zones(layout).board
+  const tailX = board.x + boardGeometry(board.w).centre(0).x
   const size = TYPE[layout].bubble
   const p = enter(frame, popAt, 8)
   const out = exit(frame, exitAt)
@@ -65,19 +67,14 @@ export function Bubble({
           borderRadius: 40,
         }}
       >
-        <svg
-          width={badge}
-          height={badge}
-          viewBox="0 0 100 100"
+        <OBadge
+          size={badge}
           style={{
             flex: "none",
             transform: `scale(${breath})`,
             opacity: 0.7 + 0.3 * ((breath - 0.88) / 0.12),
           }}
-        >
-          <circle cx={50} cy={50} r={46} fill={COLOR.tile} />
-          <circle cx={50} cy={50} r={24} fill="none" stroke={COLOR.o} strokeWidth={11} />
-        </svg>
+        />
         <span
           style={{
             fontFamily: FONT.heading,

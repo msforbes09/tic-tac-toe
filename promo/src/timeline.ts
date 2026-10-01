@@ -1,6 +1,9 @@
 // Every shot's start frame and every voice clip's placement, from the storyboard's rules (section 4)
 // and the measured takes in docs/promo/audio/durations.json. A take that breaks a rule throws.
 import type { Span } from "./alignment"
+// Modules imported for values carry ".ts": Node runs scripts/*.ts against this file without a bundler.
+import { TIERS } from "./brand.ts"
+import { DRAW } from "./draw.ts"
 import { NARRATION, type Sentence } from "./script.ts"
 import type { CueName } from "./tones"
 
@@ -28,6 +31,7 @@ export type Timeline = {
   toast: number
   zero: number
   speech: Span[]
+  beats: Beats
 }
 
 // The storyboard's frame table. Shots 1-3 are fixed; later shots start 4 frames before their sentence.
@@ -67,6 +71,8 @@ export const TOAST_EXIT = 316
 const LAST_SLOGAN_FRAME = 840
 const MIN_LOGO_HOLD = 60
 
+// Seconds to frames, rounded to 1/1000 frame first so float noise (1.2 * 30 = 36.000000000000004)
+// never tips a floor or ceil over a whole frame.
 const frames = (seconds: number) => Math.round(seconds * FPS * 1000) / 1000
 const clip = (from: number, [start, end]: Span): Clip => ({
   from,
@@ -94,45 +100,57 @@ export const WIN = { cells: [2, 4, 6], at: 226 }
 const START_CUE = 9
 
 export const ROOM_CODE = "XOXO"
-export const CHIP_COUNT = 41
+export const CHIP_COUNT = TIERS.reduce((sum, t) => sum + t.count, 0)
 
-// Beats inside the later shots, in frames after the shot starts.
-export const BEATS = {
-  codeTiles: 14,
-  codeStagger: 4,
-  phoneX: 12,
-  phoneO: 28,
-  botSteps: [24, 48, 72],
-  chips: 4,
-  pills: [3, 36, 66],
-  strike: 24,
-  logoDone: 30,
+// The frames things happen on in the later shots. The shots draw on them and soundCues sounds on them.
+export type Beats = {
+  codeTiles: number[] // 4a: each XOXO tile pops (4-frame stagger)
+  phoneX: number // 4b: the marks on the phone
+  phoneO: number
+  botSteps: number[] // 4c: the O badge lands on Easy, Medium, Hard (0.8 s apart)
+  chips: number // 5: the first chip; the rest follow one frame apart, platinum last
+  platinum: number
+  pills: number[] // 6: one per claim, on its words
+  strike: number // 7: the strike through the three Xs
+  logo: number // 8: the logo starts drawing (O, then each X arm)
+  logoDone: number // 8: its X is complete
+}
+
+function beatsFor(s: Record<Shot, number>): Beats {
+  const chips = s["5"] + 4
+  const logo = s["8"] + 4
+  return {
+    codeTiles: [...ROOM_CODE].map((_, i) => s["4a"] + 14 + 4 * i),
+    phoneX: s["4b"] + 12,
+    phoneO: s["4b"] + 28,
+    botSteps: [24, 48, 72].map((offset) => s["4c"] + offset),
+    chips,
+    platinum: chips + CHIP_COUNT - 1,
+    pills: [3, 36, 66].map((offset) => s["6"] + offset),
+    strike: s["7"] + 24,
+    logo,
+    logoDone: logo + DRAW.o + 2 * DRAW.arm,
+  }
 }
 
 const moveCue = (player: Player): CueName => (player === "X" ? "move-x" : "move-o")
 
 // Every game sound, in order: the cue and the frame it starts.
 export function soundCues(t: Timeline): { at: number; cue: CueName }[] {
-  const s = t.shots
+  const b = t.beats
   return [
     { at: START_CUE, cue: "start" as const },
     ...MOVES.map((m) => ({ at: m.at, cue: moveCue(m.player) })),
     { at: WIN.at, cue: "win" as const },
     { at: t.toast, cue: "achievement" as const },
-    ...[...ROOM_CODE].map((c, i) => ({
-      at: s["4a"] + BEATS.codeTiles + i * BEATS.codeStagger,
-      cue: moveCue(c as Player),
-    })),
-    { at: s["4b"] + BEATS.phoneX, cue: "move-x" as const },
-    { at: s["4b"] + BEATS.phoneO, cue: "move-o" as const },
-    ...(["move-o", "step-587", "move-x"] as const).map((cue, i) => ({
-      at: s["4c"] + BEATS.botSteps[i],
-      cue,
-    })),
-    { at: s["5"] + BEATS.chips + CHIP_COUNT - 1, cue: "achievement" as const },
-    ...BEATS.pills.map((p) => ({ at: s["6"] + p, cue: "move-x" as const })),
-    { at: s["7"] + BEATS.strike, cue: "win" as const },
-    { at: s["8"] + BEATS.logoDone, cue: "start" as const },
+    ...b.codeTiles.map((at, i) => ({ at, cue: moveCue(ROOM_CODE[i] as Player) })),
+    { at: b.phoneX, cue: "move-x" as const },
+    { at: b.phoneO, cue: "move-o" as const },
+    ...(["move-o", "step-587", "move-x"] as const).map((cue, i) => ({ at: b.botSteps[i], cue })),
+    { at: b.platinum, cue: "achievement" as const },
+    ...b.pills.map((at) => ({ at, cue: "move-x" as const })),
+    { at: b.strike, cue: "win" as const },
+    { at: b.logoDone, cue: "start" as const },
   ].sort((a, b) => a.at - b.at)
 }
 
@@ -153,7 +171,7 @@ export function buildTimeline(m: Measured): Timeline {
   rule(TOTAL_FRAMES - shots["8"] >= MIN_LOGO_HOLD, "shot 8 must hold the logo at least 2.0 s")
   rule(clipEnd(narration["8"]) <= TOTAL_FRAMES, "the narration must end by frame 900")
 
-  const bot1Length = clip(0, m["bot-01"].speech).trimAfter
+  const bot1Length = clipEnd(clip(0, m["bot-01"].speech))
   const bot1 = clip(Math.min(BOT1_TARGET, STORYBOARD["3"] - bot1Length), m["bot-01"].speech)
   rule(
     bot1.from >= clipEnd(narration["3"]) + BOT1_AIR,
@@ -187,5 +205,6 @@ export function buildTimeline(m: Measured): Timeline {
     toast,
     zero,
     speech,
+    beats: beatsFor(shots),
   }
 }

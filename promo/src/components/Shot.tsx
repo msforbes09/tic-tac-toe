@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react"
 import { AbsoluteFill, useCurrentFrame } from "remotion"
 import { exit } from "../motion"
-import { SLIDE } from "../layout"
+import { type Box, SLIDE } from "../layout"
 import { COLOR, EXIT_FRAMES, FONT } from "../tokens"
 
 // A shot on the film's own frame clock: shown from `from`, and from `to` it crossfades out, sliding SLIDE px
@@ -45,15 +45,7 @@ export const text = (size: number, color = COLOR.muted): CSSProperties => ({
 })
 
 // A flex column centred in a zone.
-export function Column({
-  box,
-  gap,
-  children,
-}: {
-  box: { x: number; y: number; w: number; h: number }
-  gap: number
-  children: ReactNode
-}) {
+export function Column({ box, gap, children }: { box: Box; gap: number; children: ReactNode }) {
   return (
     <div
       style={{

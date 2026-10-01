@@ -13,7 +13,11 @@ export const measureFilter = () => `${base()}:print_format=json`
 export function parseLoudnorm(stderr: string): LoudnormReport {
   const json = stderr.match(/\{[^{}]*"input_i"[^{}]*\}/)
   if (!json) throw new Error("ffmpeg printed no loudnorm measurement")
-  return JSON.parse(json[0]) as LoudnormReport
+  const report = JSON.parse(json[0]) as LoudnormReport
+  for (const key of ["input_i", "input_tp", "input_lra", "input_thresh", "target_offset"]) {
+    if (!(key in report)) throw new Error(`the loudnorm measurement has no ${key}`)
+  }
+  return report
 }
 
 export const secondPassFilter = (m: LoudnormReport) =>

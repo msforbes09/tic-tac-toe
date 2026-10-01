@@ -16,7 +16,7 @@ import { Soundtrack } from "./Soundtrack"
 import { type Measured, buildTimeline } from "./timeline"
 import { COLOR, FONT } from "./tokens"
 
-const timeline = buildTimeline(measured as Measured)
+const t = buildTimeline(measured as Measured)
 
 // Holds the render until both faces are loaded; a missing face fails the render instead of falling back.
 function useFonts() {
@@ -37,7 +37,6 @@ function useFonts() {
 
 export function Promo({ layout }: { layout: Layout }) {
   useFonts()
-  const t = timeline
   const s = t.shots
   return (
     <AbsoluteFill style={{ background: COLOR.background, overflow: "hidden" }}>
@@ -59,11 +58,16 @@ export function Promo({ layout }: { layout: Layout }) {
         bubbleExit={t.bubble2Exit}
         toastAt={t.toast}
       />
-      <Shot4Modes layout={layout} starts={[s["4a"], s["4b"], s["4c"]]} to={s["5"]} />
-      <Shot5FortyOne layout={layout} from={s["5"]} to={s["6"]} />
-      <Shot6Free layout={layout} from={s["6"]} to={s["7"]} />
-      <Shot7Slogan layout={layout} from={s["7"]} to={s["8"]} zeroAt={t.zero} />
-      <Shot8Mark layout={layout} from={s["8"]} />
+      <Shot4Modes
+        layout={layout}
+        starts={[s["4a"], s["4b"], s["4c"]]}
+        to={s["5"]}
+        beats={t.beats}
+      />
+      <Shot5FortyOne layout={layout} from={s["5"]} to={s["6"]} beats={t.beats} />
+      <Shot6Free layout={layout} from={s["6"]} to={s["7"]} beats={t.beats} />
+      <Shot7Slogan layout={layout} from={s["7"]} to={s["8"]} zeroAt={t.zero} beats={t.beats} />
+      <Shot8Mark layout={layout} from={s["8"]} beats={t.beats} />
       <Soundtrack timeline={t} />
     </AbsoluteFill>
   )

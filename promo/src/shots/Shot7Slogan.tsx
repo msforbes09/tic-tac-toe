@@ -3,7 +3,7 @@ import { Mark } from "../components/Mark"
 import { Column, heading, Shot } from "../components/Shot"
 import { type Layout, TYPE, zones } from "../layout"
 import { enter, rise } from "../motion"
-import { BEATS } from "../timeline"
+import type { Beats } from "../timeline"
 import { COLOR } from "../tokens"
 
 const MARKS_AT = 4
@@ -16,11 +16,13 @@ export function Shot7Slogan({
   from,
   to,
   zeroAt,
+  beats,
 }: {
   layout: Layout
   from: number
   to: number
   zeroAt: number
+  beats: Beats
 }) {
   const frame = useCurrentFrame()
   const size = TYPE[layout].slogan
@@ -56,7 +58,7 @@ export function Shot7Slogan({
               strokeLinecap="round"
               pathLength={1}
               strokeDasharray={1}
-              strokeDashoffset={1 - enter(frame, from + BEATS.strike, STRIKE_FRAMES)}
+              strokeDashoffset={1 - enter(frame, beats.strike, STRIKE_FRAMES)}
             />
           </svg>
         </div>
