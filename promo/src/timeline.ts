@@ -22,6 +22,8 @@ export type Timeline = {
   narration: Record<Sentence, Clip>
   bot1: Clip
   bot2: Clip
+  bubble1Exit: number
+  bubble2Exit: number
   toast: number
   zero: number
   speech: Span[]
@@ -57,6 +59,7 @@ const TARGET: Record<Sentence, number> = {
 const BOT1_AIR = 6
 const BOT1_TARGET = 165
 const BOT2_AT = 240 // the win jingle (frame 226, 13 frames) has ended
+const BUBBLE2_LINGER = 3
 const TOAST_AT = 278
 const TOAST_IN = 8
 const TOAST_EXIT = 316
@@ -99,6 +102,9 @@ export function buildTimeline(m: Measured): Timeline {
   const toast = Math.max(TOAST_AT, clipEnd(bot2) + 2)
   rule(toast + TOAST_IN <= TOAST_EXIT, 'bot-02 must end before the toast chime, leaving the toast a hold')
 
+  // The second bubble lingers a beat after its line, but always clears the zone before the toast drops in.
+  const bubble2Exit = Math.min(clipEnd(bot2) + BUBBLE2_LINGER, toast - TOAST_IN)
+
   const s7 = m.narration.sentences['7'][0]
   const zero = narration['7'].from + Math.round(frames(m.narration.zero - s7))
 
@@ -106,5 +112,5 @@ export function buildTimeline(m: Measured): Timeline {
     .map((c): Span => [c.from, clipEnd(c)])
     .sort((a, b) => a[0] - b[0])
 
-  return { shots, narration, bot1, bot2, toast, zero, speech }
+  return { shots, narration, bot1, bot2, bubble1Exit: clipEnd(bot1), bubble2Exit, toast, zero, speech }
 }
