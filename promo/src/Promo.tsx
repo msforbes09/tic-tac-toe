@@ -4,6 +4,7 @@ import measured from "../../docs/promo/audio/durations.json"
 import { Glows } from "./components/Glows"
 import type { Layout } from "./layout"
 import { GameBoard } from "./shots/GameBoard"
+import { Shot0Splash } from "./shots/Shot0Splash"
 import { Shot1Board } from "./shots/Shot1Board"
 import { Shot2TalksBack } from "./shots/Shot2TalksBack"
 import { Shot3YouWin } from "./shots/Shot3YouWin"
@@ -41,8 +42,9 @@ export function Promo({ layout }: { layout: Layout }) {
   return (
     <AbsoluteFill style={{ background: COLOR.background, overflow: "hidden" }}>
       <Glows layout={layout} />
-      <GameBoard layout={layout} to={s["4a"]} />
-      <Shot1Board layout={layout} to={s["2"]} sublineAt={t.narration["2"].from + 3} />
+      <Shot0Splash layout={layout} beats={t.beats.splash} />
+      <GameBoard layout={layout} from={s["1"]} to={s["4a"]} thinking={t.beats.thinking} />
+      <Shot1Board layout={layout} from={s["1"]} to={s["2"]} sublineAt={t.narration["2"].from} />
       <Shot2TalksBack
         layout={layout}
         from={s["2"]}

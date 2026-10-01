@@ -1,208 +1,243 @@
 import { describe, expect, it } from "vitest"
 import measured from "../../docs/promo/audio/durations.json"
 import type { Span } from "./alignment"
-import { DRAW } from "./draw"
 import type { Sentence } from "./script"
-import { type Measured, buildTimeline, clipEnd, soundCues } from "./timeline"
+import {
+  type Measured,
+  MOVES,
+  TOTAL_FRAMES,
+  WIN,
+  buildTimeline,
+  clipEnd,
+  soundCues,
+} from "./timeline"
 
-// Every take lasting exactly its storyboard target (section 4).
-const targets: Measured = {
-  narration: {
-    seconds: 30,
-    sentences: {
-      "1": [0.5, 1.5],
-      "2": [1.8, 3.6],
-      "3": [3.9, 5.3],
-      "4a": [11.0, 13.8],
-      "4b": [13.8, 15.4],
-      "4c": [15.4, 18.2],
-      "5": [18.5, 20.4],
-      "6": [20.7, 23.8],
-      "7": [24.2, 26.6],
-      "8": [27.0, 28.7],
-    },
-    zero: 25.3,
-  },
-  "bot-01": { seconds: 1.2, speech: [0, 1.2] },
-  "bot-02": { seconds: 0.9, speech: [0, 0.9] },
-}
+// Expected values are storyboard-v2's literal frames (sections 3, 4 and 6), typed in, not recomputed.
+const takes = measured as Measured
 
 const withSentence = (key: Sentence, span: Span): Measured => ({
-  ...targets,
-  narration: { ...targets.narration, sentences: { ...targets.narration.sentences, [key]: span } },
+  ...takes,
+  narration: { ...takes.narration, sentences: { ...takes.narration.sentences, [key]: span } },
 })
 
 const withBot = (key: "bot-01" | "bot-02", speech: Span): Measured => ({
-  ...targets,
+  ...takes,
   [key]: { seconds: speech[1], speech },
 })
 
 const STORYBOARD_SHOTS = {
-  "1": 0,
-  "2": 114,
-  "3": 204,
-  "4a": 324,
-  "4b": 411,
-  "4c": 462,
-  "5": 549,
-  "6": 618,
-  "7": 720,
-  "8": 804,
+  "0": 0,
+  "1": 108,
+  "2": 225,
+  "3": 336,
+  "4a": 621,
+  "4b": 711,
+  "4c": 783,
+  "5": 888,
+  "6": 984,
+  "7": 1098,
+  "8": 1194,
 }
 
-describe("buildTimeline at the storyboard targets", () => {
-  const t = buildTimeline(targets)
+describe("buildTimeline with the measured takes", () => {
+  const t = buildTimeline(takes)
 
-  it("reproduces the storyboard frame table", () => {
+  it("runs 1320 frames, 44.00 s", () => {
+    expect(TOTAL_FRAMES).toBe(1320)
+  })
+
+  it("reproduces the storyboard frame table (section 3)", () => {
     expect(t.shots).toEqual(STORYBOARD_SHOTS)
   })
 
-  it("starts each narrated shot 4 frames before its sentence", () => {
-    for (const key of ["4a", "4b", "4c", "5", "6", "7", "8"] as const) {
-      expect(t.narration[key].from).toBe(t.shots[key] + 4)
-    }
-  })
-
-  it('places the opening sentences and "Now it talks back."', () => {
-    expect(t.narration["1"].from).toBe(15)
-    expect(t.narration["2"].from).toBe(54)
-    expect(t.narration["3"].from).toBe(117)
+  it("places every sentence on its section 4 frame", () => {
+    const from = Object.fromEntries(Object.entries(t.narration).map(([k, c]) => [k, c.from]))
+    expect(from).toEqual({
+      "1": 36,
+      "2": 117,
+      "3": 232,
+      "4a": 625,
+      "4b": 717,
+      "4c": 787,
+      "5": 892,
+      "6": 988,
+      "7": 1102,
+      "8": 1232,
+    })
   })
 
   it("trims each sentence out of the take", () => {
-    expect(t.narration["4a"]).toEqual({ from: 328, trimBefore: 330, trimAfter: 414 })
+    expect(t.narration["4a"]).toEqual({ from: 625, trimBefore: 107, trimAfter: 166 })
   })
 
-  it("puts the bot lines on their bubbles and the toast after the second", () => {
-    expect(t.bot1).toEqual({ from: 165, trimBefore: 0, trimAfter: 36 })
-    expect(t.bot2).toEqual({ from: 240, trimBefore: 0, trimAfter: 27 })
-    expect(t.toast).toBe(278)
+  it("ends each sentence where section 4 has it, give or take the rounding frame", () => {
+    const ends: Record<Sentence, number> = {
+      "1": 64,
+      "2": 155,
+      "3": 264,
+      "4a": 683,
+      "4b": 750,
+      "4c": 858,
+      "5": 948,
+      "6": 1072,
+      "7": 1156,
+      "8": 1277,
+    }
+    for (const [key, end] of Object.entries(ends))
+      expect(Math.abs(clipEnd(t.narration[key as Sentence]) - end), key).toBeLessThanOrEqual(1)
   })
 
-  it("exits each bubble as its line ends", () => {
-    expect(t.bubble1Exit).toBe(201)
-    expect(t.bubble2Exit).toBe(270)
+  it("puts the bot lines on their bubbles: 273-322 and 480-526", () => {
+    expect(t.bot1).toEqual({ from: 273, trimBefore: 0, trimAfter: 49 })
+    expect(t.bot2).toEqual({ from: 480, trimBefore: 0, trimAfter: 46 })
+  })
+
+  it("exits the first bubble at 328 and the second at 534", () => {
+    expect(t.bubble1Exit).toBe(328)
+    expect(t.bubble2Exit).toBe(534)
+  })
+
+  it("drops the toast at 547", () => {
+    expect(t.toast).toBe(547)
   })
 
   it("lists every spoken stretch for ducking, in order", () => {
-    expect(t.speech[0]).toEqual([15, 45])
-    expect(t.speech).toContainEqual([165, 201])
-    expect(t.speech).toContainEqual([240, 267])
+    expect(t.speech[0]).toEqual([36, 64])
+    expect(t.speech).toContainEqual([273, 322])
+    expect(t.speech).toContainEqual([480, 526])
     expect(t.speech).toHaveLength(12)
   })
 
-  it('lifts the second slogan line on "Zero"', () => {
-    expect(t.zero).toBe(724 + 33)
+  it('lifts the second slogan line on "Zero", frame 1127', () => {
+    expect(t.zero).toBe(1127)
+  })
+
+  it("keeps the narrator silent from 264 to 625", () => {
+    for (const [from, to] of t.speech.filter(([from]) => from > 232 && from < 625))
+      expect([from, to]).toEqual(from === 273 ? [273, 322] : [480, 526])
   })
 })
 
-describe("buildTimeline with the measured takes", () => {
-  const t = buildTimeline(measured as Measured)
-
-  it("keeps the storyboard shots, since every sentence fits its target", () => {
-    expect(t.shots).toEqual(STORYBOARD_SHOTS)
+describe("the game in shots 1-3", () => {
+  it("plays the moves at 162, 212, 348, 400, 432", () => {
+    expect(MOVES).toEqual([
+      { cell: 4, player: "X", at: 162 },
+      { cell: 0, player: "O", at: 212 },
+      { cell: 2, player: "X", at: 348 },
+      { cell: 1, player: "O", at: 400 },
+      { cell: 6, player: "X", at: 432 },
+    ])
   })
 
-  it('ends bot-01 by the end of shot 2, at least 6 frames after "Now it talks back."', () => {
-    expect(t.bot1.from - clipEnd(t.narration["3"])).toBeGreaterThanOrEqual(6)
-    expect(clipEnd(t.bot1)).toBeLessThanOrEqual(204)
+  it("never starts a move less than 1.0 s after the previous one", () => {
+    for (let i = 1; i < MOVES.length; i++)
+      expect(MOVES[i].at - MOVES[i - 1].at).toBeGreaterThanOrEqual(30)
   })
 
-  it("ends bot-02 before the toast chime", () => {
-    expect(clipEnd(t.bot2)).toBeLessThan(t.toast)
+  it("wins on the diagonal at 448, when the last X stroke finishes", () => {
+    expect(WIN).toEqual({ cells: [2, 4, 6], at: 448 })
   })
 
-  it("clears the second bubble out of the toast zone before the toast drops", () => {
-    expect(t.bubble2Exit + 8).toBeLessThanOrEqual(t.toast)
+  it('starts "Lucky square." at least 0.5 s after the win jingle (448, 13 frames) ends', () => {
+    expect(buildTimeline(takes).bot2.from - (448 + 13)).toBeGreaterThanOrEqual(15)
+  })
+
+  it("lets the bot think before each O: badge in at 178 and 366", () => {
+    expect(buildTimeline(takes).beats.thinking).toEqual([178, 366])
   })
 })
 
 describe("buildTimeline rules", () => {
-  it("pushes a sentence that would start inside the previous one", () => {
-    const long = buildTimeline(withSentence("4a", [11.0, 14.2]))
-    expect(long.narration["4b"].from).toBe(328 + 96)
-    expect(long.shots["4b"]).toBe(328 + 96 - 4)
-  })
-
   it("measures a bot line by its speech, not by where the speech ends in the file", () => {
-    const t = buildTimeline(withBot("bot-01", [0.2, 1.4]))
-    expect(t.bot1).toEqual({ from: 165, trimBefore: 6, trimAfter: 42 })
+    const t = buildTimeline(withBot("bot-01", [0.2, 1.6]))
+    expect(t.bot1).toEqual({ from: 273, trimBefore: 6, trimAfter: 48 })
   })
 
-  it('refuses a bot-01 that cannot fit after "Now it talks back."', () => {
-    expect(() => buildTimeline(withSentence("3", [3.9, 5.9]))).toThrow("bot-01")
+  it('refuses a "Now it talks back." that leaves bot-01 under 6 frames of air', () => {
+    expect(() => buildTimeline(withSentence("3", [2.438, 3.75]))).toThrow("bot-01")
   })
 
-  it("refuses a sentence 2 that runs into shot 2", () => {
-    expect(() => buildTimeline(withSentence("2", [1.8, 4.0]))).toThrow("sentence 2")
+  it("refuses a bot-01 whose bubble cannot clear shot 2", () => {
+    expect(() => buildTimeline(withBot("bot-01", [0, 2.0]))).toThrow("bot-01")
   })
 
-  it("refuses a take that would grow shot 3 past 120 frames", () => {
-    expect(() => buildTimeline(withSentence("3", [3.9, 11.0]))).toThrow("shot 3")
+  it("refuses a sentence that runs into the next shot", () => {
+    expect(() => buildTimeline(withSentence("2", [1.091, 5.0]))).toThrow("sentence 2")
+    expect(() => buildTimeline(withSentence("6", [11.378, 15.4]))).toThrow("sentence 6")
   })
 
-  it("refuses a take that leaves the logo less than 2 s", () => {
-    expect(() => buildTimeline(withSentence("7", [24.2, 28.6]))).toThrow("shot 8")
+  it("refuses a narration that runs past frame 1320", () => {
+    expect(() => buildTimeline(withSentence("8", [16.091, 19.5]))).toThrow("frame 1320")
   })
 
-  it("refuses a narration that runs past frame 900", () => {
-    expect(() => buildTimeline(withSentence("8", [27.0, 30.5]))).toThrow("frame 900")
-  })
-
-  it("refuses a bot-02 that would leave the toast under 0.6 s of hold", () => {
-    expect(() => buildTimeline(withBot("bot-02", [0, 1.75]))).toThrow("toast")
-  })
-
-  it("refuses a bot-02 so long that the toast gets no hold", () => {
+  it("refuses a bot-02 that would leave the toast under 2.0 s of hold", () => {
     expect(() => buildTimeline(withBot("bot-02", [0, 2.5]))).toThrow("toast")
   })
 })
 
 describe("beats", () => {
-  it("lands the logo's start cue on the frame its X finishes drawing", () => {
-    const t = buildTimeline(targets)
-    expect(t.beats.logoDone).toBe(t.beats.logo + DRAW.o + 2 * DRAW.arm)
-    expect(soundCues(t)).toContainEqual({ at: t.beats.logoDone, cue: "start" })
+  const b = buildTimeline(takes).beats
+
+  it("times the splash: title 30, slogan 34, splash-out 97", () => {
+    expect(b.splash).toEqual({ logo: 0, title: 30, slogan: 34, exit: 97 })
   })
 
-  it("raises the site's address at frame 846, 12 frames after the wordmark starts", () => {
-    const t = buildTimeline(targets)
-    expect(t.beats.logoDone).toBe(834)
-    expect(t.beats.url).toBe(846)
+  it("draws the Kaya mark stroke by stroke (amendment 1): stem 1196, arm 1204, leg 1212, done 1224", () => {
+    expect(b.mark).toEqual([1196, 1204, 1212])
+    expect(b.markDone).toBe(1224)
+  })
+
+  it("raises the wordmark at 1230 and the URL at 1242", () => {
+    expect(b.wordmark).toBe(1230)
+    expect(b.url).toBe(1242)
+  })
+
+  it("places the later shots' beats on the storyboard frames", () => {
+    expect(b.codeTiles).toEqual([633, 637, 641, 645])
+    expect([b.phoneX, b.phoneO]).toEqual([735, 751])
+    expect(b.botSteps).toEqual([813, 837, 861])
+    expect([b.chips, b.platinum]).toEqual([900, 940])
+    expect(b.pills).toEqual([988, 1020, 1050])
+    expect(b.slogan).toBe(1098)
+    expect(b.rowWin).toBe(1126)
   })
 })
 
 describe("soundCues", () => {
-  it("plays the storyboard cue list (section 6) at the targets", () => {
-    expect(soundCues(buildTimeline(targets))).toEqual([
-      { at: 9, cue: "start" },
-      { at: 66, cue: "move-x" },
-      { at: 90, cue: "move-o" },
-      { at: 207, cue: "move-x" },
-      { at: 216, cue: "move-o" },
-      { at: 225, cue: "move-x" },
-      { at: 226, cue: "win" },
-      { at: 278, cue: "achievement" },
-      { at: 338, cue: "move-x" },
-      { at: 342, cue: "move-o" },
-      { at: 346, cue: "move-x" },
-      { at: 350, cue: "move-o" },
-      { at: 423, cue: "move-x" },
-      { at: 439, cue: "move-o" },
-      { at: 486, cue: "move-o" },
-      { at: 510, cue: "step-587" },
-      { at: 534, cue: "move-x" },
-      { at: 593, cue: "achievement" },
-      { at: 621, cue: "move-x" },
-      { at: 654, cue: "move-x" },
-      { at: 684, cue: "move-x" },
-      { at: 744, cue: "win" },
-      { at: 834, cue: "start" },
+  it("plays the storyboard cue list (section 6, shot 8 as amended)", () => {
+    expect(soundCues(buildTimeline(takes))).toEqual([
+      { at: 0, cue: "move-o" },
+      { at: 16, cue: "move-x" },
+      { at: 30, cue: "start" },
+      { at: 162, cue: "move-x" },
+      { at: 212, cue: "move-o" },
+      { at: 348, cue: "move-x" },
+      { at: 400, cue: "move-o" },
+      { at: 432, cue: "move-x" },
+      { at: 448, cue: "win" },
+      { at: 547, cue: "achievement" },
+      { at: 633, cue: "move-x" },
+      { at: 637, cue: "move-o" },
+      { at: 641, cue: "move-x" },
+      { at: 645, cue: "move-o" },
+      { at: 735, cue: "move-x" },
+      { at: 751, cue: "move-o" },
+      { at: 813, cue: "move-o" },
+      { at: 837, cue: "step-587" },
+      { at: 861, cue: "move-x" },
+      { at: 940, cue: "achievement" },
+      { at: 988, cue: "move-x" },
+      { at: 1020, cue: "move-x" },
+      { at: 1050, cue: "move-x" },
+      { at: 1126, cue: "win" },
+      { at: 1196, cue: "move-x" },
+      { at: 1212, cue: "move-o" },
+      { at: 1224, cue: "start" },
     ])
   })
 
   it("starts no game sound while the bot speaks", () => {
-    const t = buildTimeline(measured as Measured)
+    const t = buildTimeline(takes)
     for (const bot of [t.bot1, t.bot2]) {
       for (const { at } of soundCues(t)) expect(at < bot.from || at >= clipEnd(bot)).toBe(true)
     }

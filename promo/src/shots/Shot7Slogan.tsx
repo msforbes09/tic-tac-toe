@@ -4,11 +4,10 @@ import { Mark } from "../components/Mark"
 import { Column, heading, Shot } from "../components/Shot"
 import { type Layout, TYPE, zones } from "../layout"
 import { rise } from "../motion"
-import type { Beats } from "../timeline"
+import { type Beats, SLOGAN_STAGGER } from "../timeline"
 import { COLOR } from "../tokens"
 
-const MARKS_AT = 4
-const MARK_STAGGER = 6
+const LINE1_AT = 2
 
 // Shot 7: three Xs in a row that light up as a win, as the app's winning tiles do, over
 // "Three in a row." / "Zero excuses."
@@ -33,7 +32,7 @@ export function Shot7Slogan({
       <Column box={zones(layout).content} gap={size * 0.1}>
         <div style={{ display: "flex", gap: tile * 0.1, marginBottom: size * 0.35 }}>
           {[0, 1, 2].map((i) => {
-            const at = from + MARKS_AT + i * MARK_STAGGER
+            const at = beats.slogan + i * SLOGAN_STAGGER
             const arrive = rise(frame, at)
             const win = winTile(frame, beats.rowWin, i, tile)
             return (
@@ -53,8 +52,10 @@ export function Shot7Slogan({
             )
           })}
         </div>
-        <div style={{ ...heading(size), ...rise(frame, from + MARKS_AT) }}>Three in a row.</div>
-        <div style={{ ...heading(size, COLOR.o), ...rise(frame, zeroAt) }}>Zero excuses.</div>
+        <div style={{ ...heading(size), ...rise(frame, from + LINE1_AT) }}>Three in a row.</div>
+        <div style={{ ...heading(size, COLOR.o), ...rise(frame, zeroAt, Infinity, 13) }}>
+          Zero excuses.
+        </div>
       </Column>
     </Shot>
   )

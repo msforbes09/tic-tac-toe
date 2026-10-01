@@ -18,6 +18,25 @@ export const TIERS = [
   { color: "#9fe3ff", count: 1 },
 ]
 
+// The app's splash (Splash.tsx on develop), shown in shot 0. The film drops the app's version (storyboard-v2).
+export const SPLASH = {
+  title: "Tic-Tac-Toe",
+  slogan: "Three in a row. Zero excuses.",
+  footer: "© 2026 Kaya Randomized",
+}
+
+// The Kaya Randomized mark on shot 8 (storyboard-v2 amendment 1): three round-capped strokes in a 1024 box,
+// drawn in this order, the coral leg on top.
+export const KAYA_MARK = {
+  box: 1024,
+  stroke: 116,
+  strokes: [
+    { d: "M340 260V764", color: "#8fa8ff" },
+    { d: "M372 540L690 262", color: "#8fa8ff" },
+    { d: "M540 500L712 764", color: "#ff9f7a" },
+  ],
+}
+
 // The achievement shot 3 unlocks (bronze).
 export const UNLOCK = {
   name: "Beat the Machine",

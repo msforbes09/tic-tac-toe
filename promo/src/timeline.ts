@@ -1,14 +1,14 @@
-// Every shot's start frame and every voice clip's placement, from the storyboard's rules (section 4)
-// and the measured takes in docs/promo/audio/durations.json. A take that breaks a rule throws.
+// Every shot's start frame and every voice clip's placement, from storyboard-v2 (sections 3 and 4) and the
+// measured takes in docs/promo/audio/durations.json. A take that breaks a rule throws.
 import type { Span } from "./alignment"
 // Modules imported for values carry ".ts": Node runs scripts/*.ts against this file without a bundler.
 import { TIERS } from "./brand.ts"
-import { DRAW } from "./draw.ts"
+import { DRAW, KAYA_DRAW, LOGO_DRAW } from "./draw.ts"
 import { NARRATION, type Sentence } from "./script.ts"
 import type { CueName } from "./tones"
 
 export const FPS = 30
-export const TOTAL_FRAMES = 900
+export const TOTAL_FRAMES = 1320
 
 export type Measured = {
   narration: { seconds: number; sentences: Record<Sentence, Span>; zero: number }
@@ -16,7 +16,7 @@ export type Measured = {
   "bot-02": { seconds: number; speech: Span }
 }
 
-export type Shot = "1" | "2" | "3" | "4a" | "4b" | "4c" | "5" | "6" | "7" | "8"
+export type Shot = "0" | "1" | "2" | "3" | "4a" | "4b" | "4c" | "5" | "6" | "7" | "8"
 
 // A stretch of a source file (trim frames) placed on the composition at `from`.
 export type Clip = { from: number; trimBefore: number; trimAfter: number }
@@ -34,43 +34,53 @@ export type Timeline = {
   beats: Beats
 }
 
-// The storyboard's frame table. Shots 1-3 are fixed; later shots start 4 frames before their sentence.
-const STORYBOARD: Record<Shot, number> = {
-  "1": 0,
-  "2": 114,
-  "3": 204,
-  "4a": 324,
-  "4b": 411,
-  "4c": 462,
-  "5": 549,
-  "6": 618,
-  "7": 720,
-  "8": 804,
+// The storyboard's frame table (section 3).
+const SHOTS: Record<Shot, number> = {
+  "0": 0,
+  "1": 108,
+  "2": 225,
+  "3": 336,
+  "4a": 621,
+  "4b": 711,
+  "4c": 783,
+  "5": 888,
+  "6": 984,
+  "7": 1098,
+  "8": 1194,
 }
-const LEAD = 4
-// Where the storyboard puts the sentences that do not open a shot.
+// Where each sentence starts (section 4).
 const TARGET: Record<Sentence, number> = {
-  "1": 15,
-  "2": 54,
-  "3": 117,
-  "4a": STORYBOARD["4a"] + LEAD,
-  "4b": STORYBOARD["4b"] + LEAD,
-  "4c": STORYBOARD["4c"] + LEAD,
-  "5": STORYBOARD["5"] + LEAD,
-  "6": STORYBOARD["6"] + LEAD,
-  "7": STORYBOARD["7"] + LEAD,
-  "8": STORYBOARD["8"] + LEAD,
+  "1": 36,
+  "2": 117,
+  "3": 232,
+  "4a": 625,
+  "4b": 717,
+  "4c": 787,
+  "5": 892,
+  "6": 988,
+  "7": 1102,
+  "8": 1232,
+}
+// The shot each sentence must end before. "Now it talks back." is bounded by bot-01, the last by the film.
+const ENDS_BEFORE: Partial<Record<Sentence, Shot>> = {
+  "1": "1",
+  "2": "2",
+  "4a": "4b",
+  "4b": "4c",
+  "4c": "5",
+  "5": "6",
+  "6": "7",
+  "7": "8",
 }
 const BOT1_AIR = 6
-const BOT1_TARGET = 165
-const BOT2_AT = 240 // the win jingle (frame 226, 13 frames) has ended
-const BUBBLE2_LINGER = 3
-const TOAST_AT = 278
+const BOT1_AT = 273
+const BUBBLE1_LINGER = 6
+export const BOT2_AT = 480 // 19 frames after the win jingle (frame 448, 13 frames) has ended
+const BUBBLE2_LINGER = 8
+const TOAST_AT = 547
 const TOAST_IN = 8
-const MIN_TOAST_HOLD = 18 // 0.6 s: the storyboard wants 1.0 s; a long bot-02 may shorten it this far
-export const TOAST_EXIT = 316
-const LAST_SLOGAN_FRAME = 840
-const MIN_LOGO_HOLD = 60
+const MIN_TOAST_HOLD = 60 // 2.0 s, storyboard check 8
+export const TOAST_EXIT = 621
 
 // Seconds to frames, rounded to 1/1000 frame first so float noise (1.2 * 30 = 36.000000000000004)
 // never tips a floor or ceil over a whole frame.
@@ -91,20 +101,25 @@ export type Player = "X" | "O"
 // The game on the board in shots 1-3: which cell, whose mark, and the frame it starts drawing.
 export type Move = { cell: number; player: Player; at: number }
 export const MOVES: Move[] = [
-  { cell: 4, player: "X", at: 66 },
-  { cell: 0, player: "O", at: 90 },
-  { cell: 2, player: "X", at: 207 },
-  { cell: 1, player: "O", at: 216 },
-  { cell: 6, player: "X", at: 225 },
+  { cell: 4, player: "X", at: 162 },
+  { cell: 0, player: "O", at: 212 },
+  { cell: 2, player: "X", at: 348 },
+  { cell: 1, player: "O", at: 400 },
+  { cell: 6, player: "X", at: 432 },
 ]
-export const WIN = { cells: [2, 4, 6], at: 226 }
-const START_CUE = 9
+export const WIN = { cells: [2, 4, 6], at: 448 }
+// The bot "thinks" before each O: its badge pops in this many frames before the O, breathes, and leaves.
+const THINK = 34
 
 export const ROOM_CODE = "XOXO"
 export const CHIP_COUNT = TIERS.reduce((sum, t) => sum + t.count, 0)
+// Shot 7: the three slogan Xs draw this many frames apart.
+export const SLOGAN_STAGGER = 6
 
-// The frames things happen on in the later shots. The shots draw on them and soundCues sounds on them.
+// The frames things happen on. The shots draw on them and soundCues sounds on them.
 export type Beats = {
+  splash: { logo: number; title: number; slogan: number; exit: number } // 0: the app's splash, held
+  thinking: number[] // 1, 3: the O badge breathes above the board before each O
   codeTiles: number[] // 4a: each XOXO tile pops (4-frame stagger)
   phoneX: number // 4b: the marks on the phone
   phoneO: number
@@ -112,37 +127,67 @@ export type Beats = {
   chips: number // 5: the first chip; the rest follow one frame apart, platinum last
   platinum: number
   pills: number[] // 6: one per claim, on its words
-  rowWin: number // 7: the three Xs light up as a win
-  logo: number // 8: the logo starts drawing (O, then each X arm)
-  logoDone: number // 8: its X is complete, and the wordmark rises
+  slogan: number // 7: the first X starts drawing
+  rowWin: number // 7: the third X is complete and the three light up as a win
+  mark: number[] // 8: the Kaya mark's strokes start drawing: stem, arm, leg (amendment 1)
+  markDone: number // 8: the leg is complete
+  wordmark: number // 8: "Kaya Randomized" rises
   url: number // 8: the site's address rises (owner ruling, 2026-10-01)
 }
 
-function beatsFor(s: Record<Shot, number>): Beats {
-  const chips = s["5"] + 4
-  const logo = s["8"] + 4
+// The splash's own timings (Splash.tsx): title at 1000 ms, slogan at 1140 ms; held, then splash-out.
+const SPLASH = { title: 30, slogan: 34, exit: 97 }
+// Pills 2 and 3 land on their words: measured in handoff 002 as 32 and 62 frames into the sentence.
+const PILL_WORDS = [0, 32, 62]
+
+function beatsFor(s: Record<Shot, number>, narration: Record<Sentence, Clip>): Beats {
+  const chips = s["5"] + 12
+  const step = KAYA_DRAW.stroke - KAYA_DRAW.overlap
+  const mark = [0, 1, 2].map((i) => s["8"] + KAYA_DRAW.at + i * step)
+  const markDone = mark[2] + KAYA_DRAW.stroke
+  const wordmark = markDone + 6
   return {
-    codeTiles: [...ROOM_CODE].map((_, i) => s["4a"] + 14 + 4 * i),
-    phoneX: s["4b"] + 12,
-    phoneO: s["4b"] + 28,
-    botSteps: [24, 48, 72].map((offset) => s["4c"] + offset),
+    splash: { logo: s["0"], ...SPLASH },
+    thinking: MOVES.filter((m) => m.player === "O").map((m) => m.at - THINK),
+    codeTiles: [...ROOM_CODE].map((_, i) => s["4a"] + 12 + 4 * i),
+    phoneX: s["4b"] + 24,
+    phoneO: s["4b"] + 40,
+    botSteps: [30, 54, 78].map((offset) => s["4c"] + offset),
     chips,
     platinum: chips + CHIP_COUNT - 1,
-    pills: [3, 36, 66].map((offset) => s["6"] + offset),
-    rowWin: s["7"] + 24,
-    logo,
-    logoDone: logo + DRAW.o + 2 * DRAW.arm,
-    url: logo + DRAW.o + 2 * DRAW.arm + 12,
+    pills: PILL_WORDS.map((offset) => narration["6"].from + offset),
+    slogan: s["7"],
+    rowWin: s["7"] + 2 * SLOGAN_STAGGER + 2 * DRAW.arm,
+    mark,
+    markDone,
+    wordmark,
+    url: wordmark + 12,
   }
 }
 
 const moveCue = (player: Player): CueName => (player === "X" ? "move-x" : "move-o")
 
+// The app's `splash` cue (browserFeedback.ts) from the existing tones: the O tone as the O starts, the X
+// tone as the X starts, the start notes as the title rises (1.00 s).
+const splashCue = (at: number) => [
+  { at, cue: "move-o" as const },
+  { at: at + LOGO_DRAW.x, cue: "move-x" as const },
+  { at: at + SPLASH.title, cue: "start" as const },
+]
+
+// The same three tones for the Kaya mark (amendment 1): X tone on the blue stem, O tone on the coral leg,
+// the start notes as it completes.
+const markCue = (b: Beats) => [
+  { at: b.mark[0], cue: "move-x" as const },
+  { at: b.mark[2], cue: "move-o" as const },
+  { at: b.markDone, cue: "start" as const },
+]
+
 // Every game sound, in order: the cue and the frame it starts.
 export function soundCues(t: Timeline): { at: number; cue: CueName }[] {
   const b = t.beats
   return [
-    { at: START_CUE, cue: "start" as const },
+    ...splashCue(b.splash.logo),
     ...MOVES.map((m) => ({ at: m.at, cue: moveCue(m.player) })),
     { at: WIN.at, cue: "win" as const },
     { at: t.toast, cue: "achievement" as const },
@@ -153,39 +198,36 @@ export function soundCues(t: Timeline): { at: number; cue: CueName }[] {
     { at: b.platinum, cue: "achievement" as const },
     ...b.pills.map((at) => ({ at, cue: "move-x" as const })),
     { at: b.rowWin, cue: "win" as const },
-    { at: b.logoDone, cue: "start" as const },
+    ...markCue(b),
   ].sort((a, b) => a.at - b.at)
 }
 
-export function buildTimeline(m: Measured): Timeline {
+function placeNarration(m: Measured): Record<Sentence, Clip> {
   const narration = {} as Record<Sentence, Clip>
-  let previousEnd = 0
   for (const { key } of NARRATION) {
-    narration[key] = clip(Math.max(TARGET[key], previousEnd), m.narration.sentences[key])
-    previousEnd = clipEnd(narration[key])
+    narration[key] = clip(TARGET[key], m.narration.sentences[key])
+    const next = ENDS_BEFORE[key]
+    if (next)
+      rule(clipEnd(narration[key]) <= SHOTS[next], `sentence ${key} must end before shot ${next}`)
   }
-  rule(clipEnd(narration["2"]) <= STORYBOARD["2"], "sentence 2 must end inside shot 1")
+  rule(clipEnd(narration["8"]) <= TOTAL_FRAMES, "the narration must end by frame 1320")
+  return narration
+}
 
-  const shots = { ...STORYBOARD }
-  for (const key of ["4a", "4b", "4c", "5", "6", "7", "8"] as const)
-    shots[key] = narration[key].from - LEAD
-  rule(shots["4a"] === STORYBOARD["4a"], "shot 3 may not grow past 120 frames")
-  rule(shots["8"] <= LAST_SLOGAN_FRAME, "shot 8 must start by frame 840 (slogan ends by 28.0 s)")
-  rule(TOTAL_FRAMES - shots["8"] >= MIN_LOGO_HOLD, "shot 8 must hold the logo at least 2.0 s")
-  rule(clipEnd(narration["8"]) <= TOTAL_FRAMES, "the narration must end by frame 900")
+export function buildTimeline(m: Measured): Timeline {
+  const narration = placeNarration(m)
 
-  const bot1Length = clipEnd(clip(0, m["bot-01"].speech))
-  const bot1 = clip(Math.min(BOT1_TARGET, STORYBOARD["3"] - bot1Length), m["bot-01"].speech)
+  const bot1 = clip(BOT1_AT, m["bot-01"].speech)
   rule(
-    bot1.from >= clipEnd(narration["3"]) + BOT1_AIR,
-    'bot-01 must start 6 frames after "Now it talks back." and end by shot 3',
+    bot1.from >= clipEnd(narration["3"]) + BOT1_AIR && clipEnd(bot1) + BUBBLE1_LINGER <= SHOTS["3"],
+    'bot-01 must start 6 frames after "Now it talks back." and its bubble clear shot 2',
   )
 
   const bot2 = clip(BOT2_AT, m["bot-02"].speech)
   const toast = Math.max(TOAST_AT, clipEnd(bot2) + 2)
   rule(
     toast + TOAST_IN + MIN_TOAST_HOLD <= TOAST_EXIT,
-    "bot-02 must end before the toast chime, leaving the toast at least 0.6 s of hold",
+    "bot-02 must end before the toast chime, leaving the toast at least 2.0 s of hold",
   )
 
   // The second bubble lingers a beat after its line, but always clears the zone before the toast drops in.
@@ -199,15 +241,15 @@ export function buildTimeline(m: Measured): Timeline {
     .sort((a, b) => a[0] - b[0])
 
   return {
-    shots,
+    shots: { ...SHOTS },
     narration,
     bot1,
     bot2,
-    bubble1Exit: clipEnd(bot1),
+    bubble1Exit: clipEnd(bot1) + BUBBLE1_LINGER,
     bubble2Exit,
     toast,
     zero,
     speech,
-    beats: beatsFor(shots),
+    beats: beatsFor(SHOTS, narration),
   }
 }

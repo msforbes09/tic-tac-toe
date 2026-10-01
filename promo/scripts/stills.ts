@@ -1,5 +1,5 @@
 // Renders the verification stills: one per storyboard section-8 check, both formats, half size, into
-// handoff/002-promo-video/stills/. `--frames=12,240 --out=<dir>` renders just those frames instead.
+// handoff/004-promo-recut/stills/. `--frames=12,240 --out=<dir>` renders just those frames instead.
 import { bundle } from "@remotion/bundler"
 import { renderStill, selectComposition } from "@remotion/renderer"
 import { mkdirSync } from "node:fs"
@@ -7,26 +7,35 @@ import { fileURLToPath } from "node:url"
 import measured from "../../docs/promo/audio/durations.json" with { type: "json" }
 import { browserExecutable as installedChrome } from "../chrome.ts"
 import { LAYOUTS } from "../src/layout.ts"
-import { type Measured, buildTimeline } from "../src/timeline.ts"
+import { type Measured, TOTAL_FRAMES, buildTimeline } from "../src/timeline.ts"
 
 const t = buildTimeline(measured as Measured)
 const s = t.shots
 
+// Keyed by the storyboard-v2 section-8 check each still shows (13 as amended by amendment 1).
 const CHECKS: Record<string, number> = {
-  "02-first-frame": 0,
-  "02-empty-board-title": 50,
-  "02-first-x": 84,
-  "03-bubble-i-do-this-all-day": t.bot1.from + 12,
-  "04-diagonal-win-highlight-confetti": 238,
-  "04-lucky-square": t.bot2.from + 12,
-  "05-toast": t.toast + 14,
-  "06-online-xoxo": s["4a"] + 70,
-  "06-one-phone": s["4b"] + 44,
-  "06-the-bot": s["4c"] + 82,
-  "07-forty-one": s["5"] + 60,
-  "08-pills": s["6"] + 96,
-  "09-slogan": s["7"] + 70,
-  "09-logo-last-frame": 899,
+  "02-splash-first-frame": 0,
+  "02-splash-o-drawing": 8,
+  "02-splash-x-done": 33,
+  "02-splash-poster": 90,
+  "02-splash-out": t.beats.splash.exit + 5,
+  "03-board-no-title-subline": 140,
+  "03-first-x": 170,
+  "04-thinking-badge": t.beats.thinking[0] + 16,
+  "04-first-o": 224,
+  "05-bubble-i-do-this-all-day": t.bot1.from + 20,
+  "06-diagonal-win-tiles-confetti": 455,
+  "07-lucky-square-over-tiles": t.bot2.from + 20,
+  "08-toast": t.toast + 30,
+  "09-online-xoxo": s["4b"] - 10,
+  "09-one-phone": s["4c"] - 10,
+  "09-the-bot-hard": s["5"] - 10,
+  "10-forty-one-wall": s["6"] - 10,
+  "11-pills": s["7"] - 10,
+  "12-slogan": s["8"] - 10,
+  "13-kaya-mark-drawing": t.beats.mark[1] + 4,
+  "13-kaya-mark-done": t.beats.markDone,
+  "13-last-frame": TOTAL_FRAMES - 1,
 }
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, "").split("=")))
@@ -34,7 +43,7 @@ const stills: [string, number][] = args.frames
   ? args.frames.split(",").map((f: string) => [`frame-${f}`, Number(f)])
   : Object.entries(CHECKS)
 const out =
-  args.out ?? fileURLToPath(new URL("../../handoff/002-promo-video/stills/", import.meta.url))
+  args.out ?? fileURLToPath(new URL("../../handoff/004-promo-recut/stills/", import.meta.url))
 mkdirSync(out, { recursive: true })
 
 const serveUrl = await bundle({

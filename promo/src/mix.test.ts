@@ -54,8 +54,8 @@ describe("musicVolume", () => {
     expect(musicVolume(15, [])).toBeCloseTo(bed, 5)
   })
 
-  it("fades out from 28.5 s to 30.0 s", () => {
-    expect(musicVolume(855, [])).toBeCloseTo(bed, 5)
-    expect(musicVolume(900, [])).toBe(0)
+  it("fades out from 42.5 s to 44.0 s", () => {
+    expect(musicVolume(1275, [])).toBeCloseTo(bed, 5)
+    expect(musicVolume(1320, [])).toBe(0)
   })
 })

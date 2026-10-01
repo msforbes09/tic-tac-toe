@@ -1,11 +1,9 @@
-import { interpolate, useCurrentFrame } from "remotion"
+import { useCurrentFrame } from "remotion"
 import { boardGeometry } from "./Board"
 import { OBadge } from "./OBadge"
 import { type Layout, TYPE, zones } from "../layout"
-import { enter, exit } from "../motion"
+import { breathe, enter, exit } from "../motion"
 import { COLOR, FONT } from "../tokens"
-
-const BREATH_FRAMES = 33 // the app's 1.1 s "thinking" breath
 
 // The bot's speech bubble above the board, its tail pointing down at the O in cell 0.
 export function Bubble({
@@ -13,13 +11,13 @@ export function Bubble({
   text,
   popAt,
   exitAt,
-  breathe = false,
+  breathes = false,
 }: {
   layout: Layout
   text: string
   popAt: number
   exitAt: number
-  breathe?: boolean
+  breathes?: boolean
 }) {
   const frame = useCurrentFrame()
   const zone = zones(layout).bubble
@@ -28,14 +26,8 @@ export function Bubble({
   const size = TYPE[layout].bubble
   const p = enter(frame, popAt, 8)
   const out = exit(frame, exitAt)
-  const breath = breathe
-    ? interpolate(
-        frame,
-        [popAt + 8, popAt + 8 + BREATH_FRAMES / 2, popAt + 8 + BREATH_FRAMES],
-        [1, 0.88, 1],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-      )
-    : 1
+  // The badge breathes once from the pop (storyboard-v2 shot 2), or stays still.
+  const badgeBreath = breathes ? breathe(frame, popAt) : { scale: 1, opacity: 1 }
   const badge = size * 1.25
   const tail = size * 0.45
 
@@ -71,8 +63,8 @@ export function Bubble({
           size={badge}
           style={{
             flex: "none",
-            transform: `scale(${breath})`,
-            opacity: 0.7 + 0.3 * ((breath - 0.88) / 0.12),
+            transform: `scale(${badgeBreath.scale})`,
+            opacity: badgeBreath.opacity,
           }}
         />
         <span

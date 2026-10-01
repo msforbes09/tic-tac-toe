@@ -20,7 +20,7 @@ const TONES_OVER_MUSIC = 1
 const DUCK = 4
 const DUCK_RAMP = 6
 const FADE_IN_END = 15
-const FADE_OUT_START = 855
+const FADE_OUT_START = 1275
 // The whole mix renders this far down so summed peaks never clip; the master brings it back up.
 const HEADROOM = 6
 

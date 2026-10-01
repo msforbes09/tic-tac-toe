@@ -25,7 +25,7 @@ export function Shot5FortyOne({
   const frame = useCurrentFrame()
   const type = TYPE[layout]
   const chip = layout === "reel" ? 46 : 36
-  const scale = 0.94 + 0.06 * enter(frame, from + 2)
+  const scale = 0.94 + 0.06 * enter(frame, from, 12)
   const platinumAt = beats.platinum
   const glow = interpolate(
     frame,
@@ -43,7 +43,7 @@ export function Shot5FortyOne({
           style={{
             ...heading(type.numeral),
             lineHeight: 0.9,
-            opacity: enter(frame, from + 2),
+            opacity: enter(frame, from, 12),
             transform: `scale(${scale})`,
           }}
         >

@@ -9,10 +9,10 @@ import { enter, pop, rise } from "../motion"
 import { type Beats, type Player, ROOM_CODE } from "../timeline"
 import { COLOR } from "../tokens"
 
-const HEADLINE_AT = 4
-const LABEL_AT = 8
-const SECOND_PHONE_AT = 40
-const PHONE_MARKS_AT = 50
+const HEADLINE_AT = 0
+const LABEL_AT = 4
+const SECOND_PHONE_AT = 36
+const PHONE_MARKS = [48, 60] // X, then O, on both phones
 
 type Card = { layout: Layout; from: number; to: number; beats: Beats }
 
@@ -100,8 +100,8 @@ function Online(card: Card) {
   const slide = enter(frame, card.from + SECOND_PHONE_AT)
   const phoneMarks = (
     <>
-      <Mark player="X" at={card.from + PHONE_MARKS_AT} size={mark} />
-      <Mark player="O" at={card.from + PHONE_MARKS_AT + 6} size={mark} />
+      <Mark player="X" at={card.from + PHONE_MARKS[0]} size={mark} />
+      <Mark player="O" at={card.from + PHONE_MARKS[1]} size={mark} />
     </>
   )
   return (
@@ -137,7 +137,7 @@ function OnePhone(card: Card) {
 }
 
 const LEVELS = ["Easy", "Medium", "Hard"]
-const PILLS_AT = 10
+const PILLS_AT = 12
 const PILL_STAGGER = 5
 const STEP_OPACITY = [0.5, 0.75, 1]
 
