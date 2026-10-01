@@ -129,7 +129,9 @@ test.describe("desktop", () => {
     const brand = await rect(page.locator(".room-brand"))
     const colophon = await rect(page.locator(".room-colophon"))
     await expect(page.locator(".room-brand")).toBeVisible()
-    await expect(page.locator(".room-colophon")).toHaveText(/^v\d+\.\d+\.\d+ · © \d{4} iam4bs$/)
+    await expect(page.locator(".room-colophon")).toHaveText(
+      /^v\d+\.\d+\.\d+ · © 2026 Kaya Randomized$/,
+    )
     expect(brand.right).toBeGreaterThan(vp.width * 0.9)
     expect(brand.y).toBeLessThan(80)
     expect(colophon.right).toBeGreaterThan(vp.width * 0.9)

@@ -15,7 +15,7 @@ online.
 Built with Vite, React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 Tested with Vitest and React Testing Library.
 
-**Live:** https://tic-tac-toe.iam4bs.dev/ (deployed from `main` by Cloudflare Pages, see [Hosting](#hosting))
+**Live:** https://tictactoe.kayarandomized.com/ (deployed from `main` by Cloudflare Pages, see [Hosting](#hosting))
 
 ## Run it
 
