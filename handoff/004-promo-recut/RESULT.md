@@ -8,7 +8,7 @@
 (`promo/out/` is git-ignored and lives in this worktree; if the worktree is gone, `npm --prefix promo run render`
 on the branch rebuilds both.)
 
-**Status:** partial (everything done except CI, blocked on a one-file merge conflict, see Done-when)
+**Status:** done
 **Date:** 2026-10-01
 **Branch / PR:** `feat/promo-recut` → `develop`, PR #59 (supersedes #57)
 **Preview or run link:** none (video; the files above)
@@ -118,13 +118,11 @@ Where the build departed from the plan, the Rulings say so.
 - [x] The game's `npm test` passes 60 files and 692 tests (baseline on `origin/feat/promo-video` was 681; the root run includes the promo tests). `npm run build` passes. No new failures.
 - [x] No commit trailers. `git log origin/feat/promo-video..HEAD --format=%B | grep -ciE "co-authored-by|claude-session|generated with claude"` gives 0. The whole PR range from `origin/develop` also gives 0.
 - [x] PR #59 is open against `develop` (not a draft), and its body states that it supersedes #57.
-- [ ] **CI green: blocked.** Cloudflare Pages passes. GitHub Actions `CI` never started because the PR
-      conflicts with `develop` (`mergeStateStatus: DIRTY`). The only conflict is `handoff/README.md`, which
-      both sides added (develop has rows 001 and 003 from handoffs 001 and 003; this branch has 002 and 004).
-      `git merge-tree --write-tree --name-only origin/develop HEAD` gives `CONFLICT (add/add): Merge conflict
-in handoff/README.md`. Attempt 1: I set this branch's copy to develop's text plus the 002 and 004 rows.
-      git still reports add/add, since an added file only merges cleanly when both copies are identical. The
-      handoff forbids merging or rebasing `develop` here, so I stopped (attempt budget) and asked Mira.
+- [x] CI green on #59: **CI**.
+  - At first the Actions run never started: the PR conflicted with `develop` (`mergeStateStatus: DIRTY`). The only conflict was `handoff/README.md`, which both sides added.
+  - Mira ruled option (b): one `git merge origin/develop` (merge commit `588c232`), resolving only the index.
+  - The merge touched no file under `promo/` or `docs/promo/`, so the renders stand.
+  - On the merged tree: promo 86/86, typecheck clean, game 692/692, build ok.
 - [x] RESULT.md is filled in, with the mp4 paths at the top.
 
 ### The 16 checks (storyboard-v2 section 8, 13 and 14 as amended)
@@ -161,6 +159,12 @@ npm --prefix promo run dev      # Remotion Studio
 ```
 
 ## Rulings
+
+- **Ruling (Mira's process ruling, 2026-10-01): one `git merge origin/develop` into `feat/promo-recut`.**
+  - Decision: merged once (`588c232`). This lifts the handoff's "do not merge develop" line for this single merge.
+  - Why: `handoff/README.md` was added on both sides, and that add/add conflict blocked CI on #59.
+  - The resolution touched only that file: rows 001, 002, 003 and 004 in order, each with its true status. No other file conflicted, and no promo file changed in the merge.
+  - Cost if wrong: one merge commit in the branch history.
 
 - **Ruling: splash cue lengths.** Accepted from Mira (Q1). Storyboard-v2 §10 item 6 asked me to check the cue against the app.
   - Decision: shots 0 and 8 use the existing `move-o.wav` / `move-x.wav` / `start.wav`.
@@ -237,13 +241,6 @@ None. The handoff's "no Co-Authored-By" matches the user's global rule. TDD was 
   - code-review: 1 high (same tray snap, fixed), 4 medium (thinking exits and sub-line as tested beats, fixed; `TOAST_EXIT` from `SHOTS`, fixed; shared `RISE_SLOW`, fixed), lows fixed (renames `MARK_SETTLE` / `zones.subline`, `BOT2_AT` unexported, stills frames from beats, comments). Its note on `splashRise` re-implementing `rise` is answered with a comment: the splash moves 10 px, not 12.
 
 ## Open questions for Mira / Arnel
-
-0. **Blocker: the `handoff/README.md` add/add conflict with `develop`.** It stops CI from running on #59. Options:
-   - (a) This branch's `handoff/README.md` becomes byte-identical to develop's. The 002 / 004 rows go in after the merge, by Mira or a follow-up.
-   - (b) Allow one `git merge origin/develop` into `feat/promo-recut` to resolve the index by hand.
-   - (c) Mira resolves it at merge time.
-
-   My recommendation: (a). It is one file and touches nothing else.
 
 1. **Splash notes.** Should the two splash notes match the app's 0.14 s length? That needs one generated tone file. The default is to keep the existing 0.07 s files.
 2. **Bot level.** Is the bot about 1 LU louder than the narrator in its windows acceptable? The mix is unchanged by rule.
