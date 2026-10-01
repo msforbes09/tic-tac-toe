@@ -3,7 +3,7 @@
 **Status:** done
 **Date:** 2026-10-01
 **Branch / PR:** `feat/kaya-rebrand` → `develop`, https://github.com/msforbes09/tic-tac-toe/pull/56
-**Preview or run link:** Cloudflare Pages preview on PR #56. Locally: `npm run dev`
+**Preview or run link:** https://feat-kaya-rebrand.tic-tac-toe-acl.pages.dev (Cloudflare Pages branch preview)
 
 ## Summary
 
@@ -103,7 +103,7 @@ Two-way door. Blast radius: visible copy and the link-preview image only. No log
   - meta: `og:description` was `Win three. …`.
 - Green on the final tree: `npm test` → 52 files, 606 tests passed. `npm run build` → built.
 - e2e local (macOS): 70 passed, 70 skipped, 0 failed. Before the full run, the two setup baselines were regenerated in the Linux image (2 passed with `--update-snapshots=all`).
-- CI on PR #56: see the PR checks (checked green before messaging Mira).
+- CI on PR #56 at `325b868`: `check` pass (606 tests, build), `e2e` pass (70 passed, no retries; both setup snapshots ✓ first try), Cloudflare Pages pass.
 
 ## Open questions for Mira / Arnel
 
