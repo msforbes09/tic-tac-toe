@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useCurrentFrame } from "remotion"
 import { Mark } from "../components/Mark"
 import { Phone } from "../components/Phone"
@@ -15,7 +16,15 @@ const PHONE_MARKS_AT = 50
 type Card = { layout: Layout; from: number; to: number }
 
 // Shot 4: three ways to play, three cards in a row: Online, One phone, The bot.
-export function Shot4Modes({ layout, starts, to }: { layout: Layout; starts: [number, number, number]; to: number }) {
+export function Shot4Modes({
+  layout,
+  starts,
+  to,
+}: {
+  layout: Layout
+  starts: [number, number, number]
+  to: number
+}) {
   const [online, onePhone, bot] = starts
   return (
     <>
@@ -26,15 +35,32 @@ export function Shot4Modes({ layout, starts, to }: { layout: Layout; starts: [nu
   )
 }
 
-function ModeCard({ layout, from, to, title, label, children }: Card & { title: string; label: string; children: React.ReactNode }) {
+function ModeCard({
+  layout,
+  from,
+  to,
+  title,
+  label,
+  children,
+}: Card & { title: string; label: string; children: ReactNode }) {
   const frame = useCurrentFrame()
   const type = TYPE[layout]
   return (
     <Shot from={from} to={to}>
       <Column box={zones(layout).content} gap={type.modeLabel * 0.4}>
-        <div style={{ ...heading(type.modeHeadline), ...rise(frame, from + HEADLINE_AT) }}>{title}</div>
+        <div style={{ ...heading(type.modeHeadline), ...rise(frame, from + HEADLINE_AT) }}>
+          {title}
+        </div>
         <div style={{ ...text(type.modeLabel), ...rise(frame, from + LABEL_AT) }}>{label}</div>
-        <div style={{ marginTop: type.modeLabel, display: "flex", flexDirection: "column", alignItems: "center", gap: type.modeLabel * 0.8 }}>
+        <div
+          style={{
+            marginTop: type.modeLabel,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: type.modeLabel * 0.8,
+          }}
+        >
           {children}
         </div>
       </Column>
@@ -66,7 +92,7 @@ function Online(card: Card) {
   const frame = useCurrentFrame()
   const reel = card.layout === "reel"
   const tile = reel ? 150 : 104
-  const phone = reel ? 250 : 170
+  const phone = reel ? 330 : 210
   const mark = phone * 0.3
   const slide = enter(frame, card.from + SECOND_PHONE_AT)
   const phoneMarks = (
@@ -79,7 +105,12 @@ function Online(card: Card) {
     <ModeCard {...card} title="Online" label="Room code">
       <div style={{ display: "flex", gap: tile * 0.14 }}>
         {[...ROOM_CODE].map((c, i) => (
-          <Tile key={i} size={tile} player={c as Player} at={card.from + BEATS.codeTiles + i * BEATS.codeStagger} />
+          <Tile
+            key={i}
+            size={tile}
+            player={c as Player}
+            at={card.from + BEATS.codeTiles + i * BEATS.codeStagger}
+          />
         ))}
       </div>
       <div style={{ display: "flex", gap: phone * 0.2, ...rise(frame, card.from + LABEL_AT) }}>
@@ -125,7 +156,13 @@ function TheBot(card: Card) {
   const badgePop = pop(frame, first)
   return (
     <ModeCard {...card} title="The bot" label="Three levels">
-      <div style={{ position: "relative", width: 3 * pillW + 2 * gap, height: badge + type.modeLabel * 0.4 }}>
+      <div
+        style={{
+          position: "relative",
+          width: 3 * pillW + 2 * gap,
+          height: badge + type.modeLabel * 0.4,
+        }}
+      >
         <svg
           width={badge}
           height={badge}

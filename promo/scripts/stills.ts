@@ -32,7 +32,8 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/
 const stills: [string, number][] = args.frames
   ? args.frames.split(",").map((f: string) => [`frame-${f}`, Number(f)])
   : Object.entries(CHECKS)
-const out = args.out ?? fileURLToPath(new URL("../../handoff/002-promo-video/stills/", import.meta.url))
+const out =
+  args.out ?? fileURLToPath(new URL("../../handoff/002-promo-video/stills/", import.meta.url))
 mkdirSync(out, { recursive: true })
 
 const serveUrl = await bundle({
@@ -44,7 +45,13 @@ const chromeMode = browserExecutable ? "chrome-for-testing" : "headless-shell"
 
 for (const layout of LAYOUTS) {
   const inputProps = { layout }
-  const composition = await selectComposition({ serveUrl, id: "Promo", inputProps, browserExecutable, chromeMode })
+  const composition = await selectComposition({
+    serveUrl,
+    id: "Promo",
+    inputProps,
+    browserExecutable,
+    chromeMode,
+  })
   for (const [name, frame] of stills) {
     await renderStill({
       serveUrl,

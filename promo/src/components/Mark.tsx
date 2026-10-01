@@ -20,7 +20,14 @@ export function Mark({ player, at, size }: { player: Player; at: number; size: n
     <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: "block" }}>
       {player === "X" ? (
         <g stroke={COLOR.x}>
-          <line x1={24} y1={24} x2={76} y2={76} {...common} strokeDashoffset={1 - enter(frame, at, ARM_FRAMES)} />
+          <line
+            x1={24}
+            y1={24}
+            x2={76}
+            y2={76}
+            {...common}
+            strokeDashoffset={1 - enter(frame, at, ARM_FRAMES)}
+          />
           <line
             x1={76}
             y1={24}
@@ -44,6 +51,3 @@ export function Mark({ player, at, size }: { player: Player; at: number; size: n
     </svg>
   )
 }
-
-export const markDone = (player: Player, at: number) =>
-  at + (player === "X" ? 2 * ARM_FRAMES : O_FRAMES)

@@ -16,7 +16,9 @@ const remotion = fileURLToPath(new URL("../node_modules/.bin/remotion", import.m
 
 // Runs Remotion's bundled ffmpeg and returns its stderr, where loudnorm reports.
 function ffmpeg(args: string[]): string {
-  const run = spawnSync(remotion, ["ffmpeg", "-hide_banner", "-nostats", ...args], { encoding: "utf8" })
+  const run = spawnSync(remotion, ["ffmpeg", "-hide_banner", "-nostats", ...args], {
+    encoding: "utf8",
+  })
   if (run.status !== 0) throw new Error(`ffmpeg failed:\n${run.stderr.slice(-2000)}`)
   return run.stderr
 }

@@ -11,7 +11,17 @@ const MARK_STAGGER = 6
 const STRIKE_FRAMES = 12
 
 // Shot 7: three Xs in a row, struck through, over "Three in a row." / "Zero excuses."
-export function Shot7Slogan({ layout, from, to, zeroAt }: { layout: Layout; from: number; to: number; zeroAt: number }) {
+export function Shot7Slogan({
+  layout,
+  from,
+  to,
+  zeroAt,
+}: {
+  layout: Layout
+  from: number
+  to: number
+  zeroAt: number
+}) {
   const frame = useCurrentFrame()
   const size = TYPE[layout].slogan
   const tile = layout === "reel" ? 170 : 124

@@ -1,12 +1,11 @@
 import { interpolate, useCurrentFrame } from "remotion"
 import type { Box } from "../layout"
 import { enter, pop } from "../motion"
-import type { Player } from "../timeline"
+import type { Move } from "../timeline"
 import { COLOR } from "../tokens"
 import { Mark } from "./Mark"
 
-export type Move = { cell: number; player: Player; at: number }
-export type Win = { cells: number[]; at: number }
+type Win = { cells: number[]; at: number }
 
 const STRIKE_FRAMES = 15
 const PULSE_FRAMES = 19
@@ -40,10 +39,15 @@ export function Board({
   const { gap, tile, centre } = boardGeometry(box.w)
   const pulse = (cell: number) =>
     win?.cells.includes(cell)
-      ? interpolate(frame, [win.at, win.at + PULSE_FRAMES / 2, win.at + PULSE_FRAMES], [1, 1.055, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
+      ? interpolate(
+          frame,
+          [win.at, win.at + PULSE_FRAMES / 2, win.at + PULSE_FRAMES],
+          [1, 1.055, 1],
+          {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          },
+        )
       : 1
 
   return (
@@ -84,7 +88,15 @@ export function Board({
           </div>
         )
       })}
-      {win && <Strike from={centre(win.cells[0])} to={centre(win.cells[2])} at={win.at} width={gap * 1.6} size={box.w} />}
+      {win && (
+        <Strike
+          from={centre(win.cells[0])}
+          to={centre(win.cells[2])}
+          at={win.at}
+          width={gap * 1.6}
+          size={box.w}
+        />
+      )}
     </div>
   )
 }

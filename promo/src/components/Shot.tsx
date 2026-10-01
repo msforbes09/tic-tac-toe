@@ -6,7 +6,15 @@ import { COLOR, EXIT_FRAMES, FONT } from "../tokens"
 
 // A shot on the film's own frame clock: shown from `from`, and from `to` it crossfades out, sliding SLIDE px
 // down over 8 frames while the next shot comes in. Without `to` it holds to the last frame.
-export function Shot({ from, to = Infinity, children }: { from: number; to?: number; children: ReactNode }) {
+export function Shot({
+  from,
+  to = Infinity,
+  children,
+}: {
+  from: number
+  to?: number
+  children: ReactNode
+}) {
   const frame = useCurrentFrame()
   if (frame < from || frame >= to + EXIT_FRAMES) return null
   const out = exit(frame, to)
@@ -37,7 +45,15 @@ export const text = (size: number, color = COLOR.muted): CSSProperties => ({
 })
 
 // A flex column centred in a zone.
-export function Column({ box, gap, children }: { box: { x: number; y: number; w: number; h: number }; gap: number; children: ReactNode }) {
+export function Column({
+  box,
+  gap,
+  children,
+}: {
+  box: { x: number; y: number; w: number; h: number }
+  gap: number
+  children: ReactNode
+}) {
   return (
     <div
       style={{

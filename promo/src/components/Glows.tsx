@@ -29,8 +29,16 @@ export function Glows({ layout }: { layout: Layout }) {
   )
   return (
     <>
-      {glow(COLOR.x, width * (0.1 + d), height * (layout === "reel" ? 0.03 : 0.05) + height * d * 0.5)}
-      {glow(COLOR.o, width * (0.9 - d), height * (layout === "reel" ? 0.97 : 0.95) - height * d * 0.5)}
+      {glow(
+        COLOR.x,
+        width * (0.1 + d),
+        height * (layout === "reel" ? 0.03 : 0.05) + height * d * 0.5,
+      )}
+      {glow(
+        COLOR.o,
+        width * (0.9 - d),
+        height * (layout === "reel" ? 0.97 : 0.95) - height * d * 0.5,
+      )}
     </>
   )
 }

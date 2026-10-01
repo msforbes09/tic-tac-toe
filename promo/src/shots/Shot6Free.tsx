@@ -5,7 +5,13 @@ import { rise } from "../motion"
 import { BEATS } from "../timeline"
 import { COLOR } from "../tokens"
 
-const line = { fill: "none", stroke: COLOR.foreground, strokeWidth: 7, strokeLinecap: "round", strokeLinejoin: "round" } as const
+const line = {
+  fill: "none",
+  stroke: COLOR.foreground,
+  strokeWidth: 7,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+} as const
 
 // Simple line icons: a home-screen tile, wifi with a slash, a price tag.
 const ICONS = {
@@ -17,7 +23,10 @@ const ICONS = {
   ),
   offline: (
     <>
-      <path d="M16 42 A48 48 0 0 1 84 42 M28 55 A31 31 0 0 1 72 55 M40 68 A14 14 0 0 1 60 68" {...line} />
+      <path
+        d="M16 42 A48 48 0 0 1 84 42 M28 55 A31 31 0 0 1 72 55 M40 68 A14 14 0 0 1 60 68"
+        {...line}
+      />
       <path d="M20 20 L80 84" {...line} />
     </>
   ),

@@ -20,7 +20,14 @@ export function Shot2TalksBack({
 }) {
   return (
     <Shot from={from} to={to}>
-      <Bubble layout={layout} text={BOT_LINES["bot-01"]} popAt={popAt} exitAt={exitAt} tailX={tailX(layout)} breathe />
+      <Bubble
+        layout={layout}
+        text={BOT_LINES["bot-01"]}
+        popAt={popAt}
+        exitAt={exitAt}
+        tailX={tailX(layout)}
+        breathe
+      />
     </Shot>
   )
 }

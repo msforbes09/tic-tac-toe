@@ -30,7 +30,12 @@ export function Logo({ at, size }: { at: number; size: number }) {
   const arm2At = arm1At + ARM_FRAMES
 
   return (
-    <svg viewBox={`0 0 ${LOGO.size} ${LOGO.size}`} width={size} height={size} style={{ display: "block" }}>
+    <svg
+      viewBox={`0 0 ${LOGO.size} ${LOGO.size}`}
+      width={size}
+      height={size}
+      style={{ display: "block" }}
+    >
       <circle
         cx={o.cx}
         cy={o.cy}

@@ -6,7 +6,17 @@ const FRAMES = 33 // 1.1 s, as the app's burst
 const FALL = 80
 
 // One burst of X- and O-coloured confetti from (x, y), as src/index.css's confetti-burst.
-export function Confetti({ x, y, at, spread }: { x: number; y: number; at: number; spread: number }) {
+export function Confetti({
+  x,
+  y,
+  at,
+  spread,
+}: {
+  x: number
+  y: number
+  at: number
+  spread: number
+}) {
   const frame = useCurrentFrame()
   const t = (frame - at) / FRAMES
   if (t < 0 || t > 1) return null

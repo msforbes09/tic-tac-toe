@@ -15,7 +15,10 @@ function Voice({ file, clip, volume }: { file: string; clip: Clip; volume: numbe
 export function Soundtrack({ timeline }: { timeline: Timeline }) {
   return (
     <>
-      <Audio src={staticFile("music-dim-light.mp3")} volume={(f) => musicVolume(f, timeline.speech)} />
+      <Audio
+        src={staticFile("music-dim-light.mp3")}
+        volume={(f) => musicVolume(f, timeline.speech)}
+      />
       {Object.entries(timeline.narration).map(([key, clip]) => (
         <Voice key={key} file="narration.mp3" clip={clip} volume={VOLUME.narration} />
       ))}

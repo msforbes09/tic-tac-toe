@@ -63,7 +63,7 @@ const BOT2_AT = 240 // the win jingle (frame 226, 13 frames) has ended
 const BUBBLE2_LINGER = 3
 const TOAST_AT = 278
 const TOAST_IN = 8
-const TOAST_EXIT = 316
+export const TOAST_EXIT = 316
 const LAST_SLOGAN_FRAME = 840
 const MIN_LOGO_HOLD = 60
 
@@ -82,7 +82,8 @@ function rule(holds: boolean, message: string) {
 export type Player = "X" | "O"
 
 // The game on the board in shots 1-3: which cell, whose mark, and the frame it starts drawing.
-export const MOVES: { cell: number; player: Player; at: number }[] = [
+export type Move = { cell: number; player: Player; at: number }
+export const MOVES: Move[] = [
   { cell: 4, player: "X", at: 66 },
   { cell: 0, player: "O", at: 90 },
   { cell: 2, player: "X", at: 207 },

@@ -44,7 +44,13 @@ export function Promo({ layout }: { layout: Layout }) {
       <Glows layout={layout} />
       <GameBoard layout={layout} to={s["4a"]} />
       <Shot1Board layout={layout} to={s["2"]} sublineAt={t.narration["2"].from + 3} />
-      <Shot2TalksBack layout={layout} from={s["2"]} to={s["3"]} popAt={t.bot1.from} exitAt={t.bubble1Exit} />
+      <Shot2TalksBack
+        layout={layout}
+        from={s["2"]}
+        to={s["3"]}
+        popAt={t.bot1.from}
+        exitAt={t.bubble1Exit}
+      />
       <Shot3YouWin
         layout={layout}
         from={s["3"]}

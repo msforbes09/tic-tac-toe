@@ -19,7 +19,9 @@ export function Shot8Mark({ layout, from }: { layout: Layout; from: number }) {
       <div style={{ position: "absolute", inset: 0, transform: `translateY(${settle}px)` }}>
         <Column box={zones(layout).logo} gap={size * 0.36}>
           <Logo at={from + LOGO_AT} size={layout === "reel" ? 440 : 300} />
-          <div style={{ ...heading(size), ...rise(frame, from + BEATS.logoDone) }}>Kaya Randomized</div>
+          <div style={{ ...heading(size), ...rise(frame, from + BEATS.logoDone) }}>
+            Kaya Randomized
+          </div>
         </Column>
       </div>
     </Shot>

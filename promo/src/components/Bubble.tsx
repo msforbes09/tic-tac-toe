@@ -69,12 +69,24 @@ export function Bubble({
           width={badge}
           height={badge}
           viewBox="0 0 100 100"
-          style={{ flex: "none", transform: `scale(${breath})`, opacity: 0.7 + 0.3 * ((breath - 0.88) / 0.12) }}
+          style={{
+            flex: "none",
+            transform: `scale(${breath})`,
+            opacity: 0.7 + 0.3 * ((breath - 0.88) / 0.12),
+          }}
         >
           <circle cx={50} cy={50} r={46} fill={COLOR.tile} />
           <circle cx={50} cy={50} r={24} fill="none" stroke={COLOR.o} strokeWidth={11} />
         </svg>
-        <span style={{ fontFamily: FONT.heading, fontWeight: 600, fontSize: size, color: COLOR.foreground, whiteSpace: "nowrap" }}>
+        <span
+          style={{
+            fontFamily: FONT.heading,
+            fontWeight: 600,
+            fontSize: size,
+            color: COLOR.foreground,
+            whiteSpace: "nowrap",
+          }}
+        >
           {text}
         </span>
       </div>
