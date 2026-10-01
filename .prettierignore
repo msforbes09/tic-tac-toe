@@ -4,3 +4,6 @@ node_modules
 src/components/ui
 public
 package-lock.json
+
+# Handoffs are written by Mira and kept verbatim
+handoff/**/HANDOFF.md

@@ -10,6 +10,8 @@ const meta = (attr: 'name' | 'property', key: string) => {
 }
 
 const LIVE = 'https://tic-tac-toe.iam4bs.dev/'
+const DESCRIPTION =
+  'Three in a row. Zero excuses. Play a friend online, on the same phone, or take on the bot.'
 
 describe('page metadata', () => {
   it('describes the page for search engines', () => {
@@ -20,12 +22,13 @@ describe('page metadata', () => {
   it('unfurls as a card with a banner when the link is pasted into a chat', () => {
     expect(meta('property', 'og:type')).toBe('website')
     expect(meta('property', 'og:title')).toBe('Tic-Tac-Toe')
-    expect(meta('property', 'og:description')).toBeTruthy()
+    expect(meta('property', 'og:description')).toBe(DESCRIPTION)
     expect(meta('property', 'og:url')).toBe(LIVE)
     expect(meta('property', 'og:image')).toBe(`${LIVE}og-image.png`)
     expect(meta('property', 'og:image:width')).toBe('1200')
     expect(meta('property', 'og:image:height')).toBe('630')
     expect(meta('name', 'twitter:card')).toBe('summary_large_image')
+    expect(meta('name', 'twitter:description')).toBe(DESCRIPTION)
     expect(meta('name', 'twitter:image')).toBe(`${LIVE}og-image.png`)
   })
 

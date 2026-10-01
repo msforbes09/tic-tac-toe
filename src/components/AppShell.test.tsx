@@ -37,7 +37,7 @@ describe("AppShell room chrome", () => {
     expect(brand?.querySelector('svg [data-player="X"]')).not.toBeNull()
     expect(brand).toHaveTextContent("Tic-Tac-Toe")
     expect(backdrop.querySelector(".room-colophon")).toHaveTextContent(
-      /^v\d+\.\d+\.\d+ · © \d{4} iam4bs$/,
+      /^v\d+\.\d+\.\d+ · © 2026 Kaya Randomized$/,
     )
   })
 })
