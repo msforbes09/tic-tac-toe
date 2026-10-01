@@ -1,7 +1,7 @@
 // Every shot's start frame and every voice clip's placement, from the storyboard's rules (section 4)
 // and the measured takes in docs/promo/audio/durations.json. A take that breaks a rule throws.
 import type { Span } from "./alignment"
-import { NARRATION, type Sentence } from "./script"
+import { NARRATION, type Sentence } from "./script.ts"
 import type { CueName } from "./tones"
 
 export const FPS = 30
