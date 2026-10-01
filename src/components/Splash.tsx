@@ -50,7 +50,7 @@ export function Splash({ onDone, feedback }: { onDone: () => void; feedback?: Fe
             Tic-Tac-Toe
           </p>
           <p className="splash-rise mt-2 text-muted-foreground" style={{ '--splash-delay': '1140ms' } as CSSProperties}>
-            Win three.
+            Three in a row. Zero excuses.
           </p>
         </div>
         <p data-testid="splash-footer" className="absolute bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground/70">
