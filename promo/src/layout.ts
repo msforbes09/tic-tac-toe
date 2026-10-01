@@ -1,6 +1,6 @@
 // Canvas, safe areas, layout anchors and type sizes per format (storyboard section 2).
 
-export const LAYOUTS = ['reel', 'square'] as const
+export const LAYOUTS = ["reel", "square"] as const
 export type Layout = (typeof LAYOUTS)[number]
 
 export type Box = { x: number; y: number; w: number; h: number }

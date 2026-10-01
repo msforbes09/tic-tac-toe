@@ -14,9 +14,9 @@ const run = (hzs: number[], gap: number, seconds: number): Note[] =>
   hzs.map((hz, i) => ({ hz, at: i * gap, seconds }))
 
 export const CUES = {
-  'move-x': single(660),
-  'move-o': single(520),
-  'step-587': single(587),
+  "move-x": single(660),
+  "move-o": single(520),
+  "step-587": single(587),
   win: run([523, 659, 784, 1047], 0.09, 0.16),
   achievement: run([784, 1175], 0.1, 0.18),
   start: run([523, 784], 0.08, 0.1),
@@ -46,11 +46,12 @@ export function renderCue(notes: Note[]): Float32Array {
 export function encodeWav(samples: Float32Array): Uint8Array {
   const bytes = new Uint8Array(44 + samples.length * 2)
   const view = new DataView(bytes.buffer)
-  const text = (at: number, s: string) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)))
-  text(0, 'RIFF')
+  const text = (at: number, s: string) =>
+    [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)))
+  text(0, "RIFF")
   view.setUint32(4, 36 + samples.length * 2, true)
-  text(8, 'WAVE')
-  text(12, 'fmt ')
+  text(8, "WAVE")
+  text(12, "fmt ")
   view.setUint32(16, 16, true)
   view.setUint16(20, 1, true) // PCM
   view.setUint16(22, 1, true) // mono
@@ -58,7 +59,7 @@ export function encodeWav(samples: Float32Array): Uint8Array {
   view.setUint32(28, SAMPLE_RATE * 2, true)
   view.setUint16(32, 2, true)
   view.setUint16(34, 16, true)
-  text(36, 'data')
+  text(36, "data")
   view.setUint32(40, samples.length * 2, true)
   samples.forEach((s, i) => view.setInt16(44 + i * 2, Math.round(s * 32767), true))
   return bytes

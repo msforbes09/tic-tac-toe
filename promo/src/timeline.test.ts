@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import measured from "../../docs/promo/audio/durations.json"
-import { type Measured, buildTimeline } from "./timeline"
+import { type Measured, buildTimeline, clipEnd, soundCues } from "./timeline"
 
 // Every take lasting exactly its storyboard target (section 4).
 const targets: Measured = {
@@ -138,5 +138,42 @@ describe("buildTimeline rules", () => {
         },
       }),
     ).toThrow("shot 8")
+  })
+})
+
+describe("soundCues", () => {
+  it("plays the storyboard cue list (section 6) at the targets", () => {
+    expect(soundCues(buildTimeline(targets))).toEqual([
+      { at: 9, cue: "start" },
+      { at: 66, cue: "move-x" },
+      { at: 90, cue: "move-o" },
+      { at: 207, cue: "move-x" },
+      { at: 216, cue: "move-o" },
+      { at: 225, cue: "move-x" },
+      { at: 226, cue: "win" },
+      { at: 278, cue: "achievement" },
+      { at: 338, cue: "move-x" },
+      { at: 342, cue: "move-o" },
+      { at: 346, cue: "move-x" },
+      { at: 350, cue: "move-o" },
+      { at: 423, cue: "move-x" },
+      { at: 439, cue: "move-o" },
+      { at: 486, cue: "move-o" },
+      { at: 510, cue: "step-587" },
+      { at: 534, cue: "move-x" },
+      { at: 593, cue: "achievement" },
+      { at: 621, cue: "move-x" },
+      { at: 654, cue: "move-x" },
+      { at: 684, cue: "move-x" },
+      { at: 744, cue: "win" },
+      { at: 834, cue: "start" },
+    ])
+  })
+
+  it("starts no game sound while the bot speaks", () => {
+    const t = buildTimeline(measured as Measured)
+    for (const bot of [t.bot1, t.bot2]) {
+      for (const { at } of soundCues(t)) expect(at < bot.from || at >= clipEnd(bot)).toBe(true)
+    }
   })
 })
