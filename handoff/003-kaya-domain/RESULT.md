@@ -56,11 +56,11 @@ In total, 7 files with 13 lines each way, plus this handoff folder and the index
   grep does not show it. Full output:
   ```
   handoff/003-kaya-domain/HANDOFF.md:21, :31, :39, :70   (the handoff text itself, verbatim)
-  handoff/003-kaya-domain/RESULT.md:15                    (this file's plan, quoting the word)
+  handoff/003-kaya-domain/RESULT.md (this file: plan, live checks and Tests quote the word)
   handoff/001-kaya-rebrand/RESULT.md:22, :24–:33          (001's quoted grep output)
   handoff/001-kaya-rebrand/HANDOFF.md:13, :51, :61, :103  (001's handoff text)
   ```
-  (Collapsed by line number. The full raw output is in the session log. Every hit is under `handoff/`.)
+  (Collapsed by file; rerun the grep for raw lines. Every hit is under `handoff/`.)
 - [x] `grep -rn "tictactoe.kayarandomized.com" index.html public/robots.txt public/sitemap.xml README.md functions/_middleware.js`:
   ```
   public/robots.txt:4:Sitemap: https://tictactoe.kayarandomized.com/sitemap.xml
