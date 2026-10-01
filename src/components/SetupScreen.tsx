@@ -151,7 +151,7 @@ export function SetupScreen({
           </span>
         </div>
         <h1 className="font-heading text-[2.6rem] font-semibold leading-none tracking-[-0.01em]">Tic-Tac-Toe</h1>
-        <p className="mt-2 text-muted-foreground">Win three.</p>
+        <p className="mt-2 text-muted-foreground">Three in a row. Zero excuses.</p>
       </header>
 
       <div className="flex flex-col gap-7">

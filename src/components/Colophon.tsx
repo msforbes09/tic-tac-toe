@@ -4,7 +4,7 @@ const COPYRIGHT_YEAR = 2026
 export function Colophon() {
   return (
     <>
-      v{__APP_VERSION__} · © {COPYRIGHT_YEAR} iam4bs
+      v{__APP_VERSION__} · © {COPYRIGHT_YEAR} Kaya Randomized
     </>
   )
 }

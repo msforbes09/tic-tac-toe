@@ -42,7 +42,7 @@ describe('Splash', () => {
     expect(splash.querySelector('.max-w-\\[420px\\]')).not.toBeNull()
     expect(splash.querySelector('.splash-tile')).toBeNull()
     expect(screen.getByText('Tic-Tac-Toe')).toHaveClass('font-heading')
-    expect(screen.getByText('Win three.')).toBeInTheDocument()
+    expect(screen.getByText('Three in a row. Zero excuses.')).toBeInTheDocument()
     const marks = Array.from(splash.querySelectorAll('.logo-mark')) as HTMLElement[]
     expect(marks.map((m) => m.dataset.player)).toEqual(['O', 'X'])
     const delay = (m: HTMLElement) => parseInt(m.style.getPropertyValue('--logo-delay'))
@@ -51,10 +51,10 @@ describe('Splash', () => {
 })
 
 describe('Splash footer', () => {
-  it('shows the version from package.json and the iam4bs copyright, without the rise-in animation', () => {
+  it('shows the version from package.json and the Kaya Randomized copyright, without the rise-in animation', () => {
     render(<Splash onDone={() => {}} />)
     const footer = screen.getByRole('status').querySelector('[data-testid="splash-footer"]')
-    expect(footer).toHaveTextContent(/^v\d+\.\d+\.\d+ · © \d{4} iam4bs$/)
+    expect(footer).toHaveTextContent(/^v\d+\.\d+\.\d+ · © 2026 Kaya Randomized$/)
     expect(footer).not.toHaveClass('splash-rise')
   })
 })
