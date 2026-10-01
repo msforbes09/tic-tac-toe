@@ -16,6 +16,9 @@ export const exit = (frame: number, at: number) =>
     ? interpolate(frame, [at, at + EXIT_FRAMES], [0, 1], { ...clamp, easing: EXIT })
     : 0
 
+// The slower rise the storyboard gives the splash text, the sub-line and the slogan's second line.
+export const RISE_SLOW = 13
+
 // Rises SLIDE px into place from `inAt` over `length` frames; leaves SLIDE px down from `outAt`.
 export function rise(frame: number, inAt: number, outAt = Infinity, length = 10): CSSProperties {
   const i = enter(frame, inAt, length)

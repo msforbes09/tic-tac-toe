@@ -142,8 +142,11 @@ describe("the game in shots 1-3", () => {
     expect(buildTimeline(takes).bot2.from - (448 + 13)).toBeGreaterThanOrEqual(15)
   })
 
-  it("lets the bot think before each O: badge in at 178 and 366", () => {
-    expect(buildTimeline(takes).beats.thinking).toEqual([178, 366])
+  it("lets the bot think before each O: badge in at 178 and 366, out as each O draws", () => {
+    expect(buildTimeline(takes).beats.thinking).toEqual([
+      { at: 178, exit: 212 },
+      { at: 366, exit: 400 },
+    ])
   })
 })
 
@@ -166,8 +169,8 @@ describe("buildTimeline rules", () => {
     expect(() => buildTimeline(withSentence("6", [11.378, 15.4]))).toThrow("sentence 6")
   })
 
-  it("refuses a narration that runs past frame 1320", () => {
-    expect(() => buildTimeline(withSentence("8", [16.091, 19.5]))).toThrow("frame 1320")
+  it("refuses a last sentence that takes more than 6 frames from shot 8 (ends after 1283)", () => {
+    expect(() => buildTimeline(withSentence("8", [16.091, 17.85]))).toThrow("sentence 8")
   })
 
   it("refuses a bot-02 that would leave the toast under 2.0 s of hold", () => {
@@ -177,6 +180,10 @@ describe("buildTimeline rules", () => {
 
 describe("beats", () => {
   const b = buildTimeline(takes).beats
+
+  it("raises the sub-line at 117 with its voice and drops it at 168", () => {
+    expect(b.subline).toEqual({ at: 117, exit: 168 })
+  })
 
   it("times the splash: title 30, slogan 34, splash-out 97", () => {
     expect(b.splash).toEqual({ logo: 0, title: 30, slogan: 34, exit: 97 })

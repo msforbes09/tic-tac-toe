@@ -1,8 +1,8 @@
-import { interpolate, useCurrentFrame } from "remotion"
+import { useCurrentFrame } from "remotion"
 import { KayaMark } from "../components/KayaMark"
 import { Column, heading, Shot, text } from "../components/Shot"
-import { type Layout, LOGO_SETTLE, TYPE, zones } from "../layout"
-import { rise } from "../motion"
+import { type Layout, MARK_SETTLE, TYPE, zones } from "../layout"
+import { enter, rise } from "../motion"
 import { type Beats, FPS, TOTAL_FRAMES } from "../timeline"
 import { COLOR } from "../tokens"
 
@@ -15,14 +15,7 @@ export function Shot8Mark({ layout, from, beats }: { layout: Layout; from: numbe
   const frame = useCurrentFrame()
   const type = TYPE[layout]
   const kaya = zones(layout).kaya
-  const settle = interpolate(
-    frame,
-    [TOTAL_FRAMES - SETTLE_FRAMES, TOTAL_FRAMES],
-    [0, LOGO_SETTLE],
-    {
-      extrapolateLeft: "clamp",
-    },
-  )
+  const settle = MARK_SETTLE * enter(frame, TOTAL_FRAMES - SETTLE_FRAMES, SETTLE_FRAMES)
   return (
     <Shot from={from}>
       <div style={{ position: "absolute", inset: 0, transform: `translateY(${settle}px)` }}>

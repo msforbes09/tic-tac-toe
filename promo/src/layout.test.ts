@@ -3,7 +3,7 @@ import {
   type Box,
   CANVAS,
   LAYOUTS,
-  LOGO_SETTLE,
+  MARK_SETTLE,
   SAFE,
   SLIDE,
   SPLASH_OUT_SCALE,
@@ -32,12 +32,12 @@ const travel = (layout: (typeof LAYOUTS)[number]) => {
     w: b.w * s,
     h: b.h * s,
   })
-  const settled = (b: Box) => down(b, SLIDE + LOGO_SETTLE)
+  const settled = (b: Box) => down(b, SLIDE + MARK_SETTLE)
   return {
     splash: scaled(down(z.splash, SPLASH_RISE), SPLASH_OUT_SCALE),
     footer: scaled(z.footer, SPLASH_OUT_SCALE),
     board: down(z.board, SLIDE),
-    title: down(z.title, SLIDE),
+    subline: down(z.subline, SLIDE),
     bubble: down(z.bubble, SLIDE),
     thinking: z.thinking,
     toast: up(z.bubble, TOAST_DROP),

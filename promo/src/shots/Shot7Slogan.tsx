@@ -3,7 +3,7 @@ import { winTile } from "../components/Board"
 import { Mark } from "../components/Mark"
 import { Column, heading, Shot } from "../components/Shot"
 import { type Layout, TYPE, zones } from "../layout"
-import { rise } from "../motion"
+import { RISE_SLOW, rise } from "../motion"
 import { type Beats, SLOGAN_STAGGER } from "../timeline"
 import { COLOR } from "../tokens"
 
@@ -53,7 +53,7 @@ export function Shot7Slogan({
           })}
         </div>
         <div style={{ ...heading(size), ...rise(frame, from + LINE1_AT) }}>Three in a row.</div>
-        <div style={{ ...heading(size, COLOR.o), ...rise(frame, zeroAt, Infinity, 13) }}>
+        <div style={{ ...heading(size, COLOR.o), ...rise(frame, zeroAt, Infinity, RISE_SLOW) }}>
           Zero excuses.
         </div>
       </Column>

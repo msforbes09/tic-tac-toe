@@ -16,10 +16,10 @@ export const SAFE: Record<Layout, Box> = {
 }
 
 // Motion limits: content rises in from SLIDE px below and leaves SLIDE px down; the toast drops in from
-// TOAST_DROP px above its zone; the logo settles LOGO_SETTLE px down over the last hold.
+// TOAST_DROP px above its zone; the shot 8 stack settles MARK_SETTLE px down over the last 3 s.
 export const SLIDE = 12
 export const TOAST_DROP = 10
-export const LOGO_SETTLE = 4
+export const MARK_SETTLE = 4
 // The splash's own motion (Splash.tsx, index.css): title and slogan rise 10 px; splash-out scales to 1.03.
 export const SPLASH_RISE = 10
 export const SPLASH_OUT_SCALE = 1.03
@@ -30,7 +30,7 @@ type Zones = {
   splashGaps: [number, number] // logo to title, title to slogan
   footer: Box
   board: Box
-  title: Box
+  subline: Box
   bubble: Box
   thinking: Box
   content: Box
@@ -45,7 +45,7 @@ const ZONES: Record<Layout, Zones> = {
     splashGaps: [86, 25],
     footer: { x: 240, y: 1451, w: 600, h: 38 },
     board: { x: 120, y: 560, w: 840, h: 840 },
-    title: { x: 72, y: 290, w: 936, h: 190 },
+    subline: { x: 72, y: 290, w: 936, h: 190 },
     bubble: { x: 90, y: 290, w: 900, h: 180 },
     thinking: { x: 480, y: 320, w: 120, h: 120 },
     content: { x: 72, y: 460, w: 936, h: 840 },
@@ -63,7 +63,7 @@ const ZONES: Record<Layout, Zones> = {
     splashGaps: [65, 18],
     footer: { x: 290, y: 958, w: 500, h: 34 },
     board: { x: 230, y: 330, w: 620, h: 620 },
-    title: { x: 72, y: 60, w: 936, h: 190 },
+    subline: { x: 72, y: 60, w: 936, h: 190 },
     bubble: { x: 90, y: 70, w: 900, h: 180 },
     thinking: { x: 496, y: 116, w: 88, h: 88 },
     content: { x: 72, y: 150, w: 936, h: 780 },

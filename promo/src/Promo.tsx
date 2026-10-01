@@ -42,9 +42,16 @@ export function Promo({ layout }: { layout: Layout }) {
   return (
     <AbsoluteFill style={{ background: COLOR.background, overflow: "hidden" }}>
       <Glows layout={layout} />
+      <GameBoard
+        layout={layout}
+        from={t.beats.splash.exit}
+        tilesAt={s["1"] + 3}
+        to={s["4a"]}
+        thinking={t.beats.thinking}
+      />
+      {/* Over the board: the splash fades out on top of the tray fading in. */}
       <Shot0Splash layout={layout} beats={t.beats.splash} />
-      <GameBoard layout={layout} from={s["1"]} to={s["4a"]} thinking={t.beats.thinking} />
-      <Shot1Board layout={layout} from={s["1"]} to={s["2"]} sublineAt={t.narration["2"].from} />
+      <Shot1Board layout={layout} from={s["1"]} to={s["2"]} subline={t.beats.subline} />
       <Shot2TalksBack
         layout={layout}
         from={s["2"]}

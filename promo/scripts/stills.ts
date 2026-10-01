@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import measured from "../../docs/promo/audio/durations.json" with { type: "json" }
 import { browserExecutable as installedChrome } from "../chrome.ts"
 import { LAYOUTS } from "../src/layout.ts"
-import { type Measured, TOTAL_FRAMES, buildTimeline } from "../src/timeline.ts"
+import { type Measured, MOVES, TOTAL_FRAMES, WIN, buildTimeline } from "../src/timeline.ts"
 
 const t = buildTimeline(measured as Measured)
 const s = t.shots
@@ -19,12 +19,12 @@ const CHECKS: Record<string, number> = {
   "02-splash-x-done": 33,
   "02-splash-poster": 90,
   "02-splash-out": t.beats.splash.exit + 5,
-  "03-board-no-title-subline": 140,
-  "03-first-x": 170,
-  "04-thinking-badge": t.beats.thinking[0] + 16,
-  "04-first-o": 224,
+  "03-board-no-title-subline": t.beats.subline.at + 23,
+  "03-first-x": MOVES[0].at + 8,
+  "04-thinking-badge": t.beats.thinking[0].at + 16,
+  "04-first-o": MOVES[1].at + 12,
   "05-bubble-i-do-this-all-day": t.bot1.from + 20,
-  "06-diagonal-win-tiles-confetti": 455,
+  "06-diagonal-win-tiles-confetti": WIN.at + 7,
   "07-lucky-square-over-tiles": t.bot2.from + 20,
   "08-toast": t.toast + 30,
   "09-online-xoxo": s["4b"] - 10,

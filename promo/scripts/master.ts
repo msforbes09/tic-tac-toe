@@ -3,7 +3,14 @@
 // encodes AAC, and drops all container metadata. Prints the final measurement.
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { masterProblems, measureFilter, parseLoudnorm, secondPassFilter } from "../src/loudness.ts"
+import {
+  TARGET,
+  aimFor,
+  masterProblems,
+  measureFilter,
+  parseLoudnorm,
+  secondPassFilter,
+} from "../src/loudness.ts"
 import { FPS, TOTAL_FRAMES } from "../src/timeline.ts"
 
 const [input, output] = process.argv.slice(2)
@@ -27,35 +34,48 @@ const measure = (file: string) =>
   parseLoudnorm(ffmpeg(["-i", file, "-vn", "-af", measureFilter(), "-f", "null", "-"]))
 
 const first = measure(input)
-const second = parseLoudnorm(
-  ffmpeg([
-    "-y",
-    "-i",
-    input,
-    "-map",
-    "0:v",
-    "-map",
-    "0:a",
-    "-c:v",
-    "copy",
-    "-af",
-    secondPassFilter(first),
-    "-ar",
-    "48000",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
-    "-t",
-    String(TOTAL_FRAMES / FPS),
-    "-map_metadata",
-    "-1",
-    "-movflags",
-    "+faststart",
-    output,
-  ]),
-)
-const final = measure(output)
+
+// The correcting pass at a loudness target, writing the final file; returns loudnorm's report of it.
+const encode = (integrated: number) =>
+  parseLoudnorm(
+    ffmpeg([
+      "-y",
+      "-i",
+      input,
+      "-map",
+      "0:v",
+      "-map",
+      "0:a",
+      "-c:v",
+      "copy",
+      "-af",
+      secondPassFilter(first, integrated),
+      "-ar",
+      "48000",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-t",
+      String(TOTAL_FRAMES / FPS),
+      "-map_metadata",
+      "-1",
+      "-movflags",
+      "+faststart",
+      output,
+    ]),
+  )
+
+let second = encode(TARGET.integrated)
+let final = measure(output)
+if (masterProblems(final).length > 0) {
+  const aim = aimFor(final)
+  console.log(
+    `master: ${final.input_i} LUFS at ${TARGET.integrated}; encoding again aimed at ${aim.toFixed(2)}`,
+  )
+  second = encode(aim)
+  final = measure(output)
+}
 console.log(
   `master: ${output}: ${final.input_i} LUFS integrated, ${final.input_tp} dBTP true peak ` +
     `(mix was ${first.input_i} LUFS; ${second.normalization_type} normalisation)`,

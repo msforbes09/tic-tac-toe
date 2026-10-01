@@ -72,15 +72,17 @@ const ENDS_BEFORE: Partial<Record<Sentence, Shot>> = {
   "6": "7",
   "7": "8",
 }
+// "From Kaya Randomized." ends by 1277; shot 8 may give it 6 frames more, never more (section 3).
+const LAST_WORD = 1277 + 6
 const BOT1_AIR = 6
 const BOT1_AT = 273
 const BUBBLE1_LINGER = 6
-export const BOT2_AT = 480 // 19 frames after the win jingle (frame 448, 13 frames) has ended
+const BOT2_AT = 480 // 19 frames after the win jingle (frame 448, 13 frames) has ended
 const BUBBLE2_LINGER = 8
 const TOAST_AT = 547
 const TOAST_IN = 8
 const MIN_TOAST_HOLD = 60 // 2.0 s, storyboard check 8
-export const TOAST_EXIT = 621
+export const TOAST_EXIT = SHOTS["4a"] // the toast leaves as shot 4 comes in
 
 // Seconds to frames, rounded to 1/1000 frame first so float noise (1.2 * 30 = 36.000000000000004)
 // never tips a floor or ceil over a whole frame.
@@ -108,8 +110,10 @@ export const MOVES: Move[] = [
   { cell: 6, player: "X", at: 432 },
 ]
 export const WIN = { cells: [2, 4, 6], at: 448 }
-// The bot "thinks" before each O: its badge pops in this many frames before the O, breathes, and leaves.
+// The bot "thinks" before each O: its badge pops in this many frames before the O, breathes, and leaves
+// as the O starts. The sub-line leaves this many frames after the first X starts, while it draws.
 const THINK = 34
+const SUBLINE_LEAVES = 6
 
 export const ROOM_CODE = "XOXO"
 export const CHIP_COUNT = TIERS.reduce((sum, t) => sum + t.count, 0)
@@ -119,7 +123,8 @@ export const SLOGAN_STAGGER = 6
 // The frames things happen on. The shots draw on them and soundCues sounds on them.
 export type Beats = {
   splash: { logo: number; title: number; slogan: number; exit: number } // 0: the app's splash, held
-  thinking: number[] // 1, 3: the O badge breathes above the board before each O
+  subline: { at: number; exit: number } // 1: "You learned it on a napkin.", with its voice
+  thinking: { at: number; exit: number }[] // 1, 3: the O badge breathes above the board before each O
   codeTiles: number[] // 4a: each XOXO tile pops (4-frame stagger)
   phoneX: number // 4b: the marks on the phone
   phoneO: number
@@ -137,7 +142,8 @@ export type Beats = {
 
 // The splash's own timings (Splash.tsx): title at 1000 ms, slogan at 1140 ms; held, then splash-out.
 const SPLASH = { title: 30, slogan: 34, exit: 97 }
-// Pills 2 and 3 land on their words: measured in handoff 002 as 32 and 62 frames into the sentence.
+// Pills 2 and 3 land on their words, measured in handoff 002 as 32 and 62 frames into the sentence ("works",
+// "and it's free"): 1020 and 1050, against the storyboard's even-pacing targets 1019 and 1048.
 const PILL_WORDS = [0, 32, 62]
 
 function beatsFor(s: Record<Shot, number>, narration: Record<Sentence, Clip>): Beats {
@@ -148,7 +154,8 @@ function beatsFor(s: Record<Shot, number>, narration: Record<Sentence, Clip>): B
   const wordmark = markDone + 6
   return {
     splash: { logo: s["0"], ...SPLASH },
-    thinking: MOVES.filter((m) => m.player === "O").map((m) => m.at - THINK),
+    subline: { at: narration["2"].from, exit: MOVES[0].at + SUBLINE_LEAVES },
+    thinking: MOVES.filter((m) => m.player === "O").map((m) => ({ at: m.at - THINK, exit: m.at })),
     codeTiles: [...ROOM_CODE].map((_, i) => s["4a"] + 12 + 4 * i),
     phoneX: s["4b"] + 24,
     phoneO: s["4b"] + 40,
@@ -210,7 +217,7 @@ function placeNarration(m: Measured): Record<Sentence, Clip> {
     if (next)
       rule(clipEnd(narration[key]) <= SHOTS[next], `sentence ${key} must end before shot ${next}`)
   }
-  rule(clipEnd(narration["8"]) <= TOTAL_FRAMES, "the narration must end by frame 1320")
+  rule(clipEnd(narration["8"]) <= LAST_WORD, "sentence 8 may run at most 6 frames past 1277")
   return narration
 }
 

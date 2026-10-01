@@ -4,16 +4,16 @@ import { SPLASH } from "../brand"
 import { Logo } from "../components/Logo"
 import { Column, heading, text } from "../components/Shot"
 import { type Layout, SPLASH_OUT_SCALE, SPLASH_RISE, TYPE, zones } from "../layout"
-import { enter } from "../motion"
+import { RISE_SLOW, enter } from "../motion"
 import type { Beats } from "../timeline"
 import { EXIT } from "../tokens"
 
-const RISE_FRAMES = 13 // the app's 420 ms splash-rise
 const OUT_FRAMES = 11 // the app's 360 ms splash-out
 
-// The splash's own rise: 10 px up and in, on the app easing.
+// The splash's own rise (the app's 420 ms splash-rise): 10 px up and in, on the app easing. Not `rise`:
+// the splash moves 10 px, not SLIDE, and it never leaves on its own (the splash-out takes it).
 function splashRise(frame: number, at: number): CSSProperties {
-  const p = enter(frame, at, RISE_FRAMES)
+  const p = enter(frame, at, RISE_SLOW)
   return { opacity: p, transform: `translateY(${(1 - p) * SPLASH_RISE}px)` }
 }
 

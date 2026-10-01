@@ -11,6 +11,7 @@ const PULSE_FRAMES = 19 // the app's 620 ms tile-win
 const WIN_STAGGER = 3 // the app's 90 ms --win-delay per winning tile, in order
 const HIGHLIGHT_FRAMES = 5 // the app's 150 ms background transition
 const TILE_STAGGER = 3
+const TRAY_FADE = 11 // under the splash-out
 
 // Tray, gutter and tile sizes for a board of width `size` (gutter 2.5% of the width, as the app).
 export function boardGeometry(size: number) {
@@ -51,15 +52,17 @@ export function winTile(
   }
 }
 
-// The nine-tile board. Tiles pop in from `popAt` with a 3-frame stagger; marks draw at their frames; a win
-// lights and pulses its tiles, as the app does.
+// The nine-tile board. The tray fades in from `trayAt`, tiles pop in from `popAt` with a 3-frame stagger;
+// marks draw at their frames; a win lights and pulses its tiles, as the app does.
 export function Board({
   box,
+  trayAt,
   popAt,
   moves,
   win,
 }: {
   box: Box
+  trayAt: number
   popAt: number
   moves: Move[]
   win?: Win
@@ -77,6 +80,7 @@ export function Board({
         height: box.h,
         background: COLOR.tray,
         borderRadius: box.w * 0.06,
+        opacity: enter(frame, trayAt, TRAY_FADE),
       }}
     >
       {Array.from({ length: 9 }, (_, cell) => {
