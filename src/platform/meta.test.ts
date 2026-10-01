@@ -9,7 +9,7 @@ const meta = (attr: 'name' | 'property', key: string) => {
   return m?.[1]
 }
 
-const LIVE = 'https://tic-tac-toe.iam4bs.dev/'
+const LIVE = 'https://tictactoe.kayarandomized.com/'
 const DESCRIPTION =
   'Three in a row. Zero excuses. Play a friend online, on the same phone, or take on the bot.'
 
