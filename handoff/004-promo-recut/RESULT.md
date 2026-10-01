@@ -118,7 +118,7 @@ Where the build departed from the plan, the Rulings say so.
 - [x] The game's `npm test` passes 60 files and 692 tests (baseline on `origin/feat/promo-video` was 681; the root run includes the promo tests). `npm run build` passes. No new failures.
 - [x] No commit trailers. `git log origin/feat/promo-video..HEAD --format=%B | grep -ciE "co-authored-by|claude-session|generated with claude"` gives 0. The whole PR range from `origin/develop` also gives 0.
 - [x] PR #59 is open against `develop` (not a draft), and its body states that it supersedes #57.
-- [x] CI green on #59: **CI**.
+- [x] CI green on #59: `check` pass (1m10s), `e2e` pass (6m26s), Cloudflare Pages pass; `mergeStateStatus: CLEAN`.
   - At first the Actions run never started: the PR conflicted with `develop` (`mergeStateStatus: DIRTY`). The only conflict was `handoff/README.md`, which both sides added.
   - Mira ruled option (b): one `git merge origin/develop` (merge commit `588c232`), resolving only the index.
   - The merge touched no file under `promo/` or `docs/promo/`, so the renders stand.
