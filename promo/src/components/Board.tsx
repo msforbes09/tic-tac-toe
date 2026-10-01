@@ -1,4 +1,4 @@
-import { interpolate, useCurrentFrame } from "remotion"
+import { interpolate, interpolateColors, useCurrentFrame } from "remotion"
 import type { Box } from "../layout"
 import { enter, pop } from "../motion"
 import type { Move, WIN } from "../timeline"
@@ -7,8 +7,9 @@ import { Mark } from "./Mark"
 
 type Win = typeof WIN
 
-const STRIKE_FRAMES = 15
-const PULSE_FRAMES = 19
+const PULSE_FRAMES = 19 // the app's 620 ms tile-win
+const WIN_STAGGER = 3 // the app's 90 ms --win-delay per winning tile, in order
+const HIGHLIGHT_FRAMES = 5 // the app's 150 ms background transition
 const TILE_STAGGER = 3
 
 // Tray, gutter and tile sizes for a board of width `size` (gutter 2.5% of the width, as the app).
@@ -22,8 +23,36 @@ export function boardGeometry(size: number) {
   return { gap, tile, centre }
 }
 
+// A winning X tile as the app draws it (src/components/Cell.tsx): tinted --player-x-soft with a
+// --player-x ring at 60%, and the tile-win pulse; `order` staggers the tiles along the line.
+export function winTile(
+  frame: number,
+  at: number,
+  order: number,
+  tile: number,
+): { background: string; boxShadow: string; transform: string } {
+  const from = at + order * WIN_STAGGER
+  const lit = enter(frame, from, HIGHLIGHT_FRAMES)
+  const pulse = interpolate(
+    frame,
+    [from, from + PULSE_FRAMES * 0.4, from + PULSE_FRAMES],
+    [1, 1.055, 1],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  )
+  // The app's 2 px ring on a phone-sized tile, scaled to this tile.
+  const ring = Math.max(2, tile * 0.018)
+  return {
+    background: interpolateColors(lit, [0, 1], [COLOR.tile, COLOR.xSoft]),
+    boxShadow: `0 0 0 ${ring}px rgba(143, 168, 255, ${0.6 * lit})`, // --player-x at 60%
+    transform: `scale(${pulse})`,
+  }
+}
+
 // The nine-tile board. Tiles pop in from `popAt` with a 3-frame stagger; marks draw at their frames; a win
-// draws its strike line and pulses its tiles once.
+// lights and pulses its tiles, as the app does.
 export function Board({
   box,
   popAt,
@@ -36,19 +65,7 @@ export function Board({
   win?: Win
 }) {
   const frame = useCurrentFrame()
-  const { gap, tile, centre } = boardGeometry(box.w)
-  const pulse = (cell: number) =>
-    win?.cells.includes(cell)
-      ? interpolate(
-          frame,
-          [win.at, win.at + PULSE_FRAMES / 2, win.at + PULSE_FRAMES],
-          [1, 1.055, 1],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          },
-        )
-      : 1
+  const { tile, centre } = boardGeometry(box.w)
 
   return (
     <div
@@ -66,6 +83,8 @@ export function Board({
         const { x, y } = centre(cell)
         const move = moves.find((m) => m.cell === cell && frame >= m.at)
         const tilePop = pop(frame, popAt + cell * TILE_STAGGER)
+        const order = win ? win.cells.indexOf(cell) : -1
+        const winning = win && order >= 0 ? winTile(frame, win.at, order, tile) : undefined
         return (
           <div
             key={cell}
@@ -81,60 +100,14 @@ export function Board({
               alignItems: "center",
               justifyContent: "center",
               opacity: tilePop.opacity,
-              transform: `${tilePop.transform} scale(${pulse(cell)})`,
+              ...winning,
+              transform: `${tilePop.transform} ${winning?.transform ?? ""}`,
             }}
           >
             {move && <Mark player={move.player} at={move.at} size={tile} />}
           </div>
         )
       })}
-      {win && (
-        <Strike
-          from={centre(win.cells[0])}
-          to={centre(win.cells[2])}
-          at={win.at}
-          width={gap * 1.6}
-          size={box.w}
-        />
-      )}
     </div>
-  )
-}
-
-function Strike({
-  from,
-  to,
-  at,
-  width,
-  size,
-}: {
-  from: { x: number; y: number }
-  to: { x: number; y: number }
-  at: number
-  width: number
-  size: number
-}) {
-  const frame = useCurrentFrame()
-  // Run the line a little past the outer tiles' centres, as the app's strike does.
-  const reach = 0.18
-  const x1 = from.x - (to.x - from.x) * reach
-  const y1 = from.y - (to.y - from.y) * reach
-  const x2 = to.x + (to.x - from.x) * reach
-  const y2 = to.y + (to.y - from.y) * reach
-  return (
-    <svg width={size} height={size} style={{ position: "absolute", left: 0, top: 0 }}>
-      <line
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke={COLOR.x}
-        strokeWidth={width}
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={1 - enter(frame, at, STRIKE_FRAMES)}
-      />
-    </svg>
   )
 }

@@ -112,7 +112,7 @@ export type Beats = {
   chips: number // 5: the first chip; the rest follow one frame apart, platinum last
   platinum: number
   pills: number[] // 6: one per claim, on its words
-  strike: number // 7: the strike through the three Xs
+  rowWin: number // 7: the three Xs light up as a win
   logo: number // 8: the logo starts drawing (O, then each X arm)
   logoDone: number // 8: its X is complete
 }
@@ -128,7 +128,7 @@ function beatsFor(s: Record<Shot, number>): Beats {
     chips,
     platinum: chips + CHIP_COUNT - 1,
     pills: [3, 36, 66].map((offset) => s["6"] + offset),
-    strike: s["7"] + 24,
+    rowWin: s["7"] + 24,
     logo,
     logoDone: logo + DRAW.o + 2 * DRAW.arm,
   }
@@ -150,7 +150,7 @@ export function soundCues(t: Timeline): { at: number; cue: CueName }[] {
     ...(["move-o", "step-587", "move-x"] as const).map((cue, i) => ({ at: b.botSteps[i], cue })),
     { at: b.platinum, cue: "achievement" as const },
     ...b.pills.map((at) => ({ at, cue: "move-x" as const })),
-    { at: b.strike, cue: "win" as const },
+    { at: b.rowWin, cue: "win" as const },
     { at: b.logoDone, cue: "start" as const },
   ].sort((a, b) => a.at - b.at)
 }

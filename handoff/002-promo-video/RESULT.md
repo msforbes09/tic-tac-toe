@@ -272,6 +272,13 @@ Review rounds (skeptic and code-reviewer subagents, two fix loops, the handoff's
 - Not taken: Html5Audio adopted (deprecated `Audio`); ffmpeg is now invoked one way (`node_modules/.bin/remotion`);
   the remaining nits (repeated clamp options, restating-constant tests in `layout.test.ts`, POSIX quoting in
   the render scripts, CI not running `promo` typecheck) are left as they are — small, and CI is out of scope.
+- Ruling (owner, via Mira, accepted): the win looks like the game, not a strike line. Shots 3 and 7 drop
+  the strike line; the winning X tiles take the app's own win style from `src/components/Cell.tsx`
+  (`bg-player-x-soft`, `#202d49` = oklch(0.3 0.055 264), with `ring-2 ring-player-x/60`: a 2 px ring at 60%,
+  scaled with the tile), fading in over the app's 150 ms, with the `tile-win` pulse (620 ms, 1.055) staggered
+  90 ms per tile along the line. Confetti kept. One `winTile` style serves both shots; the beat is renamed
+  `rowWin` — cost if wrong: none. Previewed at frames 238 (shot 3) and 790 (shot 7) in both formats; the
+  committed stills still show the strike line until the final render (open question 4).
 - Ruling (owner, via Mira): shot 8 should gain a muted line `tictactoe.kayarandomized.com` under the wordmark.
   **Not done**: my edit was refused by this session's permission checks, because the handoff (section 3 and
   done-when) says no domain anywhere in the renders and the change reached me from a session message rather

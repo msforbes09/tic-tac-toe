@@ -11,6 +11,7 @@ export const COLOR = {
   muted: "#a1a1a1",
   x: "#8fa8ff",
   o: "#ff9f7a",
+  xSoft: "#202d49", // --player-x-soft, oklch(0.3 0.055 264)
 }
 
 export const FONT = {
