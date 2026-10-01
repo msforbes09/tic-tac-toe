@@ -1,15 +1,16 @@
 # Result: 004 Promo re-cut
 
 **Renders (open these):**
+
 - `/Volumes/Developer/Projects/Mira/projects/tic-tac-toe/.claude/worktrees/promo-recut/promo/out/reel.mp4` (1080×1920)
 - `/Volumes/Developer/Projects/Mira/projects/tic-tac-toe/.claude/worktrees/promo-recut/promo/out/square.mp4` (1080×1080)
 
 (`promo/out/` is git-ignored and lives in this worktree; if the worktree is gone, `npm --prefix promo run render`
 on the branch rebuilds both.)
 
-**Status:** done
+**Status:** partial (everything done except CI, blocked on a one-file merge conflict, see Done-when)
 **Date:** 2026-10-01
-**Branch / PR:** `feat/promo-recut` → `develop`, PR __PR__ (supersedes #57)
+**Branch / PR:** `feat/promo-recut` → `develop`, PR #59 (supersedes #57)
 **Preview or run link:** none (video; the files above)
 
 ## Plan
@@ -46,7 +47,7 @@ changes first with storyboard-v2's literal frames typed in, it fails for the rig
    the splash-out's 1.03 scale about the canvas centre. New type rows (splash slogan 48/36, footer 32/28)
    join the ≥ 28 px test.
 5. **Brand (`brand.ts`, `brand.test.ts`).** Splash strings `Tic-Tac-Toe`, `Three in a row. Zero
-   excuses.`, `© 2026 Kaya Randomized` in one place, pinned by a test (including "no version").
+excuses.`, `© 2026 Kaya Randomized` in one place, pinned by a test (including "no version").
 6. **Components / shots (no unit tests, per the handoff; checked by stills).** New `Shot0Splash`
    (reuses `Logo`, `heading` / `text`, `Column`; own splash-out 97-108, opacity → 0, scale 1.03, exit
    easing). `Logo` takes the app's draw timing. A `breathe` helper moves into `motion.ts`, shared by
@@ -79,6 +80,7 @@ Where the build departed from the plan, the Rulings say so.
 ## Summary
 
 `promo/` now renders the revision 2 film with amendment 1: 1320 frames, 44.00 s, both formats.
+
 - **Shot 0 (new).** The game's splash opens the film. The O then the X draw at the app's own timing (O 14 frames, X from 16, arms 8), and the title and slogan rise at 30 / 34. The footer reads `© 2026 Kaya Randomized` with no version. It is held to 97, then leaves with the app's splash-out (fade, scale 1.03). The board's tray fades in underneath.
 - **Shots 1-3.** No title on the board. The sub-line runs 117-168. The bot "thinks" (the O badge pops, breathes once and leaves as the O draws) before each O. The moves are at 162 / 212 / 348 / 400 / 432, so none is under 1.0 s apart. The win at 448 is held 32 frames. `Lucky square.` plays at 480, and the toast holds 547-621.
 - **Shots 4a-7.** Every beat is moved to the v2 frames, with the added holds.
@@ -115,31 +117,38 @@ Where the build departed from the plan, the Rulings say so.
   ```
 - [x] The game's `npm test` passes 60 files and 692 tests (baseline on `origin/feat/promo-video` was 681; the root run includes the promo tests). `npm run build` passes. No new failures.
 - [x] No commit trailers. `git log origin/feat/promo-video..HEAD --format=%B | grep -ciE "co-authored-by|claude-session|generated with claude"` gives 0. The whole PR range from `origin/develop` also gives 0.
-- [x] The PR is open against `develop`, with CI and body as noted in the PR line at the top.
+- [x] PR #59 is open against `develop` (not a draft), and its body states that it supersedes #57.
+- [ ] **CI green: blocked.** Cloudflare Pages passes. GitHub Actions `CI` never started because the PR
+      conflicts with `develop` (`mergeStateStatus: DIRTY`). The only conflict is `handoff/README.md`, which
+      both sides added (develop has rows 001 and 003 from handoffs 001 and 003; this branch has 002 and 004).
+      `git merge-tree --write-tree --name-only origin/develop HEAD` gives `CONFLICT (add/add): Merge conflict
+in handoff/README.md`. Attempt 1: I set this branch's copy to develop's text plus the 002 and 004 rows.
+      git still reports add/add, since an added file only merges cleanly when both copies are identical. The
+      handoff forbids merging or rebasing `develop` here, so I stopped (attempt budget) and asked Mira.
 - [x] RESULT.md is filled in, with the mp4 paths at the top.
 
 ### The 16 checks (storyboard-v2 section 8, 13 and 14 as amended)
 
 Stills are in `handoff/004-promo-recut/stills/`, named `{reel,square}-<check>-<name>-f<frame>.png` at half size.
 
-| # | Check | Evidence |
-|---|---|---|
-| 1 | Both renders, 1320 frames, 44.00 s, 30 fps, audio | ffprobe above |
-| 2 | Splash: bare background, O then X (done by 1.1 s), title, slogan, footer with no version, slogan ≥ 1.5 s, tones, "Tic-tac-toe." at the title, poster near 90 | `*-02-splash-first-frame-f0`, `-o-drawing-f8`, `-x-done-f33`, `-poster-f90`, `-out-f102`. The X is done at 32 (1.07 s). The slogan is fully in at 47 and holds to 97 (1.67 s). The cues are at 0 / 16 / 30 and the sentence at 36 (timeline test) |
-| 3 | Plain board from 3.6 s, no title; the sub-line with the voice; X centre at 5.4 s | `*-03-board-no-title-subline-f140`, `*-03-first-x-f170`. The X starts at 162 |
-| 4 | O badge breathes before the first O; O top-left at 7.1 s; no move < 1.0 s after the previous | `*-04-thinking-badge-f194`, `*-04-first-o-f224`. The test "never starts a move less than 1.0 s after the previous one" covers the spacing |
-| 5 | `I do this all day.` ≥ 1.7 s with the bot voice, after "Now it talks back." | `*-05-bubble-i-do-this-all-day-f293`. The bubble shows 273-336 (2.1 s). The sentence ends at 264, 9 frames of air |
-| 6 | Diagonal at 14.9 s, tiles tint and pulse, one confetti burst, no strike line, tiles held | `*-06-diagonal-win-tiles-confetti-f455`. The tiles are still tinted at f500 and f577 |
-| 7 | `Lucky square.` at 16.0 s, ≥ 0.5 s after the jingle, tiles visible | `*-07-lucky-square-over-tiles-f500`. The bot starts at 480, 19 frames after the jingle ends (test) |
-| 8 | Toast at 18.2 s with the chime, legible ≥ 2.0 s | `*-08-toast-f577`. Fully on 555-621 (2.2 s); the chime is at 547 |
-| 9 | Online `XOXO`, One phone, The bot (Easy/Medium/Hard), last state ≥ 0.8 s | `*-09-online-xoxo-f701`, `*-09-one-phone-f773`, `*-09-the-bot-hard-f878`. Hard holds 861-888 (0.9 s) |
-| 10 | `41`, the wall in four tier colours, held ≥ 1.0 s | `*-10-forty-one-wall-f974`. The wall is complete at 954 and holds to 984 |
-| 11 | Three pills in order, together ≥ 1.2 s | `*-11-pills-f1088`. All three are on from 1060 to 1098 (1.27 s) |
-| 12 | Slogan over three tinting X tiles, no strike line, both lines ≥ 1.5 s | `*-12-slogan-f1184`. Both lines are on from 1140 to 1194 (1.8 s) |
-| 13 (amended) | Ends on the Kaya mark (stem, arm, leg, about 39.9-40.8 s) with the wordmark and URL. No X/O logo. All three together ≥ 2.0 s, mark ≥ 3.0 s. Colours `#8fa8ff` / `#ff9f7a`, no glow or backing. Last words "From Kaya Randomized."; last frame not black | `*-13-kaya-mark-drawing-f1208`, `*-13-kaya-mark-done-f1224`, `*-13-last-frame-f1319`. The lockup holds 1254-1320 (2.2 s) and the mark 1224-1320 (3.2 s). Colours are pinned in `brand.test.ts`. Sentence 8 runs 1232-1278 |
-| 14 (amended) | 9:16 safe area, including the splash and its footer; text ≥ 28 px; no owner name, real code, version or strike line, and no other URL; the shot 8 stack inside y 250-1520 | `layout.test.ts` checks every essential layer through its motion in both formats. That includes the splash under its 1.03 scale-out (reel top 292, footer bottom 1505) and the Kaya mark, wordmark and URL with slide and settle. It also enforces "no text under 28 px". I looked at reel f90 (splash and footer), f194, f500, f974 and f1319: nothing essential sits above 250 or below 1520 |
-| 15 | Bot lines in their own voice at about 9.1 s and 16.0 s, with bubbles; no overlap with the narrator or a game sound; ≥ 6 frames of air | Timeline tests: "starts no game sound while the bot speaks"; the air rule throws under 6 frames. Window loudness in the final reel: narrator "Now it talks back." -13.76 LUFS; bot-01 -12.97; bot-02 -12.43 (see Deferred minors) |
-| 16 | Music covers the film, fades in, fades out over the last 1.5 s, no seam | One 101 s track from 0:00 with no loop. Fade in over 15 frames, fade out 1275-1320 (`mix.test.ts`). Bed alone mid shot 3: -16.41 LUFS. Tail after the last word: -20.09 LUFS |
+| #            | Check                                                                                                                                                                                                                                                   | Evidence                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1            | Both renders, 1320 frames, 44.00 s, 30 fps, audio                                                                                                                                                                                                       | ffprobe above                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2            | Splash: bare background, O then X (done by 1.1 s), title, slogan, footer with no version, slogan ≥ 1.5 s, tones, "Tic-tac-toe." at the title, poster near 90                                                                                            | `*-02-splash-first-frame-f0`, `-o-drawing-f8`, `-x-done-f33`, `-poster-f90`, `-out-f102`. The X is done at 32 (1.07 s). The slogan is fully in at 47 and holds to 97 (1.67 s). The cues are at 0 / 16 / 30 and the sentence at 36 (timeline test)                                                                                                                                              |
+| 3            | Plain board from 3.6 s, no title; the sub-line with the voice; X centre at 5.4 s                                                                                                                                                                        | `*-03-board-no-title-subline-f140`, `*-03-first-x-f170`. The X starts at 162                                                                                                                                                                                                                                                                                                                   |
+| 4            | O badge breathes before the first O; O top-left at 7.1 s; no move < 1.0 s after the previous                                                                                                                                                            | `*-04-thinking-badge-f194`, `*-04-first-o-f224`. The test "never starts a move less than 1.0 s after the previous one" covers the spacing                                                                                                                                                                                                                                                      |
+| 5            | `I do this all day.` ≥ 1.7 s with the bot voice, after "Now it talks back."                                                                                                                                                                             | `*-05-bubble-i-do-this-all-day-f293`. The bubble shows 273-336 (2.1 s). The sentence ends at 264, 9 frames of air                                                                                                                                                                                                                                                                              |
+| 6            | Diagonal at 14.9 s, tiles tint and pulse, one confetti burst, no strike line, tiles held                                                                                                                                                                | `*-06-diagonal-win-tiles-confetti-f455`. The tiles are still tinted at f500 and f577                                                                                                                                                                                                                                                                                                           |
+| 7            | `Lucky square.` at 16.0 s, ≥ 0.5 s after the jingle, tiles visible                                                                                                                                                                                      | `*-07-lucky-square-over-tiles-f500`. The bot starts at 480, 19 frames after the jingle ends (test)                                                                                                                                                                                                                                                                                             |
+| 8            | Toast at 18.2 s with the chime, legible ≥ 2.0 s                                                                                                                                                                                                         | `*-08-toast-f577`. Fully on 555-621 (2.2 s); the chime is at 547                                                                                                                                                                                                                                                                                                                               |
+| 9            | Online `XOXO`, One phone, The bot (Easy/Medium/Hard), last state ≥ 0.8 s                                                                                                                                                                                | `*-09-online-xoxo-f701`, `*-09-one-phone-f773`, `*-09-the-bot-hard-f878`. Hard holds 861-888 (0.9 s)                                                                                                                                                                                                                                                                                           |
+| 10           | `41`, the wall in four tier colours, held ≥ 1.0 s                                                                                                                                                                                                       | `*-10-forty-one-wall-f974`. The wall is complete at 954 and holds to 984                                                                                                                                                                                                                                                                                                                       |
+| 11           | Three pills in order, together ≥ 1.2 s                                                                                                                                                                                                                  | `*-11-pills-f1088`. All three are on from 1060 to 1098 (1.27 s)                                                                                                                                                                                                                                                                                                                                |
+| 12           | Slogan over three tinting X tiles, no strike line, both lines ≥ 1.5 s                                                                                                                                                                                   | `*-12-slogan-f1184`. Both lines are on from 1140 to 1194 (1.8 s)                                                                                                                                                                                                                                                                                                                               |
+| 13 (amended) | Ends on the Kaya mark (stem, arm, leg, about 39.9-40.8 s) with the wordmark and URL. No X/O logo. All three together ≥ 2.0 s, mark ≥ 3.0 s. Colours `#8fa8ff` / `#ff9f7a`, no glow or backing. Last words "From Kaya Randomized."; last frame not black | `*-13-kaya-mark-drawing-f1208`, `*-13-kaya-mark-done-f1224`, `*-13-last-frame-f1319`. The lockup holds 1254-1320 (2.2 s) and the mark 1224-1320 (3.2 s). Colours are pinned in `brand.test.ts`. Sentence 8 runs 1232-1278                                                                                                                                                                      |
+| 14 (amended) | 9:16 safe area, including the splash and its footer; text ≥ 28 px; no owner name, real code, version or strike line, and no other URL; the shot 8 stack inside y 250-1520                                                                               | `layout.test.ts` checks every essential layer through its motion in both formats. That includes the splash under its 1.03 scale-out (reel top 292, footer bottom 1505) and the Kaya mark, wordmark and URL with slide and settle. It also enforces "no text under 28 px". I looked at reel f90 (splash and footer), f194, f500, f974 and f1319: nothing essential sits above 250 or below 1520 |
+| 15           | Bot lines in their own voice at about 9.1 s and 16.0 s, with bubbles; no overlap with the narrator or a game sound; ≥ 6 frames of air                                                                                                                   | Timeline tests: "starts no game sound while the bot speaks"; the air rule throws under 6 frames. Window loudness in the final reel: narrator "Now it talks back." -13.76 LUFS; bot-01 -12.97; bot-02 -12.43 (see Deferred minors)                                                                                                                                                              |
+| 16           | Music covers the film, fades in, fades out over the last 1.5 s, no seam                                                                                                                                                                                 | One 101 s track from 0:00 with no loop. Fade in over 15 frames, fade out 1275-1320 (`mix.test.ts`). Bed alone mid shot 3: -16.41 LUFS. Tail after the last word: -20.09 LUFS                                                                                                                                                                                                                   |
 
 ## How to run
 
@@ -228,6 +237,13 @@ None. The handoff's "no Co-Authored-By" matches the user's global rule. TDD was 
   - code-review: 1 high (same tray snap, fixed), 4 medium (thinking exits and sub-line as tested beats, fixed; `TOAST_EXIT` from `SHOTS`, fixed; shared `RISE_SLOW`, fixed), lows fixed (renames `MARK_SETTLE` / `zones.subline`, `BOT2_AT` unexported, stills frames from beats, comments). Its note on `splashRise` re-implementing `rise` is answered with a comment: the splash moves 10 px, not 12.
 
 ## Open questions for Mira / Arnel
+
+0. **Blocker: the `handoff/README.md` add/add conflict with `develop`.** It stops CI from running on #59. Options:
+   - (a) This branch's `handoff/README.md` becomes byte-identical to develop's. The 002 / 004 rows go in after the merge, by Mira or a follow-up.
+   - (b) Allow one `git merge origin/develop` into `feat/promo-recut` to resolve the index by hand.
+   - (c) Mira resolves it at merge time.
+
+   My recommendation: (a). It is one file and touches nothing else.
 
 1. **Splash notes.** Should the two splash notes match the app's 0.14 s length? That needs one generated tone file. The default is to keep the existing 0.07 s files.
 2. **Bot level.** Is the bot about 1 LU louder than the narrator in its windows acceptable? The mix is unchanged by rule.
