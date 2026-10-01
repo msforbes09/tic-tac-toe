@@ -2,7 +2,7 @@
 
 **Status:** partial (built, reviewed, two fix rounds done and tested; the final re-render after round 2 and the shot-8 URL line were blocked by the session's permission checks, see open questions 4 and 5)
 **Date:** 2026-10-01
-**Branch / PR:** `feat/promo-video` (from `develop` @ 2f1bbe1) / PR not yet open
+**Branch / PR:** `feat/promo-video` (from `develop` @ 2f1bbe1) / draft PR #57 to `develop`: https://github.com/msforbes09/tic-tac-toe/pull/57
 **Preview or run link:** the two renders, for Arnel to open:
 `/Volumes/Developer/Projects/Mira/projects/tic-tac-toe/.claude/worktrees/promo-video/promo/out/reel.mp4` and
 `/Volumes/Developer/Projects/Mira/projects/tic-tac-toe/.claude/worktrees/promo-video/promo/out/square.mp4`
@@ -99,7 +99,7 @@ Handoff section 8:
       monotone is the voice Arnel chose; **I cannot judge timbre by ear: please listen** (open question 1).
 - [x] No owner name, handle or domain in renders, stills, file names or mp4 metadata (tags quoted below).
 - [x] Game `npm test` (52 files, 606 tests, run without the promo tests) and `npm run build` green.
-- [ ] PR open against `develop`, CI green.
+- [x] Draft PR #57 open against `develop` (base confirmed); CI result: see the PR.
 - [x] RESULT.md filled in, trial report included.
 - [x] The two mp4 paths are at the top of this file.
 
