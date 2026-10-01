@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tic-tac-toe.iam4bs.dev/sitemap.xml
+Sitemap: https://tictactoe.kayarandomized.com/sitemap.xml

@@ -2,7 +2,7 @@
 // room links and bookmarks always carry one address. Preview deployments
 // (<hash>.tic-tac-toe-acl.pages.dev) and the real domain pass straight through to the static files.
 const PAGES_HOST = 'tic-tac-toe-acl.pages.dev'
-const CANONICAL_ORIGIN = 'https://tic-tac-toe.iam4bs.dev'
+const CANONICAL_ORIGIN = 'https://tictactoe.kayarandomized.com'
 
 export function onRequest({ request, next }) {
   const url = new URL(request.url)
