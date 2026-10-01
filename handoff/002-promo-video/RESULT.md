@@ -1,6 +1,6 @@
 # Result: 002 Promo video
 
-**Status:** partial (built, reviewed, two fix rounds done and tested; the final re-render after round 2 and the shot-8 URL line were blocked by the session's permission checks, see open questions 4 and 5)
+**Status:** done (PR #57 left as a draft at Mira's request; a longer re-cut follows as handoff 004 on this branch)
 **Date:** 2026-10-01
 **Branch / PR:** `feat/promo-video` (from `develop` @ 2f1bbe1) / draft PR #57 to `develop`: https://github.com/msforbes09/tic-tac-toe/pull/57
 **Preview or run link:** the two renders, for Arnel to open:
@@ -76,8 +76,8 @@ soundtrack both read it, so picture and sound cannot drift apart. `render` rende
 masters it (two-pass loudnorm with Remotion's bundled ffmpeg, -14 LUFS / -1.5 dBTP target, cut to exactly
 30.00 s, container metadata dropped).
 
-Measured renders: both files 900 frames, 30 fps, 30.000 s video, audio and container; H.264 High + AAC LC
-48 kHz stereo; **-14.50 LUFS integrated, -1.28 dBTP true peak**.
+Measured final renders: both files 900 frames, 30 fps, 30.000 s video, audio and container; H.264 High +
+AAC LC 48 kHz stereo; **-14.47 LUFS integrated, -1.20 dBTP true peak** (the master checks both limits).
 
 The take came in faster than the storyboard's targets (narrator 17.6 s of speech against 20.5 s), so every
 sentence lands on its target frame and every shot starts exactly on the storyboard's frame table
@@ -88,60 +88,65 @@ sentence lands on its target frame and every shot starts exactly on the storyboa
 
 Handoff section 8:
 
-- [x] `npm --prefix promo ci`, `run typecheck`, `test`: green (7 files, 55 tests).
+- [x] `npm --prefix promo ci`, `run typecheck`, `test`: green (8 files, 75 tests).
 - [x] `narration.mp3`, `bot-01.mp3`, `bot-02.mp3`, `music-dim-light.mp3`, `CREDITS.md`, `durations.json`,
       `tones/*.wav` committed. `git grep -n ELEVENLABS` shows only variable names (HANDOFF.md, `promo/README.md`,
       `promo/scripts/voice.ts`); no key, no voice id in any file.
 - [x] `promo/out/reel.mp4` and `promo/out/square.mp4` exist; ffprobe below.
 - [x] Every storyboard section-8 check, with its still or measurement (table below).
-- [x] Loudness measured (-14.50 LUFS integrated, -1.28 dBTP). Bot lines measured audible at their bubbles
+- [x] Loudness measured (-14.47 LUFS integrated, -1.20 dBTP). Bot lines measured audible at their bubbles
       (-15.1 and -14.0 LUFS in their windows, level with the narrator). That the voice reads as male and
       monotone is the voice Arnel chose; **I cannot judge timbre by ear: please listen** (open question 1).
-- [x] No owner name, handle or domain in renders, stills, file names or mp4 metadata (tags quoted below).
-- [x] Game `npm test` (52 files, 606 tests, run without the promo tests) and `npm run build` green.
-- [x] Draft PR #57 open against `develop` (base confirmed); CI result: see the PR.
+- [x] No owner name or handle, and no URL other than `tictactoe.kayarandomized.com` in shot 8 (owner ruling;
+      the done-when item as revised), in renders, stills, file names or mp4 metadata (tags quoted below).
+- [x] Game `npm test` green (52 files / 606 tests alone; 60 / 681 with the promo tests the root run picks up)
+      and `npm run build` green.
+- [x] PR #57 open against `develop` (base confirmed), left as a draft at Mira's request; CI result: see the PR.
 - [x] RESULT.md filled in, trial report included.
 - [x] The two mp4 paths are at the top of this file.
 
-ffprobe (`npx remotion ffprobe -count_frames …`), reel then square:
+ffprobe (`npx remotion ffprobe -count_frames …`) of the final renders, reel then square:
 
 ```
-stream|index=0|codec_name=h264|profile=100|codec_type=video|width=1080|height=1920|r_frame_rate=30/1|duration=30.000000|nb_read_frames=900|tag:language=und|tag:handler_name=VideoHandler|tag:vendor_id=[0][0][0][0]|
-stream|index=1|codec_name=aac|profile=1|codec_type=audio|sample_rate=48000|channels=2|r_frame_rate=0/0|duration=30.000000|nb_read_frames=1403|tag:language=und|tag:handler_name=SoundHandler|tag:vendor_id=[0][0][0][0]
-format|duration=30.000000|size=3668598|tag:major_brand=isom|tag:minor_version=512|tag:compatible_brands=isomiso2avc1mp41|tag:encoder=Lavf61.7.100
-stream|index=0|codec_name=h264|profile=100|codec_type=video|width=1080|height=1080|r_frame_rate=30/1|duration=30.000000|nb_read_frames=900|tag:language=und|tag:handler_name=VideoHandler|tag:vendor_id=[0][0][0][0]|
-stream|index=1|codec_name=aac|profile=1|codec_type=audio|sample_rate=48000|channels=2|r_frame_rate=0/0|duration=30.000000|nb_read_frames=1403|tag:language=und|tag:handler_name=SoundHandler|tag:vendor_id=[0][0][0][0]
-format|duration=30.000000|size=2720333|tag:major_brand=isom|tag:minor_version=512|tag:compatible_brands=isomiso2avc1mp41|tag:encoder=Lavf61.7.100
+stream|index=0|codec_name=h264|profile=100|codec_type=video|width=1080|height=1920|r_frame_rate=30/1|duration=30.000000|nb_read_frames=900|
+stream|index=1|codec_name=aac|profile=1|codec_type=audio|sample_rate=48000|channels=2|r_frame_rate=0/0|duration=30.000000|nb_read_frames=1403
+format|duration=30.000000|size=3717286|tag:major_brand=isom|tag:minor_version=512|tag:compatible_brands=isomiso2avc1mp41|tag:encoder=Lavf61.7.100
+stream|index=0|codec_name=h264|profile=100|codec_type=video|width=1080|height=1080|r_frame_rate=30/1|duration=30.000000|nb_read_frames=900|
+stream|index=1|codec_name=aac|profile=1|codec_type=audio|sample_rate=48000|channels=2|r_frame_rate=0/0|duration=30.000000|nb_read_frames=1403
+format|duration=30.000000|size=2784607|tag:major_brand=isom|tag:minor_version=512|tag:compatible_brands=isomiso2avc1mp41|tag:encoder=Lavf61.7.100
 ```
+
+Master step output: `out/reel.mp4: -14.47 LUFS integrated, -1.20 dBTP true peak (mix was -29.74 LUFS; dynamic
+normalisation)`, the same for `out/square.mp4`.
 
 The master drops Remotion's "Made with Remotion" comment along with all other container metadata; what is
 left is the muxer's own `encoder=Lavf61.7.100` and the standard handler names.
 
 Storyboard section 8 (stills in `handoff/002-promo-video/stills/`, half size, `reel-*` and `square-*` of each):
 
-| # | Check | Evidence |
-| --- | --- | --- |
-| 1 | Both renders, sizes, 30 fps, 900 frames, 30.00 s, audio | ffprobe above |
-| 2 | Plain empty board, then X in the centre; first frame not black, not a title card | `*-02-first-frame-f0.png` (tray and glows; tiles pop from frame 6 as specified), `*-02-empty-board-title-f50.png`, `*-02-first-x-f84.png` |
-| 3 | Bubble reads `I do this all day.`, bot's O on the board | `*-03-bubble-i-do-this-all-day-f167.png` (bubble pops at 5.17 s, see Rulings) |
-| 4 | X takes 2-4-6, strike line, one X/O confetti burst | `*-04-diagonal-strike-confetti-f238.png` |
-| 5 | Toast `ACHIEVEMENT UNLOCKED` / `Beat the Machine` / `Beat the bot for the first time`, chime with it | `*-05-toast-f302.png`; chime cue on the toast's frame (288), `soundCues` test |
-| 6 | Online with `XOXO`, One phone, The bot with `Easy` `Medium` `Hard`, in order | `*-06-online-xoxo-f394.png`, `*-06-one-phone-f455.png`, `*-06-the-bot-f544.png` |
-| 7 | `41`, `achievements to unlock`, chip wall in four tier colours | `*-07-forty-one-f609.png` |
-| 8 | Pills `Installs as an app`, `Works offline`, `Free` in order | `*-08-pills-f714.png` |
-| 9 | Slogan two lines; ends on the logo with `Kaya Randomized`, held ≥ 2.0 s; last words "From Kaya Randomized." | `*-09-slogan-f790.png`, `*-09-logo-last-frame-f899.png`; shot 8 runs 804–900 (3.2 s); sentence 8 plays 808–854 |
-| 10 | Safe area and ≥ 28 px text in the 9:16 | `layout.test.ts` (programmatic, below) plus the manual look at five reel stills (f167, f302, f394, f609, f899): nothing essential above y 250 or below y 1520 |
-| 11 | Bot lines audible at their bubbles, different voice, no overlap with narrator or game sound, ≥ 6 frames air | timeline tests ("ends bot-01 … at least 6 frames after", "starts no game sound while the bot speaks"); window loudness below; voice timbre: open question 1 |
+| #   | Check                                                                                                          | Evidence                                                                                                                                                                                                              |
+| --- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Both renders, sizes, 30 fps, 900 frames, 30.00 s, audio                                                        | ffprobe above                                                                                                                                                                                                         |
+| 2   | Plain empty board, then X in the centre; first frame not black, not a title card                               | `*-02-first-frame-f0.png` (tray and glows; tiles pop from frame 6 as specified), `*-02-empty-board-title-f50.png`, `*-02-first-x-f84.png`                                                                             |
+| 3   | Bubble reads `I do this all day.`, bot's O on the board                                                        | `*-03-bubble-i-do-this-all-day-f167.png` (bubble pops at 5.17 s, see Rulings)                                                                                                                                         |
+| 4   | X takes 2-4-6, the winning tiles light up as in the app (owner ruling: no strike line), one X/O confetti burst | `*-04-diagonal-win-highlight-confetti-f238.png`                                                                                                                                                                       |
+| 5   | Toast `ACHIEVEMENT UNLOCKED` / `Beat the Machine` / `Beat the bot for the first time`, chime with it           | `*-05-toast-f302.png`; chime cue on the toast's frame (288), `soundCues` test                                                                                                                                         |
+| 6   | Online with `XOXO`, One phone, The bot with `Easy` `Medium` `Hard`, in order                                   | `*-06-online-xoxo-f394.png`, `*-06-one-phone-f455.png`, `*-06-the-bot-f544.png`                                                                                                                                       |
+| 7   | `41`, `achievements to unlock`, chip wall in four tier colours                                                 | `*-07-forty-one-f609.png`                                                                                                                                                                                             |
+| 8   | Pills `Installs as an app`, `Works offline`, `Free` in order                                                   | `*-08-pills-f714.png`                                                                                                                                                                                                 |
+| 9   | Slogan two lines; ends on the logo with `Kaya Randomized`, held ≥ 2.0 s; last words "From Kaya Randomized."    | `*-09-slogan-f790.png` (three highlighted X tiles), `*-09-logo-last-frame-f899.png` (logo, wordmark and the `tictactoe.kayarandomized.com` line); shot 8 runs 804–900 (3.2 s); sentence 8 plays 808–854               |
+| 10  | Safe area and ≥ 28 px text in the 9:16                                                                         | `layout.test.ts` (programmatic, below) plus the manual look at five reel stills (f167, f302, f394, f609, f899): nothing essential above y 250 or below y 1520; the only URL is the shot-8 address line (owner ruling) |
+| 11  | Bot lines audible at their bubbles, different voice, no overlap with narrator or game sound, ≥ 6 frames air    | timeline tests ("ends bot-01 … at least 6 frames after", "starts no game sound while the bot speaks"); window loudness below; voice timbre: open question 1                                                           |
 
 Window loudness in the final reel (`loudnorm` measurement over each window):
 
 ```
 narrator "Now it talks back." 3.90-4.90 s   -14.34 LUFS
-bot-01 "I do this all day."   5.17-6.80 s   -15.12 LUFS
-bot-02 "Lucky square."        8.00-9.53 s   -13.99 LUFS
-narrator 4a                  11.00-12.90 s  -11.51 LUFS
-music + move tones           6.80-7.40 s    -21.90 LUFS
-music tail (fading)          29.0-29.5 s    -27.04 LUFS
+bot-01 "I do this all day."   5.17-6.80 s   -15.06 LUFS
+bot-02 "Lucky square."        8.00-9.53 s   -13.95 LUFS
+narrator 4a                  11.00-12.90 s  -11.48 LUFS
+music + move tones           6.80-7.40 s    -21.63 LUFS
+music tail (fading)          29.0-29.5 s    -27.09 LUFS
 ```
 
 ## How to run
@@ -151,8 +156,8 @@ See `promo/README.md`. In short, from the repo root:
 ```sh
 npm --prefix promo ci
 npm --prefix promo test && npm --prefix promo run typecheck
-REMOTION_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm --prefix promo run render
-REMOTION_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm --prefix promo run stills
+npm --prefix promo run render
+npm --prefix promo run stills
 ```
 
 Variables the voice script needs (names only): `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_NARRATOR`,
@@ -211,7 +216,7 @@ Variables the voice script needs (names only): `ELEVENLABS_API_KEY`, `ELEVENLABS
   needed (durations come from ffprobe and the API's own timings) — cost if wrong: two lines in package.json.
 - Ruling: dependency clash check. `promo/` has its own `package.json` and lockfile; nothing is added to the
   game's. `remotion` and every `@remotion/*` 4.0.531 declare `react` / `react-dom` peer `>=16.8.0`; `npm ls
-  react react-dom` in `promo/` resolves one copy of each at 19.3.0, deduped across all Remotion packages.
+react react-dom` in `promo/` resolves one copy of each at 19.3.0, deduped across all Remotion packages.
   Fonts, Vitest, TypeScript and `@types/*` are pinned to the exact versions the game's lockfile resolves
   (fontsource 5.3.0, vitest 4.1.11, typescript 5.9.3, @types/react 19.3.0, @types/node 26.6.2) — cost if
   wrong: none found.
@@ -277,12 +282,19 @@ Review rounds (skeptic and code-reviewer subagents, two fix loops, the handoff's
   (`bg-player-x-soft`, `#202d49` = oklch(0.3 0.055 264), with `ring-2 ring-player-x/60`: a 2 px ring at 60%,
   scaled with the tile), fading in over the app's 150 ms, with the `tile-win` pulse (620 ms, 1.055) staggered
   90 ms per tile along the line. Confetti kept. One `winTile` style serves both shots; the beat is renamed
-  `rowWin` — cost if wrong: none. Previewed at frames 238 (shot 3) and 790 (shot 7) in both formats; the
-  committed stills still show the strike line until the final render (open question 4).
-- Ruling (owner, via Mira): shot 8 should gain a muted line `tictactoe.kayarandomized.com` under the wordmark.
-  **Not done**: my edit was refused by this session's permission checks, because the handoff (section 3 and
-  done-when) says no domain anywhere in the renders and the change reached me from a session message rather
-  than from the handoff. Needs Arnel's go-ahead in this session or a revised handoff (open question 5).
+  `rowWin` — cost if wrong: none. Stills `*-04-diagonal-win-highlight-confetti-f238.png` and
+  `*-09-slogan-f790.png`.
+- Ruling (owner, approved by Arnel in this session, 2026-10-01): shot 8 shows one quiet line
+  `tictactoe.kayarandomized.com` under the wordmark: Nunito 700, `--muted-foreground`, 44 px reel / 34 px square,
+  rising 12 px and fading in over 12 frames from frame 846 (`t.beats.url`, tested), held to the last frame. The
+  logo zone grew to fit it and stays inside the safe area (`layout.test.ts`). This supersedes the handoff's
+  "no domain anywhere in the renders"; the done-when item now reads "no owner name, no real-looking room code,
+  and no URL other than tictactoe.kayarandomized.com in shot 8", as in the revised storyboard — cost if wrong:
+  one line to remove and a re-render.
+- Ruling (approved by Arnel in this session): Chrome for rendering comes from `promo/chrome.ts`, used by
+  `remotion.config.ts` and the stills script: `REMOTION_CHROME` if set, else the installed Mac Google Chrome,
+  else Remotion's own headless shell. The plain `npm --prefix promo run render` and `run stills` now work
+  without an env prefix — cost if wrong: none; a machine without Chrome falls back to Remotion's download.
 
 ## Deferred minors
 
@@ -303,16 +315,16 @@ pure tests. Revert: `git revert` the merge commit; nothing to migrate.
 
 ## Tests
 
-Promo (`npm --prefix promo test`): 8 files, 74 tests, green (55 before the review rounds). Red first on each pure module:
+Promo (`npm --prefix promo test`): 8 files, 75 tests, green (55 before the review rounds). Red first on each pure module:
 `tones.test.ts` (module missing), `alignment.test.ts` (module missing), `script.test.ts` (`NARRATION.map is
 not a function`: the order bug), `timeline.test.ts` (module missing; then the storyboard table failed against
 a 6-frame gap rule, which was wrong; then `bubble1Exit`, `soundCues` missing), `mix.test.ts`,
 `layout.test.ts`, `loudness.test.ts` (module missing). Review rounds, red first: `brand.test.ts` (module missing),
 bot-01 with leading silence (threw), `beats` missing, `spanOf` with a missing `after`, `readTake` missing,
-`parseLoudnorm` without `input_lra`, `masterProblems` missing, narrator 6 dB headroom, toast minimum hold. The
+`parseLoudnorm` without `input_lra`, `masterProblems` missing, narrator 6 dB headroom, toast minimum hold, the shot-8 address beat. The
 rule-failure tests for sentence 2, shot 3, frame 900 and the toast passed on first run: they pin rules the code
 already enforced and had no test for. Typecheck clean. Game: `npm test` 52 files / 606 tests
-green, `npm run build` green. No red tests, pre-existing or new.
+green (root run with the promo tests: 60 / 681), `npm run build` green. No red tests, pre-existing or new.
 
 ## Open questions for Mira / Arnel
 
@@ -320,23 +332,16 @@ green, `npm run build` green. No red tests, pre-existing or new.
    the narrator and never overlap her or a game sound, but not that the voice sounds male and monotone, or
    that dynamic loudnorm leaves the music bed sounding even.
 2. (Resolved) Chrome: no download needed; the installed Chrome renders.
-3. (Resolved, Mira) `docs/promo/storyboard.md` is committed in this PR, copied from the main checkout as of 2026-10-01 (it already carries the shot-8 URL revision that the code does not yet have).
-4. **Renders are one fix round behind.** `promo/out/*.mp4` and the committed stills were made before review
-   round 2. Round 2 changed the audio gain staging (mix 6 dB down, then mastered back: the master's output
-   target is unchanged) and made the confetti smaller; everything else in round 2 is code or tests. My re-render
-   (`npm --prefix promo run render`) was refused by this session's permission checks, so it needs running with
-   approval:
-   `REMOTION_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm --prefix promo run render`
-   then `npm --prefix promo run stills` with the same variable. The master now fails loudly if the file misses
-   -14 LUFS ± 1 or goes over -1 dBTP.
-5. The shot-8 URL line (owner ruling via Mira): blocked as above. If Arnel confirms it, it is a small change in
-   `Shot8Mark.tsx` plus a `url` size in `layout.ts` and a taller logo zone; it also changes the done-when item
-   "no domain in the renders".
+3. (Resolved, Mira) `docs/promo/storyboard.md` is committed in this PR, copied from the main checkout as of
+   2026-10-01.
+4. (Resolved) Re-render: approved by Arnel in this session; the final renders and stills are from the merged
+   tree (all review fixes, the win highlight and the shot-8 address line).
+5. (Resolved) The shot-8 address line: approved by Arnel in this session; see Rulings.
 
 ## Trial report
 
 - Tool: Remotion 4.0.531
-- Times used: 1 project; about 6 full renders (2 formats × 3) and ~60 stills while building.
+- Times used: 1 project; about 8 full renders (2 formats × 4) and ~90 stills while building.
 - What it caught / what it made easy: frames as the unit everywhere made the storyboard's frame table
   directly testable; a pure `timeline.ts` feeds both picture and sound, so a tone can't drift from its
   visual. `calculateMetadata` gave two formats from one composition with no duplication. `delayRender` plus

@@ -5,6 +5,7 @@ import { renderStill, selectComposition } from "@remotion/renderer"
 import { mkdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import measured from "../../docs/promo/audio/durations.json" with { type: "json" }
+import { browserExecutable as installedChrome } from "../chrome.ts"
 import { LAYOUTS } from "../src/layout.ts"
 import { type Measured, buildTimeline } from "../src/timeline.ts"
 
@@ -16,7 +17,7 @@ const CHECKS: Record<string, number> = {
   "02-empty-board-title": 50,
   "02-first-x": 84,
   "03-bubble-i-do-this-all-day": t.bot1.from + 12,
-  "04-diagonal-strike-confetti": 238,
+  "04-diagonal-win-highlight-confetti": 238,
   "04-lucky-square": t.bot2.from + 12,
   "05-toast": t.toast + 14,
   "06-online-xoxo": s["4a"] + 70,
@@ -40,7 +41,7 @@ const serveUrl = await bundle({
   entryPoint: fileURLToPath(new URL("../src/index.ts", import.meta.url)),
   publicDir: fileURLToPath(new URL("../../docs/promo/audio/", import.meta.url)),
 })
-const browserExecutable = process.env.REMOTION_CHROME ?? null
+const browserExecutable = installedChrome()
 const chromeMode = browserExecutable ? "chrome-for-testing" : "headless-shell"
 
 for (const layout of LAYOUTS) {

@@ -29,16 +29,16 @@ const ZONES: Record<Layout, Zones> = {
     title: { x: 72, y: 290, w: 936, h: 190 },
     bubble: { x: 90, y: 290, w: 900, h: 180 },
     content: { x: 72, y: 460, w: 936, h: 840 },
-    // Logo (440) + gap (36) + wordmark line (120), centred on y 860.
-    logo: { x: 72, y: 562, w: 936, h: 596 },
+    // Logo (440) + gap (36) + wordmark line (120) + gap (15) + address line (53), centred on y 860.
+    logo: { x: 72, y: 528, w: 936, h: 664 },
   },
   square: {
     board: { x: 230, y: 330, w: 620, h: 620 },
     title: { x: 72, y: 60, w: 936, h: 190 },
     bubble: { x: 90, y: 70, w: 900, h: 180 },
     content: { x: 72, y: 150, w: 936, h: 780 },
-    // Logo (300) + gap (28) + wordmark line (92), centred on y 540.
-    logo: { x: 72, y: 330, w: 936, h: 420 },
+    // Logo (300) + gap (28) + wordmark line (92) + gap (12) + address line (41), centred on y 540.
+    logo: { x: 72, y: 304, w: 936, h: 473 },
   },
 }
 
@@ -59,6 +59,7 @@ export const TYPE = {
     chip: 64,
     slogan: 124,
     wordmark: 100,
+    url: 44,
   },
   square: {
     title: 96,
@@ -74,5 +75,6 @@ export const TYPE = {
     chip: 48,
     slogan: 92,
     wordmark: 76,
+    url: 34,
   },
 } satisfies Record<Layout, Record<string, number>>

@@ -114,7 +114,8 @@ export type Beats = {
   pills: number[] // 6: one per claim, on its words
   rowWin: number // 7: the three Xs light up as a win
   logo: number // 8: the logo starts drawing (O, then each X arm)
-  logoDone: number // 8: its X is complete
+  logoDone: number // 8: its X is complete, and the wordmark rises
+  url: number // 8: the site's address rises (owner ruling, 2026-10-01)
 }
 
 function beatsFor(s: Record<Shot, number>): Beats {
@@ -131,6 +132,7 @@ function beatsFor(s: Record<Shot, number>): Beats {
     rowWin: s["7"] + 24,
     logo,
     logoDone: logo + DRAW.o + 2 * DRAW.arm,
+    url: logo + DRAW.o + 2 * DRAW.arm + 12,
   }
 }
 

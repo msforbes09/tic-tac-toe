@@ -164,6 +164,12 @@ describe("beats", () => {
     expect(t.beats.logoDone).toBe(t.beats.logo + DRAW.o + 2 * DRAW.arm)
     expect(soundCues(t)).toContainEqual({ at: t.beats.logoDone, cue: "start" })
   })
+
+  it("raises the site's address at frame 846, 12 frames after the wordmark starts", () => {
+    const t = buildTimeline(targets)
+    expect(t.beats.logoDone).toBe(834)
+    expect(t.beats.url).toBe(846)
+  })
 })
 
 describe("soundCues", () => {

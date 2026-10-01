@@ -16,9 +16,9 @@ export const exit = (frame: number, at: number) =>
     ? interpolate(frame, [at, at + EXIT_FRAMES], [0, 1], { ...clamp, easing: EXIT })
     : 0
 
-// Rises SLIDE px into place from `inAt`; leaves SLIDE px down from `outAt`.
-export function rise(frame: number, inAt: number, outAt = Infinity): CSSProperties {
-  const i = enter(frame, inAt)
+// Rises SLIDE px into place from `inAt` over `length` frames; leaves SLIDE px down from `outAt`.
+export function rise(frame: number, inAt: number, outAt = Infinity, length = 10): CSSProperties {
+  const i = enter(frame, inAt, length)
   const o = exit(frame, outAt)
   return { opacity: i * (1 - o), transform: `translateY(${(1 - i + o) * SLIDE}px)` }
 }

@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "types": ["node"]
   },
-  "include": ["src", "scripts", "remotion.config.ts", "vitest.config.ts"]
+  "include": ["src", "scripts", "chrome.ts", "remotion.config.ts", "vitest.config.ts"]
 }

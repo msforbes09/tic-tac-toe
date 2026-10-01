@@ -1,4 +1,5 @@
 import { Config } from "@remotion/cli/config"
+import { browserExecutable } from "./chrome"
 
 Config.setEntryPoint("src/index.ts")
 // Never promo/.env: it holds the voice script's API key, and Studio would serve it to the network.
@@ -9,8 +10,9 @@ Config.setVideoImageFormat("jpeg")
 Config.setJpegQuality(95)
 Config.setCodec("h264")
 Config.setOverwriteOutput(true)
-// REMOTION_CHROME points at an installed Chrome; unset, Remotion fetches its own headless shell once.
-if (process.env.REMOTION_CHROME) {
-  Config.setBrowserExecutable(process.env.REMOTION_CHROME)
+// The installed Chrome when there is one (see chrome.ts); otherwise Remotion's own headless shell.
+const chrome = browserExecutable()
+if (chrome) {
+  Config.setBrowserExecutable(chrome)
   Config.setChromeMode("chrome-for-testing")
 }

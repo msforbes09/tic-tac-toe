@@ -18,9 +18,10 @@ npm --prefix promo run render   # out/reel.mp4 and out/square.mp4 (also render:r
 npm --prefix promo run stills   # verification stills into handoff/002-promo-video/stills/
 ```
 
-Rendering needs a Chrome. Set `REMOTION_CHROME` to an installed Chrome binary to use it (macOS:
-`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`); leave it unset and Remotion downloads its
-own headless shell on the first render.
+Rendering needs a Chrome. `chrome.ts` (used by `remotion.config.ts` and the stills script) picks
+`REMOTION_CHROME` when it is set, otherwise the installed Google Chrome on a Mac
+(`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, a local setting for this machine), otherwise
+nothing, and Remotion downloads its own headless shell on the first render.
 
 `render` renders the mix with Remotion, then `scripts/master.ts` masters it with Remotion's bundled ffmpeg
 (two-pass loudnorm to -14 LUFS, true peak -1.5 dBTP), trims to exactly 30.00 s and drops container
