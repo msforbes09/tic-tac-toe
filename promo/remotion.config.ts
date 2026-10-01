@@ -1,6 +1,8 @@
 import { Config } from "@remotion/cli/config"
 
 Config.setEntryPoint("src/index.ts")
+// Never promo/.env: it holds the voice script's API key, and Studio would serve it to the network.
+Config.setDotEnvLocation("remotion.env")
 // The committed audio (voices, music, tones) is served as the static folder.
 Config.setPublicDir("../docs/promo/audio")
 Config.setVideoImageFormat("jpeg")

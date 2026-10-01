@@ -3,7 +3,7 @@ import { COLOR } from "../tokens"
 
 const PIECES = 28
 const FRAMES = 33 // 1.1 s, as the app's burst
-const FALL = 80
+const FALL = 40 // half the app's, so the burst stays inside the safe area
 
 // One burst of X- and O-coloured confetti from (x, y), as src/index.css's confetti-burst.
 export function Confetti({

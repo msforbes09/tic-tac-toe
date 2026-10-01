@@ -3,7 +3,7 @@
 // encodes AAC, and drops all container metadata. Prints the final measurement.
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { measureFilter, parseLoudnorm, secondPassFilter } from "../src/loudness.ts"
+import { masterProblems, measureFilter, parseLoudnorm, secondPassFilter } from "../src/loudness.ts"
 import { FPS, TOTAL_FRAMES } from "../src/timeline.ts"
 
 const [input, output] = process.argv.slice(2)
@@ -60,3 +60,8 @@ console.log(
   `master: ${output}: ${final.input_i} LUFS integrated, ${final.input_tp} dBTP true peak ` +
     `(mix was ${first.input_i} LUFS; ${second.normalization_type} normalisation)`,
 )
+const problems = masterProblems(final)
+if (problems.length > 0) {
+  console.error(`master: ${output} misses the loudness limits: ${problems.join("; ")}`)
+  process.exit(1)
+}

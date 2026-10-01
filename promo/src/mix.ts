@@ -21,15 +21,17 @@ const DUCK = 4
 const DUCK_RAMP = 6
 const FADE_IN_END = 15
 const FADE_OUT_START = 855
+// The whole mix renders this far down so summed peaks never clip; the master brings it back up.
+const HEADROOM = 6
 
 export const dbToGain = (db: number) => 10 ** (db / 20)
 
-// The gain that puts a source `under` dB below the narrator.
+// The gain that puts a source `under` dB below the narrator (the narrator itself is `under` 0).
 const under = (source: keyof typeof SOURCE_LUFS, db: number) =>
-  dbToGain(SOURCE_LUFS.narration - db - SOURCE_LUFS[source])
+  dbToGain(SOURCE_LUFS.narration - db - SOURCE_LUFS[source] - HEADROOM)
 
 export const VOLUME = {
-  narration: 1,
+  narration: under("narration", 0),
   "bot-01": under("bot-01", BOT_UNDER),
   "bot-02": under("bot-02", BOT_UNDER),
   tones: under("tones", MUSIC_UNDER - TONES_OVER_MUSIC),

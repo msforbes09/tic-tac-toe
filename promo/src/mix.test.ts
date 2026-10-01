@@ -4,7 +4,7 @@ import { SOURCE_LUFS, VOLUME, dbToGain, musicVolume } from "./mix"
 const db = (gain: number) => 20 * Math.log10(gain)
 // Loudness a source lands at in the mix, relative to the narrator.
 const underNarrator = (source: keyof typeof SOURCE_LUFS, volume: number) =>
-  SOURCE_LUFS.narration - (SOURCE_LUFS[source] + db(volume))
+  SOURCE_LUFS.narration + db(VOLUME.narration) - (SOURCE_LUFS[source] + db(volume))
 
 describe("mix levels (owner ruling: music 9 dB under the narrator, bot 2 dB under)", () => {
   it("converts decibels to gain", () => {
@@ -12,8 +12,8 @@ describe("mix levels (owner ruling: music 9 dB under the narrator, bot 2 dB unde
     expect(dbToGain(0)).toBe(1)
   })
 
-  it("keeps the narrator as the 0 dB reference", () => {
-    expect(VOLUME.narration).toBe(1)
+  it("renders the narrator 6 dB down, headroom the master gives back", () => {
+    expect(db(VOLUME.narration)).toBeCloseTo(-6, 5)
   })
 
   it("sets both bot lines 2 dB under the narrator", () => {

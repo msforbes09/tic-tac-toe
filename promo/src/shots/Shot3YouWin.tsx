@@ -30,7 +30,7 @@ export function Shot3YouWin({
         x={board.x + board.w / 2}
         y={board.y + board.h / 2}
         at={WIN.at}
-        spread={board.w * 0.6}
+        spread={board.w * 0.5}
       />
       <Bubble layout={layout} text={BOT_LINES["bot-02"]} popAt={bubbleAt} exitAt={bubbleExit} />
       <Toast layout={layout} at={toastAt} exitAt={TOAST_EXIT} />

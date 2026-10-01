@@ -20,6 +20,21 @@ export function parseLoudnorm(stderr: string): LoudnormReport {
   return report
 }
 
+// The owner's limits for the final file: within 1 LU of -14 LUFS, true peak at or under -1 dBTP.
+const CEILING = -1
+const TOLERANCE = 1
+
+export function masterProblems(m: LoudnormReport): string[] {
+  const problems = []
+  if (Math.abs(Number(m.input_i) - TARGET.integrated) > TOLERANCE) {
+    problems.push(
+      `integrated ${m.input_i} LUFS is more than ${TOLERANCE} LU from ${TARGET.integrated}`,
+    )
+  }
+  if (Number(m.input_tp) > CEILING) problems.push(`true peak ${m.input_tp} dBTP is over ${CEILING}`)
+  return problems
+}
+
 export const secondPassFilter = (m: LoudnormReport) =>
   `${base()}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:` +
   `measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true:print_format=json`

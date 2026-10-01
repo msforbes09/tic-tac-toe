@@ -67,6 +67,7 @@ const BOT2_AT = 240 // the win jingle (frame 226, 13 frames) has ended
 const BUBBLE2_LINGER = 3
 const TOAST_AT = 278
 const TOAST_IN = 8
+const MIN_TOAST_HOLD = 18 // 0.6 s: the storyboard wants 1.0 s; a long bot-02 may shorten it this far
 export const TOAST_EXIT = 316
 const LAST_SLOGAN_FRAME = 840
 const MIN_LOGO_HOLD = 60
@@ -181,8 +182,8 @@ export function buildTimeline(m: Measured): Timeline {
   const bot2 = clip(BOT2_AT, m["bot-02"].speech)
   const toast = Math.max(TOAST_AT, clipEnd(bot2) + 2)
   rule(
-    toast + TOAST_IN <= TOAST_EXIT,
-    "bot-02 must end before the toast chime, leaving the toast a hold",
+    toast + TOAST_IN + MIN_TOAST_HOLD <= TOAST_EXIT,
+    "bot-02 must end before the toast chime, leaving the toast at least 0.6 s of hold",
   )
 
   // The second bubble lingers a beat after its line, but always clears the zone before the toast drops in.

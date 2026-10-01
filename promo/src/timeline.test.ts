@@ -149,6 +149,10 @@ describe("buildTimeline rules", () => {
     expect(() => buildTimeline(withSentence("8", [27.0, 30.5]))).toThrow("frame 900")
   })
 
+  it("refuses a bot-02 that would leave the toast under 0.6 s of hold", () => {
+    expect(() => buildTimeline(withBot("bot-02", [0, 1.75]))).toThrow("toast")
+  })
+
   it("refuses a bot-02 so long that the toast gets no hold", () => {
     expect(() => buildTimeline(withBot("bot-02", [0, 2.5]))).toThrow("toast")
   })
