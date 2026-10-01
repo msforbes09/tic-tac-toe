@@ -313,7 +313,7 @@ green, `npm run build` green. No red tests, pre-existing or new.
    the narrator and never overlap her or a game sound, but not that the voice sounds male and monotone, or
    that dynamic loudnorm leaves the music bed sounding even.
 2. (Resolved) Chrome: no download needed; the installed Chrome renders.
-3. `docs/promo/storyboard.md` is still untracked in the main checkout. Commit it with this PR, or separately?
+3. (Resolved, Mira) `docs/promo/storyboard.md` is committed in this PR, copied from the main checkout as of 2026-10-01 (it already carries the shot-8 URL revision that the code does not yet have).
 4. **Renders are one fix round behind.** `promo/out/*.mp4` and the committed stills were made before review
    round 2. Round 2 changed the audio gain staging (mix 6 dB down, then mastered back: the master's output
    target is unchanged) and made the confetti smaller; everything else in round 2 is code or tests. My re-render
